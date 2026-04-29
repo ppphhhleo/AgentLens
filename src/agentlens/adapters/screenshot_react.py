@@ -140,14 +140,42 @@ class ScreenshotReactAdapter:
                 f"[{plan.run_id} seed={plan.seed} trial={plan.trial}] open {plan.task.start_url}",
             )
             headless = bool(plan.tool_harness.extra.get("headless", True))
-            # In live (headed) mode, slow down Playwright actions so a human can
-            # follow what is happening. In headless mode we want full speed.
-            slow_mo = int(plan.tool_harness.extra.get("slow_mo_ms", 0 if headless else 350))
+            # slow_mo defaults to 0 — pacing comes from settle_ms + the model
+            # API latency. Override per-config if you want explicit pacing.
+            slow_mo = int(plan.tool_harness.extra.get("slow_mo_ms", 0))
             browser = playwright.chromium.launch(headless=headless, slow_mo=slow_mo)
             viewport = plan.tool_harness.extra.get(
                 "viewport", {"width": 1600, "height": 900}
             )
-            page = browser.new_page(viewport=viewport)
+
+            # Tracing's DOM-snapshot walk causes visible flicker in headed
+            # mode, so default it OFF when live. Video screencast is much
+            # lighter and useful for sharing/post-hoc review, so always on
+            # by default. Both can be overridden per-config.
+            tracing_enabled = bool(
+                plan.tool_harness.extra.get("tracing", headless)
+            )
+            video_enabled = bool(
+                plan.tool_harness.extra.get("record_video", True)
+            )
+            video_dir = artifact_dir / "video" if video_enabled else None
+            if video_dir is not None:
+                video_dir.mkdir(parents=True, exist_ok=True)
+
+            context = browser.new_context(
+                viewport=viewport,
+                record_video_dir=str(video_dir) if video_dir else None,
+                record_video_size=viewport if video_dir else None,
+            )
+            if tracing_enabled:
+                context.tracing.start(screenshots=True, snapshots=True, sources=True)
+
+            # Inject the action-marker overlay once per context so we don't
+            # pay a CDP round-trip + sync script eval on every action.
+            from agentlens.harnesses.browser_actions import OVERLAY_INIT_JS
+            context.add_init_script(OVERLAY_INIT_JS)
+
+            page = context.new_page()
             page.goto(plan.task.start_url or "about:blank", wait_until="domcontentloaded")
             page.wait_for_timeout(int(plan.tool_harness.extra.get("settle_ms", 1500)))
 
@@ -166,7 +194,17 @@ class ScreenshotReactAdapter:
                 )
 
             final_url = page.url
+            trace_path = artifact_dir / "trace.zip" if tracing_enabled else None
+            if tracing_enabled:
+                context.tracing.stop(path=str(trace_path))
+            context.close()
             browser.close()
+            self._log(
+                log_action,
+                f"[{plan.run_id}] artifacts: trajectory.json"
+                + (f", trace={trace_path}" if trace_path else "")
+                + (f", video_dir={video_dir}" if video_dir else ""),
+            )
 
         if answer is None and _is_mock_model(plan.model):
             answer = str(plan.task.extra.get("mock_answer", ""))

@@ -1,8 +1,10 @@
 schema_version: "0.1"
 id: screenshot_react_tools_smoke
 description: >
-  No-model smoke test for OpenAI computer-use-style screenshot actions on a
-  visible local HTML page.
+  No-model smoke tests against the unified local fixture
+  (fixtures/screenshot_react_tools.html). Two tasks:
+  - local_action_tools           : minimal 5-button click smoke
+  - local_action_tools_coverage  : exercises every supported action
 
 models:
   - id: mock_screenshot_react
@@ -25,6 +27,10 @@ tool_harnesses:
       - browser.move
       - browser.keypress
       - browser.drag
+      - browser.goto
+      - browser.back
+      - browser.forward
+      - browser.reload
       - task.final_answer
     prompt_version: screenshot_react_json_v1
     extra:
@@ -43,46 +49,76 @@ tasks:
   - id: local_action_tools
     benchmark: custom
     task_id: local.action_tools
-    goal: Click five visible buttons on the AgentLens local smoke page.
-    start_url: file:///Users/pan00342/Documents/Projects/AgentLens/fixtures/screenshot_react_tools_smoke.html
+    goal: Click five visible buttons on the AgentLens local fixture page.
+    start_url: file:///Users/pan00342/Documents/Projects/AgentLens/fixtures/screenshot_react_tools.html
     capability_required: [browser_ui]
     validator: final_answer
     expected_answer: five clicks complete
     answer_validator: exact
     extra:
       mock_actions:
-        - type: click
-          x: 127
-          y: 278
-          button: left
-        - type: wait
-          ms: 700
-        - type: click
-          x: 288
-          y: 278
-          button: left
-        - type: wait
-          ms: 700
-        - type: click
-          x: 448
-          y: 278
-          button: left
-        - type: wait
-          ms: 700
-        - type: click
-          x: 610
-          y: 278
-          button: left
-        - type: wait
-          ms: 700
-        - type: click
-          x: 770
-          y: 278
-          button: left
-        - type: wait
-          ms: 1200
-        - type: final_answer
-          answer: five clicks complete
+        - {type: click, x: 110, y: 140, button: left}
+        - {type: wait, ms: 400}
+        - {type: click, x: 255, y: 140, button: left}
+        - {type: wait, ms: 400}
+        - {type: click, x: 400, y: 140, button: left}
+        - {type: wait, ms: 400}
+        - {type: click, x: 545, y: 140, button: left}
+        - {type: wait, ms: 400}
+        - {type: click, x: 690, y: 140, button: left}
+        - {type: wait, ms: 600}
+        - {type: final_answer, answer: five clicks complete}
+
+  - id: local_action_tools_coverage
+    benchmark: custom
+    task_id: local.action_tools_coverage
+    goal: Exercise every supported computer-use action on the unified fixture.
+    start_url: file:///Users/pan00342/Documents/Projects/AgentLens/fixtures/screenshot_react_tools.html
+    capability_required: [browser_ui]
+    validator: final_answer
+    expected_answer: coverage ok
+    answer_validator: exact
+    extra:
+      # Sequence exercises: shift-click, ctrl-click, plain click,
+      # keypress (multi-key with modifier), scroll (camelCase scrollY),
+      # drag (array path), type, goto, back, forward, reload.
+      # Element coords were measured from the rendered fixture in an
+      # 800x600 viewport. After scroll the modclick row is gone so we
+      # do all in-viewport clicks BEFORE scrolling.
+      mock_actions:
+        # Modifier clicks on #modclick (doc y=312, in viewport).
+        - {type: click, x: 132, y: 312, button: left, keys: [SHIFT]}
+        - {type: wait, ms: 200}
+        - {type: click, x: 132, y: 312, button: left, keys: [CTRL]}
+        - {type: wait, ms: 200}
+        - {type: click, x: 132, y: 312, button: left}
+        - {type: wait, ms: 200}
+        # Focus #text-input (doc y=481), then send Control+A.
+        - {type: click, x: 125, y: 481, button: left}
+        - {type: keypress, keys: [Control, a]}
+        - {type: wait, ms: 200}
+        # Scroll down so #drag-zone (doc y=792) and #type-target (doc y=981)
+        # come into view. scroll 500 -> drag-zone at viewport y~292,
+        # type-target at viewport y~480.
+        - {type: scroll, x: 400, y: 400, scrollX: 0, scrollY: 500}
+        - {type: wait, ms: 200}
+        # Drag using OpenAI-shape array path inside the drag-zone.
+        - {type: drag, path: [[60, 282], [340, 282], [340, 320]]}
+        - {type: wait, ms: 200}
+        # Focus #type-target (now at viewport y~480 after scroll), then type.
+        - {type: click, x: 125, y: 480, button: left}
+        - {type: type, text: hello world}
+        - {type: wait, ms: 200}
+        # Real navigation across all four nav primitives.
+        - {type: goto, url: "file:///Users/pan00342/Documents/Projects/AgentLens/fixtures/screenshot_react_tools.html?view=2"}
+        - {type: wait, ms: 200}
+        - {type: back}
+        - {type: wait, ms: 200}
+        - {type: forward}
+        - {type: wait, ms: 200}
+        - {type: reload}
+        - {type: wait, ms: 200}
+        - {type: final_answer, answer: coverage ok}
 
 runs:
   - id: local_action_tools_mock
@@ -95,3 +131,14 @@ runs:
     max_steps: 11
     output_dir: agentlens_results/screenshot_react_tools_smoke
     tags: [smoke, screenshot_react, tools]
+
+  - id: local_action_tools_coverage_mock
+    model: mock_screenshot_react
+    tool_harness: screenshot_react_browser
+    memory_harness: no_memory
+    task: local_action_tools_coverage
+    seeds: [0]
+    trials: 1
+    max_steps: 30
+    output_dir: agentlens_results/screenshot_react_tools_smoke
+    tags: [smoke, screenshot_react, tools, coverage]

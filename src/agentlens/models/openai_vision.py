@@ -25,19 +25,28 @@ You see one screenshot per step. Respond ONLY with a single JSON object:
 }}
 
 Action schema (pick exactly one per step):
-- {{"type": "click", "x": int, "y": int, "button": "left"|"right"|"middle"}}
-- {{"type": "double_click", "x": int, "y": int, "button": "left"}}
-- {{"type": "scroll", "x": int, "y": int, "scroll_x": int, "scroll_y": int}}
+- {{"type": "click", "x": int, "y": int, "button": "left"|"right"|"middle", "keys": ["SHIFT"]?}}
+- {{"type": "double_click", "x": int, "y": int, "button": "left", "keys": []?}}
+- {{"type": "scroll", "x": int, "y": int, "scroll_x": int, "scroll_y": int, "keys": []?}}
 - {{"type": "type", "text": "..."}}
 - {{"type": "keypress", "keys": ["Enter"]}}
 - {{"type": "wait", "ms": 1000}}
-- {{"type": "move", "x": int, "y": int}}
-- {{"type": "drag", "path": [{{"x": int, "y": int}}, ...]}}
+- {{"type": "move", "x": int, "y": int, "keys": []?}}
+- {{"type": "drag", "path": [{{"x": int, "y": int}}, ...], "keys": []?}}
+- {{"type": "goto", "url": "https://..."}}
+- {{"type": "back"}}
+- {{"type": "forward"}}
+- {{"type": "reload"}}
 - {{"type": "screenshot"}}
 - {{"type": "final_answer", "answer": "..."}}
 
 Rules:
 - Coordinates are viewport pixels from the top-left of the screenshot.
+- For mouse actions, "keys" (optional) is a list of MODIFIERS held during the
+  action: SHIFT, CTRL (or CONTROL), ALT, META (or CMD/COMMAND).
+- For "keypress", "keys" is the list of keys to PRESS (e.g. ["Enter"], ["CTRL", "A"]).
+- "scroll_x"/"scroll_y" may also be written "scrollX"/"scrollY".
+- "drag.path" entries may be {{"x":.., "y":..}} objects or [x, y] arrays.
 - When you can answer the task, emit final_answer immediately; do not over-explore.
 - The "answer" field of final_answer is your ANSWER to the task.
 - Never wrap the JSON in markdown fences.

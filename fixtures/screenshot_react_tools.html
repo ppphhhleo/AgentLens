@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AgentLens Tools Fixture</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #fdf6e3;
+      color: #073642;
+      min-height: 1500px;
+    }
+    body.view-2 { background: #002b36; color: #fdf6e3; }
+    h1 { margin: 0 0 16px 0; font-size: 22px; }
+    h2 { margin: 0 0 8px 0; font-size: 16px; }
+    section {
+      border: 2px solid currentColor;
+      background: rgba(255,255,255,0.6);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    body.view-2 section { background: rgba(7,54,66,0.6); }
+
+    /* 5-button smoke grid: stable coordinates inside 800px viewport. */
+    .smoke-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .smoke-grid button {
+      height: 60px;
+      border: 2px solid #073642;
+      background: #e5e7eb;
+      color: #073642;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .smoke-grid button.clicked { background: #84cc16; }
+    #smoke-status {
+      margin-top: 8px;
+      padding: 8px;
+      border: 2px dashed currentColor;
+      background: white;
+      color: #073642;
+      font-size: 14px;
+    }
+
+    button.action {
+      padding: 10px 16px;
+      font-size: 14px;
+      border: 2px solid currentColor;
+      background: #eee8d5;
+      color: #073642;
+      cursor: pointer;
+    }
+    .log {
+      font-family: ui-monospace, Menlo, monospace;
+      background: #002b36;
+      color: #93a1a1;
+      padding: 10px;
+      margin-top: 8px;
+      min-height: 24px;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+    body.view-2 .log { background: #fdf6e3; color: #073642; }
+    #drag-zone {
+      width: 320px;
+      height: 80px;
+      background: #eee8d5;
+      color: #073642;
+      border: 2px dashed currentColor;
+      user-select: none;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    input {
+      padding: 8px;
+      font-size: 14px;
+      border: 2px solid currentColor;
+      background: white;
+      color: #073642;
+    }
+    .nav { color: #268bd2; }
+  </style>
+</head>
+<body>
+  <h1 id="page-title">AgentLens Tools Fixture</h1>
+
+  <section id="view-1-smoke">
+    <h2>Five-button click smoke</h2>
+    <div class="smoke-grid">
+      <button id="target-1">Click 1</button>
+      <button id="target-2">Click 2</button>
+      <button id="target-3">Click 3</button>
+      <button id="target-4">Click 4</button>
+      <button id="target-5">Click 5</button>
+    </div>
+    <div id="smoke-status">Clicked: 0 / 5</div>
+  </section>
+
+  <section id="view-1-modclick">
+    <h2>Modifier-key clicks</h2>
+    <button class="action" id="modclick">Click me with modifiers</button>
+    <div class="log" id="modclick-log">no clicks yet</div>
+  </section>
+
+  <section id="view-1-keys">
+    <h2>Keypress (with modifiers)</h2>
+    <input id="text-input" placeholder="focus me, then keypress">
+    <div class="log" id="keypress-log">no keys yet</div>
+  </section>
+
+  <section id="view-1-scroll">
+    <h2>Scroll (camelCase scrollX/scrollY accepted)</h2>
+    <div class="log" id="scroll-log">no scrolls yet (window.scrollY = 0)</div>
+  </section>
+
+  <section id="view-1-drag">
+    <h2>Drag (array path or object path)</h2>
+    <div id="drag-zone">drag across this zone</div>
+    <div class="log" id="drag-log">no drags yet</div>
+  </section>
+
+  <section id="view-1-type">
+    <h2>Type into input</h2>
+    <input id="type-target" placeholder="will be focused & typed into">
+    <div class="log" id="type-log">no typing yet</div>
+  </section>
+
+  <section id="view-1-nav">
+    <h2>Navigation</h2>
+    <a class="nav" id="nav-link" href="?view=2">Manual link to view 2</a>
+    <div class="log" id="nav-log">view: <span id="view-display"></span> &nbsp;|&nbsp; URL: <span id="url-display"></span></div>
+  </section>
+
+  <section id="view-2-content" hidden>
+    <h2>You arrived at view 2</h2>
+    <p>If you can read this, <code>goto ?view=2</code> worked.</p>
+    <div class="log" id="reload-log">load count for this view: <span id="load-count">1</span></div>
+  </section>
+
+  <script>
+    const set = (id, msg) => { const el = document.getElementById(id); if (el) el.textContent = msg; };
+
+    // Routing — show only the relevant section group based on ?view=
+    const params = new URLSearchParams(location.search);
+    const view = params.get("view") === "2" ? "2" : "1";
+    document.body.classList.add("view-" + view);
+    document.title = `AgentLens Tools Fixture — view ${view}`;
+    document.getElementById("page-title").textContent = `AgentLens Tools Fixture (view ${view})`;
+    document.getElementById("view-display").textContent = view;
+    document.getElementById("url-display").textContent = location.pathname.split("/").pop() + location.search;
+    if (view === "2") {
+      ["view-1-smoke","view-1-modclick","view-1-keys","view-1-scroll","view-1-drag","view-1-type","view-1-nav"].forEach(id => {
+        const el = document.getElementById(id); if (el) el.hidden = true;
+      });
+      document.getElementById("view-2-content").hidden = false;
+
+      const KEY = "agentlens_view2_loads";
+      const n = parseInt(sessionStorage.getItem(KEY) || "0", 10) + 1;
+      sessionStorage.setItem(KEY, String(n));
+      document.getElementById("load-count").textContent = String(n);
+    }
+
+    // Five-button smoke: count clicks, mark clicked.
+    const clicked = new Set();
+    document.querySelectorAll(".smoke-grid button").forEach((b) => {
+      b.addEventListener("click", () => {
+        clicked.add(b.id);
+        b.classList.add("clicked");
+        document.getElementById("smoke-status").textContent = `Clicked: ${clicked.size} / 5`;
+      });
+    });
+
+    // Modifier-key clicks: report which modifiers were held.
+    document.getElementById("modclick").addEventListener("click", (e) => {
+      const mods = ["shift","ctrl","alt","meta"].filter(m => e[m+"Key"]);
+      set("modclick-log", `click @ (${e.clientX},${e.clientY}) mods=[${mods.join(",")||"none"}]`);
+    });
+
+    // Keypress logging from any key event on text input.
+    const ti = document.getElementById("text-input");
+    ti.addEventListener("keydown", (e) => {
+      const mods = ["shift","ctrl","alt","meta"].filter(m => e[m+"Key"]);
+      set("keypress-log", `keydown key=${e.key} code=${e.code} mods=[${mods.join(",")||"none"}]`);
+    });
+
+    // Scroll logging on the window.
+    window.addEventListener("scroll", () => {
+      set("scroll-log", `window.scrollY = ${Math.round(window.scrollY)} (scrollX = ${Math.round(window.scrollX)})`);
+    });
+
+    // Drag logging via mouse events on the drag-zone.
+    const dz = document.getElementById("drag-zone");
+    let dragStart = null, dragLast = null, dragging = false;
+    dz.addEventListener("mousedown", (e) => { dragging = true; dragStart = [e.clientX, e.clientY]; dragLast = dragStart; });
+    dz.addEventListener("mousemove", (e) => { if (dragging) dragLast = [e.clientX, e.clientY]; });
+    window.addEventListener("mouseup", () => {
+      if (dragging && dragStart && dragLast) {
+        set("drag-log", `drag from (${dragStart}) to (${dragLast})`);
+      }
+      dragging = false;
+    });
+
+    // Type target logs the latest input value.
+    const tt = document.getElementById("type-target");
+    tt.addEventListener("input", () => { set("type-log", `value="${tt.value}"`); });
+  </script>
+</body>
+</html>
