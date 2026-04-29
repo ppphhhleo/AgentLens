@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AgentLens Screenshot ReAct Tools Smoke</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: #f4efe6;
+      color: #1f2933;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 48px auto;
+      padding: 32px;
+      background: #fffaf0;
+      border: 2px solid #111827;
+      box-shadow: 12px 12px 0 #111827;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 32px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      margin-top: 32px;
+    }
+
+    button {
+      height: 96px;
+      border: 2px solid #111827;
+      background: #e5e7eb;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.clicked {
+      background: #84cc16;
+      color: #111827;
+    }
+
+    #status {
+      margin-top: 32px;
+      padding: 16px;
+      border: 2px dashed #111827;
+      background: white;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>AgentLens Tools Smoke Page</h1>
+    <p>This page exists so headed mode has visible browser actions to inspect.</p>
+    <section class="grid" aria-label="click targets">
+      <button id="target-1">Click 1</button>
+      <button id="target-2">Click 2</button>
+      <button id="target-3">Click 3</button>
+      <button id="target-4">Click 4</button>
+      <button id="target-5">Click 5</button>
+    </section>
+    <div id="status">Clicked: 0 / 5</div>
+  </main>
+  <script>
+    const clicked = new Set();
+    for (const button of document.querySelectorAll("button")) {
+      button.addEventListener("click", () => {
+        clicked.add(button.id);
+        button.classList.add("clicked");
+        document.querySelector("#status").textContent = `Clicked: ${clicked.size} / 5`;
+      });
+    }
+  </script>
+</body>
+</html>

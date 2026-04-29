@@ -1,0 +1,75 @@
+schema_version: "0.1"
+id: demo_browsergym_memory_sweep
+description: >
+  Minimal AgentLens MVP config. It compares two memory settings while holding
+  the model, browser-only tool harness, and task fixed.
+
+models:
+  - id: gpt_4o_mini
+    provider: openai
+    name: gpt-4o-mini-2024-07-18
+    temperature: 0.1
+    vision: true
+    context_window: 128000
+    max_output_tokens: 16384
+
+tool_harnesses:
+  - id: agentlab_browser_only
+    runner: agentlab
+    tier: browser_only
+    tools:
+      - browser.observe
+      - browser.click
+      - browser.type
+      - browser.navigate
+    prompt_version: agentlab_generic_v1
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+  - id: summary_memory_same_site
+    kind: summary_memory
+    scope: cross_task_same_site
+    read_policy: inject_recent_task_summaries
+    write_policy: summarize_successes_and_failures
+    max_items: 10
+    storage: jsonl
+
+tasks:
+  - id: browsergym_openended_google
+    benchmark: browsergym
+    task_id: browsergym/openended
+    goal: Open Google and complete a simple open-ended browser task.
+    start_url: https://www.google.com
+    capability_required:
+      - browser_ui
+    validator: openended_chat
+
+runs:
+  - id: baseline_no_memory
+    model: gpt_4o_mini
+    tool_harness: agentlab_browser_only
+    memory_harness: no_memory
+    task: browsergym_openended_google
+    seeds: [0]
+    trials: 1
+    max_steps: 10
+    output_dir: agentlens_results
+    tags:
+      - mvp
+      - memory_ablation
+
+  - id: baseline_summary_memory
+    model: gpt_4o_mini
+    tool_harness: agentlab_browser_only
+    memory_harness: summary_memory_same_site
+    task: browsergym_openended_google
+    seeds: [0]
+    trials: 1
+    max_steps: 10
+    output_dir: agentlens_results
+    tags:
+      - mvp
+      - memory_ablation

@@ -1,0 +1,36 @@
+[project]
+name = "agentlens"
+version = "0.1.0"
+description = "MVP for evaluating browser agent harnesses and trajectories."
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "agentlab>=0.4.2",
+    "browsergym>=0.14.3",
+    "openai>=1.50",
+    "pandas>=2.2",
+    "pydantic>=2.7",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+agentlens = "agentlens.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    ".uv-cache",
+    ".venv",
+]
