@@ -111,6 +111,7 @@ def run(
     """Run or dry-run an AgentLens experiment config."""
     from agentlens.adapters.browsergym_bridge import BrowserGymBridgeAdapter, BrowserGymBridgeRunPlan
     from agentlens.adapters.browsergym_direct import BrowserGymDirectAdapter, BrowserGymDirectRunPlan
+    from agentlens.adapters.cocoabench import CocoaBenchAdapter, CocoaBenchRunPlan
     from agentlens.adapters.screenshot_react import ScreenshotReactAdapter, ScreenshotReactRunPlan
     from agentlens.reports.writers import write_all_reports
     from agentlens.run_plans import build_run_plans, with_live_mode, write_run_plan_json
@@ -154,6 +155,12 @@ def run(
             log_action=typer.echo if log_actions else None,
         )
         report_dir = plans[0].output_dir / "browsergym_bridge_summary"
+    elif all(isinstance(plan, CocoaBenchRunPlan) for plan in plans):
+        result = CocoaBenchAdapter().run_many(
+            plans,
+            log_action=typer.echo if log_actions else None,
+        )
+        report_dir = plans[0].output_dir / "cocoabench_summary"
     else:
         raise typer.BadParameter(
             "mixed or unsupported execution plans; use --dry-run to inspect plans"

@@ -61,6 +61,7 @@ class ToolHarnessConfig(BaseModel):
         "browsergym_bridge",
         "screenshot_react",
         "agencybench",
+        "cocoabench",
         "human",
         "custom",
     ]
@@ -98,7 +99,15 @@ class MemoryHarnessConfig(BaseModel):
 
 class TaskConfig(BaseModel):
     id: str
-    benchmark: Literal["browsergym", "agentlab", "agencybench", "domsteer", "online_mind2web", "custom"]
+    benchmark: Literal[
+        "browsergym",
+        "agentlab",
+        "agencybench",
+        "domsteer",
+        "online_mind2web",
+        "cocoabench",
+        "custom",
+    ]
     task_id: str
     goal: str | None = None
     start_url: str | None = None
@@ -111,6 +120,7 @@ class TaskConfig(BaseModel):
             "contains",
             "url_contains",
             "webjudge",
+            "cocoabench_test_py",
             "semantic_pending",
             "manual_pending",
         ]

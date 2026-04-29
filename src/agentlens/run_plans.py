@@ -58,6 +58,11 @@ def build_run_plans(
 
             adapter = BrowserGymBridgeAdapter()
             plans.extend(adapter.build_run_plans(scoped_config, max_runs=max_runs))
+        elif tool_harness.runner == "cocoabench":
+            from agentlens.adapters.cocoabench import CocoaBenchAdapter
+
+            adapter = CocoaBenchAdapter()
+            plans.extend(adapter.build_run_plans(scoped_config, max_runs=max_runs))
         else:
             raise ValueError(f"unsupported runner for run '{run.id}': {tool_harness.runner}")
 
