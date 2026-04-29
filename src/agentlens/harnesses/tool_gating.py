@@ -41,6 +41,10 @@ TOOL_NAME_BY_ACTION_TYPE: dict[str, str] = {
     "forward": "browser.forward",
     "reload": "browser.reload",
     "web_search": "web.openai_search",
+    "run_python": "code.run_python",
+    "shell": "code.shell",
+    "read_file": "files.read",
+    "write_file": "files.write",
     "final_answer": "task.final_answer",
 }
 
@@ -64,6 +68,10 @@ _ACTION_SCHEMA_FRAGMENTS: dict[str, str] = {
     "forward":       '- {{"type": "forward"}}',
     "reload":        '- {{"type": "reload"}}',
     "web_search":    '- {{"type": "web_search", "query": "..."}}  (calls OpenAI native web search; results appear in your NEXT observation, not the current page)',
+    "run_python":    '- {{"type": "run_python", "code": "..."}}  (executes Python in a sandboxed Jupyter kernel; stdout/stderr appear in your NEXT observation)',
+    "shell":         '- {{"type": "shell", "cmd": "..."}}  (runs a shell command in the sandbox workspace; output in NEXT observation)',
+    "read_file":     '- {{"type": "read_file", "file_path": "/abs/or/workspace/path"}}  (reads file contents from sandbox; result in NEXT observation)',
+    "write_file":    '- {{"type": "write_file", "file_path": "...", "content": "..."}}  (writes content to a sandbox file; confirmation in NEXT observation)',
     "screenshot":    '- {{"type": "screenshot"}}',
     "final_answer":  '- {{"type": "final_answer", "answer": "..."}}',
 }

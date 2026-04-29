@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
-from agentlens.schemas import ExperimentConfig, ToolHarnessConfig
+from agentlens.schemas import ExperimentConfig, MemoryScope, ToolHarnessConfig
 
 RunPlan = Any
 
@@ -116,3 +118,44 @@ def _tool_harness_with_headless(
     extra = dict(tool_harness.extra)
     extra["headless"] = headless
     return tool_harness.model_copy(update={"extra": extra}, deep=True)
+
+
+def group_plans_by_scope(plans: list[RunPlan]) -> list[list[RunPlan]]:
+    """Group plans into session batches by their memory_harness.scope.
+
+    Grouping rules:
+        NONE | IN_TASK            -> one group per plan (no sharing)
+        CROSS_TRIAL               -> grouped by task.id (all trials of one task)
+        CROSS_TASK_SAME_SITE      -> grouped by urlparse(task.start_url).netloc
+        CROSS_BENCHMARK           -> one group containing all plans
+
+    All plans in this batch must share the same memory scope. Mixing scopes
+    in one CLI invocation is rejected (split into separate invocations).
+    """
+    if not plans:
+        return []
+
+    scopes = {p.memory_harness.scope for p in plans}
+    if len(scopes) > 1:
+        raise ValueError(
+            f"plans have mixed memory scopes {scopes}; "
+            "split into separate invocations or use a single memory harness"
+        )
+    scope = next(iter(scopes))
+
+    if scope in (MemoryScope.NONE, MemoryScope.IN_TASK):
+        return [[p] for p in plans]
+
+    groups: dict[str, list[RunPlan]] = defaultdict(list)
+    for p in plans:
+        if scope == MemoryScope.CROSS_TRIAL:
+            key = p.task.id
+        elif scope == MemoryScope.CROSS_TASK_SAME_SITE:
+            host = urlparse(p.task.start_url or "").netloc
+            key = host or p.task.id
+        elif scope == MemoryScope.CROSS_BENCHMARK:
+            key = "__all__"
+        else:
+            key = p.task.id  # unknown scope -> per-task fallback
+        groups[key].append(p)
+    return list(groups.values())

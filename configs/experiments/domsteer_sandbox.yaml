@@ -1,0 +1,104 @@
+schema_version: "0.1"
+id: domsteer_sandbox
+description: >
+  DOMSteer tasks running through the sandboxed multi-tool harness.
+  Same tasks as domsteer_screenshot_react.yaml but each task runs in
+  its own AIO Sandbox container with browser + web_search + run_python
+  + shell + read_file + write_file available. Stealth on by default.
+
+models:
+  - id: gpt5_vision
+    provider: openai
+    name: gpt-5.4
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+
+tool_harnesses:
+  - id: bg_sandbox_full
+    runner: screenshot_react
+    tier: full_sandbox
+    tools:
+      - browser.screenshot
+      - browser.click
+      - browser.double_click
+      - browser.type
+      - browser.scroll
+      - browser.wait
+      - browser.move
+      - browser.keypress
+      - browser.drag
+      - browser.goto
+      - browser.back
+      - browser.forward
+      - browser.reload
+      - web.openai_search
+      - code.run_python
+      - code.shell
+      - files.read
+      - files.write
+      - task.final_answer
+    prompt_version: screenshot_react_json_v1
+    extra:
+      browser_source: aio_sandbox
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      headless: true
+      slow_mo_ms: 0
+      settle_ms: 2000
+      stealth: true
+      viewport:
+        width: 1600
+        height: 900
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+tasks:
+  - id: tf_discretize_toggle
+    benchmark: domsteer
+    task_id: tfplayground.discretize_toggle
+    goal: >
+      Find the "Discretize output" toggle in the TensorFlow Playground UI and
+      click it. Then describe what visibly changed in the output panel after the
+      toggle. You MUST click the toggle before answering.
+    start_url: https://playground.tensorflow.org/
+    capability_required: [browser_ui, visual_reasoning]
+    validator: final_answer
+    expected_answer: "discretize=true"
+    answer_validator: url_contains
+
+  - id: datavoyager_most_fuel_efficient
+    benchmark: domsteer
+    task_id: datavoyager.most_fuel_efficient
+    goal: What is the most fuel-efficient car in the dataset?
+    start_url: https://vega.github.io/voyager2/
+    capability_required: [browser_ui, visual_reasoning]
+    validator: final_answer
+    expected_answer: Mazda GLC
+    answer_validator: exact
+
+runs:
+  - id: tf_discretize_toggle_sandbox
+    model: gpt5_vision
+    tool_harness: bg_sandbox_full
+    memory_harness: no_memory
+    task: tf_discretize_toggle
+    seeds: [0]
+    trials: 1
+    max_steps: 12
+    output_dir: agentlens_results/domsteer_sandbox
+    tags: [domsteer, tfplayground, sandbox, gpt5]
+
+  - id: datavoyager_most_fuel_efficient_sandbox
+    model: gpt5_vision
+    tool_harness: bg_sandbox_full
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    max_steps: 15
+    output_dir: agentlens_results/domsteer_sandbox
+    tags: [domsteer, datavoyager, sandbox, gpt5]

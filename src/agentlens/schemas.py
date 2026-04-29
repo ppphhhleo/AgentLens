@@ -39,6 +39,7 @@ class TrajectoryEventType(StrEnum):
     ARTIFACT_CREATED = "artifact_created"
     USER_FEEDBACK = "user_feedback"
     GATING_VIOLATION = "gating_violation"
+    SESSION_BOUNDARY = "session_boundary"
 
 
 class ModelConfig(BaseModel):

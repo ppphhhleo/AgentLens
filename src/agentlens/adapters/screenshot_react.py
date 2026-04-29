@@ -119,7 +119,56 @@ class ScreenshotReactAdapter:
         plans: list[ScreenshotReactRunPlan],
         log_action: Callable[[str], None] | None = None,
     ) -> ExperimentResult:
-        run_results = [self.run(plan, log_action=log_action) for plan in plans]
+        from agentlens.run_plans import group_plans_by_scope
+
+        groups = group_plans_by_scope(plans)
+        run_results: list[SingleRunResult] = []
+        for group_idx, group in enumerate(groups):
+            shared = len(group) > 1
+            harness = group[0].tool_harness
+            sandbox_source = harness.extra.get("browser_source") == "aio_sandbox"
+            if shared and not sandbox_source:
+                # Local-browser cross-task sharing isn't supported in this MVP.
+                # Run sequentially without sharing; warn so it's visible.
+                self._log(
+                    log_action,
+                    f"[group{group_idx}] memory scope requests cross-task sharing "
+                    f"but browser_source != 'aio_sandbox'; falling back to "
+                    f"per-task isolation for {len(group)} plan(s)",
+                )
+                shared = False
+            if not shared:
+                for plan in group:
+                    run_results.append(self.run(plan, log_action=log_action))
+                continue
+
+            # Open ONE sandbox for the whole group; run each plan against it
+            # sequentially. The container's Chromium + Jupyter kernel +
+            # filesystem persist across plans within the group.
+            from agentlens.sandbox import AIOSandboxSession
+
+            sandbox_image = harness.extra.get(
+                "sandbox_image", "ghcr.io/agent-infra/sandbox:latest"
+            )
+            sandbox_port = int(harness.extra.get("sandbox_port", 8080))
+            self._log(
+                log_action,
+                f"[group{group_idx}] opening shared AIO Sandbox for "
+                f"{len(group)} plans (scope={harness and group[0].memory_harness.scope})",
+            )
+            with AIOSandboxSession(
+                image=sandbox_image, host_port=sandbox_port
+            ) as session:
+                for plan_idx, plan in enumerate(group):
+                    result = self.run(
+                        plan,
+                        log_action=log_action,
+                        external_sandbox=session,
+                        session_position=plan_idx,
+                        session_size=len(group),
+                    )
+                    run_results.append(result)
+
         experiment_id = plans[0].experiment_id if plans else "empty"
         return aggregate_results(experiment_id, run_results)
 
@@ -127,6 +176,9 @@ class ScreenshotReactAdapter:
         self,
         plan: ScreenshotReactRunPlan,
         log_action: Callable[[str], None] | None = None,
+        external_sandbox=None,
+        session_position: int | None = None,
+        session_size: int | None = None,
     ) -> SingleRunResult:
         started_at = datetime.now(UTC)
         artifact_dir = self._trajectory_dir(plan)
@@ -135,79 +187,139 @@ class ScreenshotReactAdapter:
 
         from playwright.sync_api import sync_playwright
 
+        # Browser source: "local" (default) launches a fresh Chromium; "aio_sandbox"
+        # connects over CDP to an AIO Sandbox container that ALSO exposes
+        # Jupyter / shell / file tools to the agent.
+        browser_source = plan.tool_harness.extra.get("browser_source", "local")
+        headless = bool(plan.tool_harness.extra.get("headless", True))
+        slow_mo = int(plan.tool_harness.extra.get("slow_mo_ms", 0))
+        viewport = plan.tool_harness.extra.get(
+            "viewport", {"width": 1600, "height": 900}
+        )
+        settle_ms = int(plan.tool_harness.extra.get("settle_ms", 1500))
+
+        # If the caller (run_many) is managing a shared session, use it;
+        # otherwise spin our own when the harness asks for a sandbox.
+        sandbox = external_sandbox
+        sandbox_cm = None
+        if sandbox is None and browser_source == "aio_sandbox":
+            from agentlens.sandbox import AIOSandboxSession
+
+            sandbox_cm = AIOSandboxSession(
+                image=plan.tool_harness.extra.get(
+                    "sandbox_image", "ghcr.io/agent-infra/sandbox:latest"
+                ),
+                host_port=int(plan.tool_harness.extra.get("sandbox_port", 8080)),
+            )
+            sandbox = sandbox_cm.__enter__()
+            self._log(
+                log_action,
+                f"[{plan.run_id}] AIO Sandbox up at {sandbox.base_url} "
+                f"(cdp={sandbox.cdp_url})",
+            )
+
         with sync_playwright() as playwright:
-            self._log(
-                log_action,
-                f"[{plan.run_id} seed={plan.seed} trial={plan.trial}] open {plan.task.start_url}",
-            )
-            headless = bool(plan.tool_harness.extra.get("headless", True))
-            # slow_mo defaults to 0 — pacing comes from settle_ms + the model
-            # API latency. Override per-config if you want explicit pacing.
-            slow_mo = int(plan.tool_harness.extra.get("slow_mo_ms", 0))
-            browser = playwright.chromium.launch(headless=headless, slow_mo=slow_mo)
-            viewport = plan.tool_harness.extra.get(
-                "viewport", {"width": 1600, "height": 900}
-            )
-
-            # Tracing's DOM-snapshot walk causes visible flicker in headed
-            # mode, so default it OFF when live. Video screencast is much
-            # lighter and useful for sharing/post-hoc review, so always on
-            # by default. Both can be overridden per-config.
-            tracing_enabled = bool(
-                plan.tool_harness.extra.get("tracing", headless)
-            )
-            video_enabled = bool(
-                plan.tool_harness.extra.get("record_video", True)
-            )
-            video_dir = artifact_dir / "video" if video_enabled else None
-            if video_dir is not None:
-                video_dir.mkdir(parents=True, exist_ok=True)
-
-            context = browser.new_context(
-                viewport=viewport,
-                record_video_dir=str(video_dir) if video_dir else None,
-                record_video_size=viewport if video_dir else None,
-            )
-            if tracing_enabled:
-                context.tracing.start(screenshots=True, snapshots=True, sources=True)
-
-            # Inject the action-marker overlay once per context so we don't
-            # pay a CDP round-trip + sync script eval on every action.
-            from agentlens.harnesses.browser_actions import OVERLAY_INIT_JS
-            context.add_init_script(OVERLAY_INIT_JS)
-
-            page = context.new_page()
-            page.goto(plan.task.start_url or "about:blank", wait_until="domcontentloaded")
-            page.wait_for_timeout(int(plan.tool_harness.extra.get("settle_ms", 1500)))
-
-            toolset = ToolSet.from_harness(plan.tool_harness)
-            if _is_mock_model(plan.model):
-                answer, events = self._run_mock(plan, page, screenshot_dir, log_action, toolset)
-            else:
-                model = build_model(plan.model, toolset=toolset)
-                answer, events = run_screenshot_react_loop(
-                    page=page,
-                    model=model,
-                    goal=plan.task.goal or "",
-                    max_steps=plan.max_steps,
-                    screenshot_dir=screenshot_dir,
-                    run_id=plan.run_id,
-                    toolset=toolset,
-                    log_action=log_action,
+            try:
+                self._log(
+                    log_action,
+                    f"[{plan.run_id} seed={plan.seed} trial={plan.trial}] open {plan.task.start_url}",
                 )
+                if browser_source == "aio_sandbox":
+                    browser = playwright.chromium.connect_over_cdp(sandbox.cdp_url)
+                    # Playwright tracing / video recording are not supported over
+                    # connect_over_cdp; the container's VNC stream is the recording.
+                    tracing_enabled = False
+                    video_enabled = False
+                else:
+                    browser = playwright.chromium.launch(headless=headless, slow_mo=slow_mo)
+                    tracing_enabled = bool(plan.tool_harness.extra.get("tracing", headless))
+                    video_enabled = bool(plan.tool_harness.extra.get("record_video", True))
 
-            final_url = page.url
-            trace_path = artifact_dir / "trace.zip" if tracing_enabled else None
-            if tracing_enabled:
-                context.tracing.stop(path=str(trace_path))
-            context.close()
-            browser.close()
-            self._log(
-                log_action,
-                f"[{plan.run_id}] artifacts: trajectory.json"
-                + (f", trace={trace_path}" if trace_path else "")
-                + (f", video_dir={video_dir}" if video_dir else ""),
-            )
+                video_dir = artifact_dir / "video" if video_enabled else None
+                if video_dir is not None:
+                    video_dir.mkdir(parents=True, exist_ok=True)
+
+                context_kwargs: dict = {"viewport": viewport}
+                if video_dir is not None:
+                    context_kwargs["record_video_dir"] = str(video_dir)
+                    context_kwargs["record_video_size"] = viewport
+                context = browser.new_context(**context_kwargs)
+                if tracing_enabled:
+                    context.tracing.start(screenshots=True, snapshots=True, sources=True)
+
+                from agentlens.harnesses.browser_actions import OVERLAY_INIT_JS
+                context.add_init_script(OVERLAY_INIT_JS)
+
+                page = context.new_page()
+                # Stealth patches the most common headless-Chromium tells
+                # (navigator.webdriver, plugins, vendor, languages,
+                # hardware_concurrency, etc.) that anti-bot services like
+                # Akamai / Cloudflare flag. Default ON; off via
+                # tool_harness.extra.stealth=false.
+                if bool(plan.tool_harness.extra.get("stealth", True)):
+                    try:
+                        from playwright_stealth import stealth_sync
+                        stealth_sync(page)
+                    except Exception as exc:  # noqa: BLE001 - best-effort
+                        self._log(
+                            log_action,
+                            f"[{plan.run_id}] stealth setup skipped: {exc!r}",
+                        )
+                page.goto(plan.task.start_url or "about:blank", wait_until="domcontentloaded")
+                page.wait_for_timeout(settle_ms)
+
+                toolset = ToolSet.from_harness(plan.tool_harness)
+                if _is_mock_model(plan.model):
+                    answer, events = self._run_mock(plan, page, screenshot_dir, log_action, toolset)
+                else:
+                    model = build_model(plan.model, toolset=toolset)
+                    answer, events = run_screenshot_react_loop(
+                        page=page,
+                        model=model,
+                        goal=plan.task.goal or "",
+                        max_steps=plan.max_steps,
+                        screenshot_dir=screenshot_dir,
+                        run_id=plan.run_id,
+                        toolset=toolset,
+                        sandbox=sandbox,
+                        log_action=log_action,
+                    )
+
+                # If this plan is part of a shared session (cross-task memory),
+                # record a SESSION_BOUNDARY event marking position/size so
+                # analysis can see continuity.
+                if session_position is not None and session_size is not None:
+                    events.insert(
+                        0,
+                        TrajectoryEvent(
+                            event_type=TrajectoryEventType.SESSION_BOUNDARY,
+                            step_index=0,
+                            data={
+                                "session_position": session_position,
+                                "session_size": session_size,
+                                "scope": str(plan.memory_harness.scope),
+                                "shared_with_prior": session_position > 0,
+                            },
+                        ),
+                    )
+
+                final_url = page.url
+                trace_path = artifact_dir / "trace.zip" if tracing_enabled else None
+                if tracing_enabled:
+                    context.tracing.stop(path=str(trace_path))
+                context.close()
+                if browser_source != "aio_sandbox":
+                    browser.close()
+                self._log(
+                    log_action,
+                    f"[{plan.run_id}] artifacts: trajectory.json"
+                    + (f", trace={trace_path}" if trace_path else "")
+                    + (f", video_dir={video_dir}" if video_dir else "")
+                    + (f", sandbox={sandbox.base_url}" if sandbox else ""),
+                )
+            finally:
+                if sandbox_cm is not None:
+                    sandbox_cm.__exit__(None, None, None)
 
         if answer is None and _is_mock_model(plan.model):
             answer = str(plan.task.extra.get("mock_answer", ""))
@@ -444,15 +556,21 @@ class ScreenshotReactAdapter:
                 f"run '{run_id}' uses runner '{tool_harness.runner}', "
                 "expected 'screenshot_react'"
             )
-        if tool_harness.tier != ToolHarnessTier.BROWSER_ONLY:
+        # Tier: browser_only is the historical default; browser_files /
+        # full_sandbox are now valid when browser_source=aio_sandbox.
+        allowed_tiers = {
+            ToolHarnessTier.BROWSER_ONLY,
+            ToolHarnessTier.BROWSER_FILES,
+            ToolHarnessTier.FULL_SANDBOX,
+        }
+        if tool_harness.tier not in allowed_tiers:
             raise ValueError(
-                f"run '{run_id}' uses tier '{tool_harness.tier}', expected 'browser_only'"
+                f"run '{run_id}' uses tier '{tool_harness.tier}', "
+                f"expected one of {sorted(t.value for t in allowed_tiers)}"
             )
-        if memory_harness.kind != "none":
-            raise ValueError(
-                f"run '{run_id}' uses memory '{memory_harness.kind}', "
-                "but screenshot_react adapter only supports no memory"
-            )
+        # Memory kind 'none' is the default. Other kinds (short_context, etc.)
+        # are accepted; the adapter implements cross-task sharing through
+        # AIO Sandbox sessions when memory_harness.scope > IN_TASK.
 
         is_mock = _is_mock_model(model)
         if not is_mock and model.provider != "openai":

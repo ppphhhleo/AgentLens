@@ -214,6 +214,14 @@ def format_action(action: ComputerAction) -> str:
             return "reload"
         case "web_search":
             return f"web_search query={action.query!r}"
+        case "run_python":
+            return f"run_python code=({len(action.code or '')} chars)"
+        case "shell":
+            return f"shell cmd={action.cmd!r}"
+        case "read_file":
+            return f"read_file file_path={action.file_path!r}"
+        case "write_file":
+            return f"write_file file_path={action.file_path!r} content=({len(action.content or '')} chars)"
         case "final_answer":
             return f"final_answer answer={action.answer!r}"
 

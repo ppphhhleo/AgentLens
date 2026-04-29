@@ -22,6 +22,7 @@ def run_screenshot_react_loop(
     screenshot_dir: Path,
     run_id: str,
     toolset: ToolSet | None = None,
+    sandbox=None,                  # AIOSandboxSession or None for browser-only runs
     log_action: Callable[[str], None] | None = None,
 ) -> tuple[str | None, list[TrajectoryEvent]]:
     """Real screenshot ReAct loop.
@@ -146,6 +147,51 @@ def run_screenshot_react_loop(
             )
             continue
 
+        # Sandbox-only multi-tool actions. Require an AIOSandboxSession.
+        if action.type in {"run_python", "shell", "read_file", "write_file"}:
+            if sandbox is None:
+                err_msg = (
+                    f"action {action.type!r} requires a sandbox session "
+                    f"(set tool_harness.extra.browser_source=aio_sandbox)"
+                )
+                pending_tool_output = f"[{action.type} unavailable: {err_msg}]"
+                _log(log_action, f"[{run_id} step={step_index}] {action.type}: {err_msg}")
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.TOOL_CALL,
+                        step_index=step_index,
+                        data={
+                            "tool_name": tool_name_for(action),
+                            "action": action.model_dump(mode="json"),
+                            "error": err_msg,
+                        },
+                    )
+                )
+                continue
+            result = _run_sandbox_action(sandbox, action)
+            pending_tool_output = _format_sandbox_result(action, result)
+            _log(
+                log_action,
+                f"[{run_id} step={step_index}] {action.type} -> "
+                f"{'ok' if result.ok else 'err'} ({len(result.output)} chars)"
+                + (f" err={result.error[:80]!r}" if result.error else ""),
+            )
+            events.append(
+                TrajectoryEvent(
+                    event_type=TrajectoryEventType.TOOL_CALL,
+                    step_index=step_index,
+                    data={
+                        "tool_name": tool_name_for(action),
+                        "action": action.model_dump(mode="json"),
+                        "ok": result.ok,
+                        "output": result.output,
+                        "error": result.error,
+                        "extra": result.extra,
+                    },
+                )
+            )
+            continue
+
         action_error = execute_action(page, action)
         if action_error:
             _log(log_action, f"[{run_id} step={step_index}] error: {action_error}")
@@ -173,3 +219,27 @@ def run_screenshot_react_loop(
 def _log(log_action: Callable[[str], None] | None, message: str) -> None:
     if log_action is not None:
         log_action(message)
+
+
+def _run_sandbox_action(sandbox, action):
+    """Dispatch a sandbox-only action to its session method."""
+    if action.type == "run_python":
+        return sandbox.run_python(action.code or "")
+    if action.type == "shell":
+        return sandbox.shell(action.cmd or "")
+    if action.type == "read_file":
+        return sandbox.read_file(action.file_path or "")
+    if action.type == "write_file":
+        return sandbox.write_file(action.file_path or "", action.content or "")
+    raise ValueError(f"unhandled sandbox action: {action.type!r}")
+
+
+def _format_sandbox_result(action, result, max_chars: int = 1500) -> str:
+    """Compact text block for the next observation."""
+    head = f"[{action.type} result]"
+    body = result.output
+    if result.error:
+        body = (body + ("\n" if body else "") + f"ERROR: {result.error}").strip()
+    if len(body) > max_chars:
+        body = body[:max_chars] + "...[truncated]"
+    return f"{head}\n{body or '(no output)'}"

@@ -1,0 +1,131 @@
+schema_version: "0.1"
+id: online_mind2web_session
+description: >
+  Cut 2 smoke. 3 OM2W tasks running in ONE shared sandboxed container —
+  browser cookies, file workspace, and Python kernel persist across all
+  three tasks. Tests session preservation (memory scope=cross_benchmark).
+
+  Each trajectory has a SESSION_BOUNDARY event at step 0 marking
+  position/size in the shared session.
+
+models:
+  - id: gpt5_vision
+    provider: openai
+    name: gpt-5.4
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+
+tool_harnesses:
+  - id: bg_sandbox_full
+    runner: screenshot_react
+    tier: full_sandbox
+    tools:
+      - browser.screenshot
+      - browser.click
+      - browser.double_click
+      - browser.type
+      - browser.scroll
+      - browser.wait
+      - browser.move
+      - browser.keypress
+      - browser.drag
+      - browser.goto
+      - browser.back
+      - browser.forward
+      - browser.reload
+      - web.openai_search
+      - code.run_python
+      - code.shell
+      - files.read
+      - files.write
+      - task.final_answer
+    prompt_version: screenshot_react_json_v1
+    extra:
+      browser_source: aio_sandbox
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      headless: true
+      slow_mo_ms: 0
+      settle_ms: 2000
+      viewport:
+        width: 1600
+        height: 900
+
+memory_harnesses:
+  # cross_benchmark: ALL plans in one CLI invocation share the SAME container.
+  # Browser cookies / files / Jupyter kernel persist across the three runs.
+  - id: shared_session
+    kind: short_context
+    scope: cross_benchmark
+
+tasks:
+  - id: om2w_imp_0
+    benchmark: online_mind2web
+    task_id: imp_0
+    goal: What is the weather in Paris yesterday in Celsius? Answer with the number only.
+    start_url: https://www.google.com/
+    capability_required: [browser_ui, web_search, qa]
+    validator: webjudge
+    answer_validator: webjudge
+    extra:
+      level: easy
+      judge_model: gpt-5.4
+
+  - id: om2w_test_0
+    benchmark: online_mind2web
+    task_id: test_0
+    goal: Which "SmartLess" episode does not include the names of the SmartLess hosts in its title?
+    start_url: https://www.google.com/
+    capability_required: [browser_ui, web_search, qa]
+    validator: webjudge
+    answer_validator: webjudge
+    extra:
+      level: medium
+      judge_model: gpt-5.4
+
+  - id: om2w_test_3
+    benchmark: online_mind2web
+    task_id: test_3
+    goal: What is the earliest version of the Yoast plugin available for download?
+    start_url: https://www.google.com/
+    capability_required: [browser_ui, web_search, qa]
+    validator: webjudge
+    answer_validator: webjudge
+    extra:
+      level: medium
+      judge_model: gpt-5.4
+
+runs:
+  - id: om2w_imp_0_session
+    model: gpt5_vision
+    tool_harness: bg_sandbox_full
+    memory_harness: shared_session
+    task: om2w_imp_0
+    seeds: [0]
+    trials: 1
+    max_steps: 20
+    output_dir: agentlens_results/online_mind2web_session
+    tags: [online_mind2web, gpt5, session, cross_benchmark]
+
+  - id: om2w_test_0_session
+    model: gpt5_vision
+    tool_harness: bg_sandbox_full
+    memory_harness: shared_session
+    task: om2w_test_0
+    seeds: [0]
+    trials: 1
+    max_steps: 20
+    output_dir: agentlens_results/online_mind2web_session
+    tags: [online_mind2web, gpt5, session, cross_benchmark]
+
+  - id: om2w_test_3_session
+    model: gpt5_vision
+    tool_harness: bg_sandbox_full
+    memory_harness: shared_session
+    task: om2w_test_3
+    seeds: [0]
+    trials: 1
+    max_steps: 20
+    output_dir: agentlens_results/online_mind2web_session
+    tags: [online_mind2web, gpt5, session, cross_benchmark]

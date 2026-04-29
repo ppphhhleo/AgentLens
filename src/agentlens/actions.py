@@ -20,6 +20,10 @@ ComputerActionType = Literal[
     "forward",
     "reload",
     "web_search",
+    "run_python",
+    "shell",
+    "read_file",
+    "write_file",
     "final_answer",
 ]
 
@@ -65,6 +69,12 @@ class ComputerAction(BaseModel):
     ms: int | None = None
     url: str | None = None
     query: str | None = None
+    code: str | None = None
+    cmd: str | None = None
+    # NOTE: `path` (above) is the drag-coordinate path; do NOT reuse it for
+    # filesystem paths. read_file / write_file use `file_path`.
+    file_path: str | None = None
+    content: str | None = None
 
     @field_validator("path", mode="before")
     @classmethod
@@ -92,6 +102,17 @@ class ComputerAction(BaseModel):
             raise ValueError("action 'goto' requires url")
         if self.type == "web_search" and not self.query:
             raise ValueError("action 'web_search' requires query")
+        if self.type == "run_python" and not self.code:
+            raise ValueError("action 'run_python' requires code")
+        if self.type == "shell" and not self.cmd:
+            raise ValueError("action 'shell' requires cmd")
+        if self.type == "read_file" and not self.file_path:
+            raise ValueError("action 'read_file' requires file_path")
+        if self.type == "write_file":
+            if not self.file_path:
+                raise ValueError("action 'write_file' requires file_path")
+            if self.content is None:
+                raise ValueError("action 'write_file' requires content")
         return self
 
     @classmethod
