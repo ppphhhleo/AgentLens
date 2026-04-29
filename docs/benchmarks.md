@@ -242,6 +242,63 @@ For quick reference when reading any benchmark's results:
 
 ---
 
+## Eval confirmation conventions (how each benchmark wants the answer delivered)
+
+Different benchmarks have different *stop-and-deliver* protocols — how the agent signals "done", what format the answer must take, and where it lands for the validator. Our agent loop stays the same; only the **prompt addendum** (pre-loop) and the **answer reshape** (post-loop) differ per benchmark.
+
+The four categories we've encountered:
+
+| Category | What the agent does | Where the answer goes | Examples |
+|---|---|---|---|
+| **A. DOM/state-only** | Leaves the page in the right state. `final_answer` text is ignored. | Validator inspects `page.url` or DOM. | MiniWoB++, WorkArena, WebArena, our `url_contains` |
+| **B. Free-text** | Emits `final_answer` with raw text. | Validator fuzzy-matches or LLM-judges. | AssistantBench, our `exact` / `contains` / `webjudge` |
+| **C. Wrapped-text** | Emits `final_answer` whose text contains a specific markup pattern. | Validator regex-extracts from the text. | CocoaBench (`<answer>...</answer>`), likely BrowseComp |
+| **D. Tool-call** | Emits a specific tool call (e.g. `task_complete(result=...)`). | Validator walks `conversation` for that call. | CocoaBench official harness, any OpenAI function-calling agent |
+
+Categories A–C work with our existing `final_answer` action. Category D would require a separate **function-calling harness style** (parallel to `screenshot_react`); deferred to `docs/harness-styles.md` (planned).
+
+### Per-benchmark cheatsheet
+
+| Benchmark | Category | Output format the agent must produce | How the adapter delivers to the validator |
+|---|---|---|---|
+| **DOMSteer** | B (`exact`/`contains`) or A (`url_contains`) | Plain text in `final_answer.answer` | Pass raw to `validate_answer` |
+| **MiniWoB++** | A | (anything; DOM is what matters) | `task.validate(page, [])` — empty chat list |
+| **AssistantBench** | B | Plain text answer | `task.validate(page, [{role:"assistant", message:answer}])` |
+| **Online-Mind2Web** | B | Plain text answer | WebJudge sees screenshots + final answer text |
+| **CocoaBench** | C | `<answer>...</answer>` wrapped text | `test({"task_result": wrapped_answer, ...})` |
+| *(future)* WebArena | A | (DOM state) | `task.validate(page, [])` |
+| *(future)* BrowseComp | C | `<answer>...</answer>` wrapped text | OpenAI's published LLM-judge prompt |
+| *(future)* WebCanvas | A (key-node listeners) | (DOM events) | JS event listener counts |
+
+### How this is encoded in our schema
+
+`TaskConfig.extra` (free-form dict) carries two declarative fields the adapter consumes:
+
+```yaml
+extra:
+  output_format_hint: |       # OPTIONAL: appended to the agent's task instruction
+    Your final answer MUST be wrapped exactly as <answer>...</answer>.
+  answer_format: wrap_xml_answer
+    # one of: identity | wrap_xml_answer | chat_message
+    # default: identity
+```
+
+Adapter behavior:
+
+| `answer_format` value | Pre-loop | Post-loop |
+|---|---|---|
+| `identity` (default) | append `output_format_hint` to goal if present | pass `answer` raw to validator |
+| `wrap_xml_answer` | append hint | wrap as `<answer>{answer}</answer>` if not already wrapped |
+| `chat_message` | append hint | build `[{role:"assistant", message:answer}]` and pass to validators that expect chat |
+
+This is implemented in `src/agentlens/harnesses/eval_protocol.py` and consumed by all adapters. The agent loop in `screenshot_react_loop.py` is **unchanged** — it always just emits `final_answer` with text.
+
+### Why this matters for the project's thesis
+
+Different stop conventions can subtly change agent behavior. A wrapped-text protocol forces the model to commit to an exact answer; a DOM-state protocol lets it leave a trail of intermediate clicks without ever articulating the answer; a tool-call protocol pushes toward structured emission. When comparing trajectories across benchmarks, controlling for the eval protocol matters as much as controlling for the model.
+
+---
+
 ## Cross-cutting pending work (applies to all benchmarks)
 
 These are NOT benchmark-specific — they're harness improvements that lift quality across DOMSteer, MiniWoB++, AssistantBench, Online-Mind2Web, and any future suite. Track here once, reuse everywhere.

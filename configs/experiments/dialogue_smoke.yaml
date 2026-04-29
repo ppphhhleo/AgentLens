@@ -1,0 +1,117 @@
+schema_version: "0.1"
+id: dialogue_smoke
+description: >
+  Phase 2 smoke for the multi-turn TurnBasedOrchestrator + simulated_dialogue
+  user actor. Same TF-Playground task, but the user has a hidden preference
+  the agent doesn't see at first. User should reject the initial answer with
+  feedback; agent retries with the feedback in its goal; user accepts (or
+  rejects again, capping at max_turns=3).
+
+models:
+  - id: gpt5_vision
+    provider: openai
+    name: gpt-5.4
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+
+  - id: gpt5_user
+    provider: openai
+    name: gpt-5.4
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 500
+
+tool_harnesses:
+  - id: screenshot_react_browser
+    runner: screenshot_react
+    tier: browser_only
+    tools:
+      - browser.screenshot
+      - browser.click
+      - browser.double_click
+      - browser.type
+      - browser.scroll
+      - browser.wait
+      - browser.move
+      - browser.keypress
+      - browser.drag
+      - browser.goto
+      - browser.back
+      - browser.forward
+      - browser.reload
+      - task.final_answer
+    prompt_version: screenshot_react_json_v1
+    extra:
+      headless: true
+      slow_mo_ms: 0
+      settle_ms: 2000
+      stealth: true
+      viewport:
+        width: 1600
+        height: 900
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+user_harnesses:
+  - id: dialogue_v1
+    mode: simulated_dialogue
+    model: gpt5_user
+    tools:
+      - user.accept
+      - user.reject
+      - user.send_message
+      - user.request_clarification
+    persona: |
+      You are a strict reviewer testing a multi-turn dialogue flow.
+
+      For this evaluation you will follow this fixed protocol regardless
+      of the agent's answer quality:
+
+      - TURN 1: Always send_message asking the agent to ALSO state the
+        EXACT URL hash parameter that proves the toggle was clicked
+        (e.g., 'discretize=true'). Reason: 'I need to see the URL hash
+        parameter cited explicitly in your answer.'
+      - TURN 2: If the agent's new answer mentions 'discretize=true' (or
+        equivalent URL hash text) explicitly, ACCEPT. Otherwise
+        send_message asking once more.
+      - TURN 3 (LAST): If the agent has cited the URL hash, ACCEPT;
+        otherwise REJECT.
+    intervention_policy: every_turn
+    combine_with_validator: and
+    max_turns: 3
+    extra:
+      user_goal: |
+        Get the agent to describe what changed in the output panel after
+        clicking "Discretize output", with explicit mention of (a) the
+        colored regions and (b) the shape of the decision boundary.
+
+tasks:
+  - id: tf_discretize_toggle_dialogue
+    benchmark: domsteer
+    task_id: tfplayground.discretize_toggle
+    goal: >
+      Click the "Discretize output" toggle in the TensorFlow Playground UI,
+      then describe what visibly changed in the output panel after the
+      toggle. You must click the toggle before answering.
+    start_url: https://playground.tensorflow.org/
+    capability_required: [browser_ui, visual_reasoning]
+    validator: final_answer
+    expected_answer: "discretize=true"
+    answer_validator: url_contains
+
+runs:
+  - id: tf_discretize_dialogue
+    model: gpt5_vision
+    tool_harness: screenshot_react_browser
+    memory_harness: no_memory
+    task: tf_discretize_toggle_dialogue
+    user_harness: dialogue_v1
+    seeds: [0]
+    trials: 1
+    max_steps: 8
+    output_dir: agentlens_results/dialogue_smoke
+    tags: [dialogue, gpt5, multi-turn]

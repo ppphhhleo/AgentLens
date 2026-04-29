@@ -6,17 +6,9 @@ from typing import Callable, Literal
 
 from pydantic import BaseModel, Field
 
-from agentlens.actions import ComputerAction
 from agentlens.evals.aggregate import aggregate_results
 from agentlens.evals.base import ExperimentResult, SingleRunResult
-from agentlens.harnesses.browser_actions import (
-    capture_screenshot_event,
-    execute_action,
-    format_action,
-)
-from agentlens.harnesses.screenshot_react_loop import run_screenshot_react_loop
-from agentlens.harnesses.tool_gating import ToolSet, tool_name_for
-from agentlens.models.base import build_model
+from agentlens.harnesses.tool_gating import ToolSet
 from agentlens.schemas import (
     ExperimentConfig,
     MemoryHarnessConfig,
@@ -28,6 +20,8 @@ from agentlens.schemas import (
     Trajectory,
     TrajectoryEvent,
     TrajectoryEventType,
+    UserActionType,
+    UserHarnessConfig,
 )
 from agentlens.validators.answers import validate_answer
 
@@ -49,6 +43,8 @@ class ScreenshotReactRunPlan(BaseModel):
     output_dir: Path
     raw_output_dir: Path
     max_steps: int = 1
+    user_harness: UserHarnessConfig | None = None
+    judge_model: ModelConfig | None = None
     tags: list[str] = Field(default_factory=list)
     status: Literal["ready", "dry_run_only"] = "ready"
     notes: list[str] = Field(default_factory=list)
@@ -68,6 +64,7 @@ class ScreenshotReactAdapter:
         models = {item.id: item for item in config.models}
         tool_harnesses = {item.id: item for item in config.tool_harnesses}
         memory_harnesses = {item.id: item for item in config.memory_harnesses}
+        user_harnesses = {item.id: item for item in config.user_harnesses}
         tasks = {item.id: item for item in config.tasks}
         plans: list[ScreenshotReactRunPlan] = []
 
@@ -80,6 +77,12 @@ class ScreenshotReactAdapter:
             memory_harness = memory_harnesses[run.memory_harness]
             task = tasks[run.task]
             self._validate_supported(run.id, model, tool_harness, memory_harness, task)
+            user_harness = user_harnesses.get(run.user_harness) if run.user_harness else None
+            judge_model = (
+                models.get(user_harness.model)
+                if user_harness and user_harness.model
+                else None
+            )
 
             is_mock = _is_mock_model(model)
             note = (
@@ -104,6 +107,8 @@ class ScreenshotReactAdapter:
                             output_dir=run.output_dir,
                             raw_output_dir=run.output_dir / "screenshot_react_raw",
                             max_steps=run.max_steps or (1 if is_mock else 12),
+                            user_harness=user_harness,
+                            judge_model=judge_model,
                             tags=run.tags,
                             notes=[note],
                         )
@@ -269,20 +274,87 @@ class ScreenshotReactAdapter:
                 page.wait_for_timeout(settle_ms)
 
                 toolset = ToolSet.from_harness(plan.tool_harness)
+
+                # Build agent actor — same protocol whether mock or real,
+                # whether single-turn or multi-turn dialogue.
+                from agentlens.actors import (
+                    MockAgent,
+                    NoOpUser,
+                    ScreenshotReactAgent,
+                    build_user_actor,
+                )
+                from agentlens.orchestrator import TurnBasedOrchestrator
+                from agentlens.schemas import UserHarnessConfig
+
                 if _is_mock_model(plan.model):
-                    answer, events = self._run_mock(plan, page, screenshot_dir, log_action, toolset)
-                else:
-                    model = build_model(plan.model, toolset=toolset)
-                    answer, events = run_screenshot_react_loop(
+                    raw_actions = plan.task.extra.get("mock_actions") or [
+                        {
+                            "type": "final_answer",
+                            "answer": str(plan.task.extra.get("mock_answer", "")),
+                        }
+                    ]
+                    fallback = str(plan.task.extra.get("mock_answer", ""))
+                    agent_actor = MockAgent(
+                        mock_actions=raw_actions,
+                        mock_answer_fallback=fallback,
                         page=page,
-                        model=model,
-                        goal=plan.task.goal or "",
-                        max_steps=plan.max_steps,
-                        screenshot_dir=screenshot_dir,
-                        run_id=plan.run_id,
                         toolset=toolset,
-                        sandbox=sandbox,
                         log_action=log_action,
+                    )
+                else:
+                    agent_actor = ScreenshotReactAgent(
+                        model_config=plan.model,
+                        toolset=toolset,
+                        page=page,
+                        sandbox=sandbox,
+                        max_steps=plan.max_steps,
+                        log_action=log_action,
+                    )
+
+                # User actor: real one if user_harness is set, else NoOp.
+                # Either way the orchestrator drives the turn loop — one
+                # uniform code path.
+                if plan.user_harness is not None and plan.user_harness.mode != "none":
+                    user_actor = build_user_actor(
+                        plan.user_harness, judge_model=plan.judge_model
+                    )
+                    user_harness = plan.user_harness
+                    max_turns = plan.user_harness.max_turns
+                else:
+                    user_actor = NoOpUser()
+                    user_harness = UserHarnessConfig(id="_implicit_none", mode="none")
+                    max_turns = 1
+
+                orchestrator = TurnBasedOrchestrator(
+                    agent_actor=agent_actor,
+                    user_actor=user_actor,
+                    user_harness=user_harness,
+                    max_turns=max_turns,
+                    log_action=log_action,
+                )
+
+                # Multi-turn runs use turn_N subdirs; single-turn runs use
+                # the flat screenshots/ dir for backward compat.
+                def _per_turn_dir(i: int) -> Path:
+                    return screenshot_dir if max_turns == 1 else screenshot_dir / f"turn_{i}"
+
+                turn_result = orchestrator.run(
+                    task=plan.task,
+                    per_turn_screenshot_dir_fn=_per_turn_dir,
+                    run_id=plan.run_id,
+                )
+                answer = turn_result.final_answer
+                events = turn_result.events
+                user_action_recorded = (
+                    turn_result.last_user_action.model_dump(mode="json")
+                    if turn_result.last_user_action is not None
+                    else None
+                )
+                if user_harness.mode != "none":
+                    self._log(
+                        log_action,
+                        f"[{plan.run_id}] orchestrator: {turn_result.turns_completed}/"
+                        f"{max_turns} turns, terminated={turn_result.terminated_reason}",
                     )
 
                 # If this plan is part of a shared session (cross-task memory),
@@ -321,19 +393,7 @@ class ScreenshotReactAdapter:
                 if sandbox_cm is not None:
                     sandbox_cm.__exit__(None, None, None)
 
-        if answer is None and _is_mock_model(plan.model):
-            answer = str(plan.task.extra.get("mock_answer", ""))
-            events.append(
-                TrajectoryEvent(
-                    event_type=TrajectoryEventType.MODEL_MESSAGE,
-                    step_index=len(events),
-                    data={
-                        "thought": "Mock model returned fallback final answer.",
-                        "action": {"type": "final_answer", "answer": answer},
-                        "mock": True,
-                    },
-                )
-            )
+        # Mock fallback now handled inside MockAgent.act(); no extra event needed here.
 
         # Collect screenshots (in step order) for vision-based validators.
         screenshot_paths: list[Path] = []
@@ -346,6 +406,46 @@ class ScreenshotReactAdapter:
             final_url=final_url,
             screenshot_paths=screenshot_paths,
         )
+
+        # ---- Combine validator + user verdict per policy --------------
+        # The Orchestrator already recorded USER_INTERVENTION events with
+        # full context. Here we only fold the LAST user action into the
+        # final validator score per `combine_with_validator`.
+        if (
+            plan.user_harness is not None
+            and plan.user_harness.mode != "none"
+            and turn_result is not None
+            and turn_result.last_user_action is not None
+        ):
+            user_action = turn_result.last_user_action
+            policy = plan.user_harness.combine_with_validator
+            user_says_pass = user_action.type == UserActionType.ACCEPT
+            user_says_fail = user_action.type == UserActionType.REJECT
+            if policy == "and":
+                if user_says_fail:
+                    success = False
+                    score = 0.0 if score is None else min(score, 0.0)
+                    validation_message = (
+                        f"{validation_message} | user REJECTED: "
+                        f"{user_action.text or '(no reason)'}"
+                    )
+                elif user_says_pass and success is None:
+                    success = True
+                    score = 1.0
+                    validation_message = (
+                        f"{validation_message} | user ACCEPTED: "
+                        f"{user_action.text or '(ok)'}"
+                    )
+            elif policy == "override":
+                if user_says_pass or user_says_fail:
+                    success = user_says_pass
+                    score = 1.0 if user_says_pass else 0.0
+                    validation_message = (
+                        f"user OVERRIDE: {user_action.type.value} - "
+                        f"{user_action.text or ''}"
+                    )
+            # 'annotate_only' (default): record event but don't change score.
+        # ---------------------------------------------------------------
         self._log(
             log_action,
             f"[{plan.run_id}] validation success={success} score={score} message={validation_message}",
@@ -362,6 +462,7 @@ class ScreenshotReactAdapter:
                     "expected_answer": plan.task.expected_answer,
                     "answer_validator": plan.task.answer_validator,
                     "final_url": final_url,
+                    "user_intervention": user_action_recorded,
                 },
             )
         )
@@ -409,102 +510,6 @@ class ScreenshotReactAdapter:
                 "mock": _is_mock_model(plan.model),
             },
         )
-
-    def _run_mock(
-        self,
-        plan: ScreenshotReactRunPlan,
-        page,
-        screenshot_dir: Path,
-        log_action: Callable[[str], None] | None,
-        toolset: ToolSet,
-    ) -> tuple[str | None, list[TrajectoryEvent]]:
-        events: list[TrajectoryEvent] = []
-        answer: str | None = None
-
-        events.append(
-            capture_screenshot_event(
-                page=page, screenshot_dir=screenshot_dir, step_index=0, goal=plan.task.goal
-            )
-        )
-        self._log(
-            log_action,
-            f"[{plan.run_id} step=0] screenshot -> {screenshot_dir / 'step_000.png'}",
-        )
-
-        for step_index, action in enumerate(self._mock_actions(plan), start=1):
-            thought = self._mock_thought(action)
-            self._log(log_action, f"[{plan.run_id} step={step_index}] {format_action(action)}")
-            events.append(
-                TrajectoryEvent(
-                    event_type=TrajectoryEventType.MODEL_MESSAGE,
-                    step_index=step_index,
-                    data={
-                        "thought": thought,
-                        "action": action.model_dump(mode="json"),
-                        "tool_name": tool_name_for(action),
-                        "mock": True,
-                    },
-                )
-            )
-
-            allowed, gating_msg = toolset.gate_action(action)
-            if not allowed:
-                self._log(log_action, f"[{plan.run_id} step={step_index}] gating: {gating_msg}")
-                events.append(
-                    TrajectoryEvent(
-                        event_type=TrajectoryEventType.GATING_VIOLATION,
-                        step_index=step_index,
-                        data={
-                            "action": action.model_dump(mode="json"),
-                            "tool_name": tool_name_for(action),
-                            "message": gating_msg,
-                        },
-                    )
-                )
-                continue
-
-            if action.type == "final_answer":
-                answer = action.answer
-                break
-
-            action_error = execute_action(page, action)
-            if action_error:
-                self._log(log_action, f"[{plan.run_id} step={step_index}] error: {action_error}")
-            events.append(
-                TrajectoryEvent(
-                    event_type=TrajectoryEventType.BROWSER_ACTION,
-                    step_index=step_index,
-                    data={"action": action.model_dump(mode="json"), "error": action_error},
-                )
-            )
-            events.append(
-                capture_screenshot_event(
-                    page=page,
-                    screenshot_dir=screenshot_dir,
-                    step_index=step_index,
-                    goal=plan.task.goal,
-                )
-            )
-            self._log(
-                log_action,
-                f"[{plan.run_id} step={step_index}] screenshot -> "
-                f"{screenshot_dir / f'step_{step_index:03d}.png'}",
-            )
-
-        return answer, events
-
-    def _mock_actions(self, plan: ScreenshotReactRunPlan) -> list[ComputerAction]:
-        raw_actions = plan.task.extra.get("mock_actions")
-        if raw_actions:
-            return [ComputerAction.from_raw(raw_action) for raw_action in raw_actions]
-
-        answer = str(plan.task.extra.get("mock_answer", ""))
-        return [ComputerAction(type="final_answer", answer=answer)]
-
-    def _mock_thought(self, action: ComputerAction) -> str:
-        if action.type == "final_answer":
-            return "Mock model returns the configured final answer after observing the screenshot."
-        return f"Mock model requests computer action '{action.type}'."
 
     def _log(self, log_action: Callable[[str], None] | None, message: str) -> None:
         if log_action is not None:

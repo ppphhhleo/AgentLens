@@ -40,6 +40,15 @@ class TrajectoryEventType(StrEnum):
     USER_FEEDBACK = "user_feedback"
     GATING_VIOLATION = "gating_violation"
     SESSION_BOUNDARY = "session_boundary"
+    USER_INTERVENTION = "user_intervention"
+
+
+class UserActionType(StrEnum):
+    NO_INTERVENTION = "no_intervention"
+    ACCEPT = "accept"
+    REJECT = "reject"
+    SEND_MESSAGE = "send_message"
+    REQUEST_CLARIFICATION = "request_clarification"
 
 
 class ModelConfig(BaseModel):
@@ -97,6 +106,37 @@ class MemoryHarnessConfig(BaseModel):
         return self
 
 
+class UserHarnessConfig(BaseModel):
+    """Optional user-side actor that observes the agent and intervenes.
+
+    When a `RunConfig.user_harness` references one of these, the adapter
+    runs the agent loop as usual, then dispatches to a UserActor (LLM-
+    driven for now; CLI / VNC for human runners later). The user's
+    `accept` / `reject` / `send_message` decision is recorded as a
+    `USER_INTERVENTION` trajectory event and (depending on policy) can
+    influence the run's success / score.
+
+    `mode` controls which UserActor implementation is built:
+      - none                    : no-op (used for default single-actor runs)
+      - simulated_final_judge   : LLM-driven judge that intervenes once,
+                                  on the agent's final_answer
+
+    `model` references a ModelConfig.id (the LLM driving the user actor).
+    `tools` is the allow-list of user actions (`user.accept`, etc.) the
+    actor may emit — same gating contract as agent tools, separate map.
+    """
+
+    id: str
+    mode: Literal["none", "simulated_final_judge", "simulated_dialogue"] = "none"
+    model: str | None = None
+    tools: list[str] = Field(default_factory=list)
+    persona: str | None = None
+    intervention_policy: Literal["final_only", "every_turn"] = "final_only"
+    combine_with_validator: Literal["and", "override", "annotate_only"] = "annotate_only"
+    max_turns: int = 1                  # 1 for final_judge; >1 for dialogue
+    extra: dict[str, Any] = Field(default_factory=dict)
+
+
 class TaskConfig(BaseModel):
     id: str
     benchmark: Literal[
@@ -135,6 +175,7 @@ class RunConfig(BaseModel):
     tool_harness: str
     memory_harness: str
     task: str
+    user_harness: str | None = None  # references UserHarnessConfig.id; None = single-actor
     seeds: list[int] = Field(default_factory=lambda: [0])
     trials: int = 1
     max_steps: int | None = None
@@ -157,6 +198,7 @@ class ExperimentConfig(BaseModel):
     models: list[ModelConfig]
     tool_harnesses: list[ToolHarnessConfig]
     memory_harnesses: list[MemoryHarnessConfig]
+    user_harnesses: list[UserHarnessConfig] = Field(default_factory=list)
     tasks: list[TaskConfig]
     runs: list[RunConfig]
 
@@ -165,7 +207,15 @@ class ExperimentConfig(BaseModel):
         model_ids = {item.id for item in self.models}
         tool_harness_ids = {item.id for item in self.tool_harnesses}
         memory_harness_ids = {item.id for item in self.memory_harnesses}
+        user_harness_ids = {item.id for item in self.user_harnesses}
         task_ids = {item.id for item in self.tasks}
+
+        # User harnesses must reference a known model when mode != "none".
+        for uh in self.user_harnesses:
+            if uh.mode != "none" and uh.model and uh.model not in model_ids:
+                raise ValueError(
+                    f"user harness '{uh.id}' references unknown model '{uh.model}'"
+                )
 
         for run in self.runs:
             if run.model not in model_ids:
@@ -177,6 +227,10 @@ class ExperimentConfig(BaseModel):
             if run.memory_harness not in memory_harness_ids:
                 raise ValueError(
                     f"run '{run.id}' references unknown memory harness '{run.memory_harness}'"
+                )
+            if run.user_harness is not None and run.user_harness not in user_harness_ids:
+                raise ValueError(
+                    f"run '{run.id}' references unknown user harness '{run.user_harness}'"
                 )
             if run.task not in task_ids:
                 raise ValueError(f"run '{run.id}' references unknown task '{run.task}'")

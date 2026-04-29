@@ -72,6 +72,23 @@ def summarize(
         typer.echo(str(report_path))
 
 
+@app.command("trajectory-viewer")
+def trajectory_viewer(
+    path: Path,
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Where to write the static HTML viewer. Defaults next to the input file.",
+    ),
+) -> None:
+    """Generate a static HTML viewer from summary.json or trajectory.json."""
+    from agentlens.reports.trajectory_viewer import write_trajectory_viewer
+
+    viewer_path = write_trajectory_viewer(path, output)
+    typer.echo(str(viewer_path))
+
+
 @app.command()
 def run(
     path: Path,

@@ -65,6 +65,15 @@ tasks:
     answer_validator: cocoabench_test_py
     extra:
       task_dir: ~/.cache/agentlens/cocoa-agent/cocoabench-example-tasks/eight-puzzle-game
+      # Eval protocol — see docs/benchmarks.md "Eval confirmation conventions".
+      # CocoaBench's test.py extracts via regex from <answer>...</answer> tags.
+      answer_format: wrap_xml_answer
+      output_format_hint: |
+        IMPORTANT — task completion requirements:
+        - You MUST emit a final_answer action when you have the answer.
+        - The "answer" field text MUST contain the answer wrapped exactly as: <answer>...</answer>
+        - Example: {"type": "final_answer", "answer": "<answer>EFPTGK</answer>"}
+        - Do not stop without producing a final_answer.
 
 runs:
   - id: eight_puzzle_game_gpt5

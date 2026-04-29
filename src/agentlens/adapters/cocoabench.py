@@ -34,6 +34,10 @@ from pydantic import BaseModel, Field
 from agentlens.evals.aggregate import aggregate_results
 from agentlens.evals.base import ExperimentResult, SingleRunResult
 from agentlens.harnesses.browser_actions import OVERLAY_INIT_JS
+from agentlens.harnesses.eval_protocol import (
+    goal_with_format_hint,
+    prepare_answer_for_validator,
+)
 from agentlens.harnesses.screenshot_react_loop import run_screenshot_react_loop
 from agentlens.harnesses.tool_gating import ToolSet
 from agentlens.models.base import build_model
@@ -154,6 +158,10 @@ class CocoaBenchAdapter:
         instruction = task_yaml.get("instruction", "")
         if not instruction:
             raise ValueError(f"task.yaml in {task_dir} has empty instruction")
+        # Stash the raw instruction in plan.task.goal so eval_protocol can
+        # append any output_format_hint set on extra.
+        task_with_goal = plan.task.model_copy(update={"goal": instruction}, deep=True)
+        full_goal = goal_with_format_hint(task_with_goal)
 
         # Use stock AIO Sandbox image. CocoaBench Dockerfiles are typically
         # just `FROM ghcr.io/agent-infra/sandbox:latest`; custom-image build
@@ -200,7 +208,7 @@ class CocoaBenchAdapter:
                 answer, events = run_screenshot_react_loop(
                     page=page,
                     model=model,
-                    goal=instruction,
+                    goal=full_goal,
                     max_steps=plan.max_steps,
                     screenshot_dir=screenshot_dir,
                     run_id=plan.run_id,
@@ -212,9 +220,10 @@ class CocoaBenchAdapter:
                 context.close()
 
         # Build a CocoaBench-shaped result for test.py.
-        conversation = _events_to_openai_conversation(events, instruction)
-        # CocoaBench tests look for <answer>...</answer> tags; wrap if missing.
-        wrapped_answer = _wrap_answer(answer) if answer else ""
+        # The eval protocol (task.extra.answer_format) governs wrapping;
+        # CocoaBench tasks should set answer_format=wrap_xml_answer.
+        wrapped_answer = prepare_answer_for_validator(task_with_goal, answer) or ""
+        conversation = _events_to_openai_conversation(events, instruction, wrapped_answer)
         test_input = {
             "task_result": wrapped_answer,
             "conversation": conversation,
@@ -345,15 +354,11 @@ class CocoaBenchAdapter:
 # ---------- helpers ----------------------------------------------------
 
 
-def _wrap_answer(answer: str) -> str:
-    """CocoaBench test.py looks for <answer>...</answer> tags. Wrap if absent."""
-    text = (answer or "").strip()
-    if "<answer>" in text.lower():
-        return text
-    return f"<answer>{text}</answer>"
-
-
-def _events_to_openai_conversation(events, instruction: str) -> list[dict[str, Any]]:
+def _events_to_openai_conversation(
+    events,
+    instruction: str,
+    final_wrapped_answer: str,
+) -> list[dict[str, Any]]:
     """Build a minimal OpenAI-shaped conversation for test.py.
 
     CocoaBench's test.py walks `conversation` looking at assistant content
@@ -374,7 +379,7 @@ def _events_to_openai_conversation(events, instruction: str) -> list[dict[str, A
             convo.append(
                 {
                     "role": "assistant",
-                    "content": _wrap_answer(action.get("answer") or thought),
+                    "content": final_wrapped_answer or (action.get("answer") or thought),
                 }
             )
         else:

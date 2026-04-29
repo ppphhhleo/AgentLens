@@ -124,6 +124,8 @@ def write_html_report(result: ExperimentResult, output_dir: Path) -> Path:
 
 
 def write_all_reports(result: ExperimentResult, output_dir: Path) -> list[Path]:
+    from agentlens.reports.trajectory_viewer import write_trajectory_viewer
+
     paths = [
         write_summary_json(result, output_dir),
         write_summary_csv(result, output_dir),
@@ -133,6 +135,7 @@ def write_all_reports(result: ExperimentResult, output_dir: Path) -> list[Path]:
     raw_path = output_dir / "summary.raw.json"
     raw_path.write_text(json.dumps(result.model_dump(mode="json"), indent=2, default=_json_default))
     paths.append(raw_path)
+    paths.append(write_trajectory_viewer(paths[0]))
     return paths
 
 
@@ -152,4 +155,3 @@ def _run_result_to_html_row(run_result: SingleRunResult) -> str:
         f"<td>{trajectory.metrics.steps}</td>"
         "</tr>"
     )
-

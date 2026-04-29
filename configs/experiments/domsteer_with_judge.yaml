@@ -1,0 +1,104 @@
+schema_version: "0.1"
+id: domsteer_with_judge
+description: >
+  Phase 1 smoke for the user-actor / orchestrator layer. Same DOMSteer
+  task we already pass (tf_discretize_toggle), now with a simulated
+  final-answer judge as an independent post-loop signal.
+
+  policy=annotate_only means the judge's verdict is recorded but does
+  NOT override the existing url_contains validator — both signals
+  appear in trajectory.json so they can be compared.
+
+models:
+  - id: gpt5_vision
+    provider: openai
+    name: gpt-5.4
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+
+  - id: gpt5_judge
+    provider: openai
+    name: gpt-5.4
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 400
+
+tool_harnesses:
+  - id: screenshot_react_browser
+    runner: screenshot_react
+    tier: browser_only
+    tools:
+      - browser.screenshot
+      - browser.click
+      - browser.double_click
+      - browser.type
+      - browser.scroll
+      - browser.wait
+      - browser.move
+      - browser.keypress
+      - browser.drag
+      - browser.goto
+      - browser.back
+      - browser.forward
+      - browser.reload
+      - task.final_answer
+    prompt_version: screenshot_react_json_v1
+    extra:
+      headless: true
+      slow_mo_ms: 0
+      settle_ms: 2000
+      stealth: true
+      viewport:
+        width: 1600
+        height: 900
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+user_harnesses:
+  - id: judge_v1
+    mode: simulated_final_judge
+    model: gpt5_judge
+    tools:
+      - user.accept
+      - user.reject
+      - user.no_intervention
+    persona: |
+      You are a strict reviewer of an autonomous browser agent's final answer.
+      The agent's task involves clicking a UI toggle and describing what
+      visually changed. Accept ONLY if (1) the URL state confirms the toggle
+      was clicked, AND (2) the agent's text answer accurately describes the
+      visual change shown in the screenshots.
+    intervention_policy: final_only
+    combine_with_validator: annotate_only
+
+tasks:
+  - id: tf_discretize_toggle
+    benchmark: domsteer
+    task_id: tfplayground.discretize_toggle
+    goal: >
+      Find the "Discretize output" toggle in the TensorFlow Playground UI
+      and click it. Then describe what visibly changed in the output panel
+      after the toggle. You MUST click the toggle before answering — do not
+      answer from prior knowledge alone.
+    start_url: https://playground.tensorflow.org/
+    capability_required: [browser_ui, visual_reasoning]
+    validator: final_answer
+    expected_answer: "discretize=true"
+    answer_validator: url_contains
+
+runs:
+  - id: tf_discretize_toggle_judged
+    model: gpt5_vision
+    tool_harness: screenshot_react_browser
+    memory_harness: no_memory
+    task: tf_discretize_toggle
+    user_harness: judge_v1
+    seeds: [0]
+    trials: 1
+    max_steps: 12
+    output_dir: agentlens_results/domsteer_with_judge
+    tags: [domsteer, tfplayground, gpt5, with_judge]

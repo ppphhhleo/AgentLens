@@ -143,3 +143,71 @@ def render_action_schema(toolset: ToolSet) -> str:
 def tool_name_for(action: ComputerAction) -> str:
     """Lookup helper for telemetry — never raises."""
     return TOOL_NAME_BY_ACTION_TYPE.get(action.type, f"unknown.{action.type}")
+
+
+# ---------- USER-side tool gating ------------------------------------
+#
+# Symmetric to the agent's TOOL_NAME map but for user actor actions
+# (see schemas.UserActionType). Lives in the same module so every
+# adapter has one place to look for "what's allowed to be emitted".
+
+USER_TOOL_NAME_BY_ACTION_TYPE: dict[str, str] = {
+    "no_intervention": "user.no_intervention",
+    "accept": "user.accept",
+    "reject": "user.reject",
+    "send_message": "user.send_message",
+    "request_clarification": "user.request_clarification",
+}
+
+USER_TOOL_NAME_TO_ACTION_TYPE: dict[str, str] = {
+    v: k for k, v in USER_TOOL_NAME_BY_ACTION_TYPE.items()
+}
+
+
+_USER_ACTION_SCHEMA_FRAGMENTS: dict[str, str] = {
+    "accept":                '- {{"type": "accept", "text": "<short reason>"}}',
+    "reject":                '- {{"type": "reject", "text": "<reason agent should know>"}}',
+    "send_message":          '- {{"type": "send_message", "text": "..."}}',
+    "request_clarification": '- {{"type": "request_clarification", "text": "<question to the agent>"}}',
+    "no_intervention":       '- {{"type": "no_intervention"}}',
+}
+
+
+@dataclass(frozen=True)
+class UserToolSet:
+    """Allow-list for user-actor actions. Empty = unrestricted."""
+
+    allowed: frozenset[str]
+
+    @classmethod
+    def from_harness(cls, harness) -> UserToolSet:
+        return cls(allowed=frozenset(getattr(harness, "tools", []) or []))
+
+    @property
+    def is_unrestricted(self) -> bool:
+        return len(self.allowed) == 0
+
+    def is_allowed(self, action_type: str) -> bool:
+        if self.is_unrestricted:
+            return True
+        tool = USER_TOOL_NAME_BY_ACTION_TYPE.get(action_type)
+        return tool is not None and tool in self.allowed
+
+    def allowed_action_types(self) -> list[str]:
+        if self.is_unrestricted:
+            return list(_USER_ACTION_SCHEMA_FRAGMENTS.keys())
+        return [
+            t
+            for t in _USER_ACTION_SCHEMA_FRAGMENTS.keys()
+            if USER_TOOL_NAME_BY_ACTION_TYPE.get(t) in self.allowed
+        ]
+
+
+def render_user_action_schema(toolset: UserToolSet) -> str:
+    return "\n".join(
+        _USER_ACTION_SCHEMA_FRAGMENTS[t] for t in toolset.allowed_action_types()
+    )
+
+
+def user_tool_name_for(action_type: str) -> str:
+    return USER_TOOL_NAME_BY_ACTION_TYPE.get(action_type, f"unknown.{action_type}")
