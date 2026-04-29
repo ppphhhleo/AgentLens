@@ -220,8 +220,16 @@ class ScreenshotReactAdapter:
                 )
             )
 
+        # Collect screenshots (in step order) for vision-based validators.
+        screenshot_paths: list[Path] = []
+        for event in events:
+            if event.event_type == TrajectoryEventType.SCREENSHOT:
+                screenshot_paths.extend(event.artifact_paths)
         success, score, validation_message = validate_answer(
-            answer, plan.task, final_url=final_url
+            answer,
+            plan.task,
+            final_url=final_url,
+            screenshot_paths=screenshot_paths,
         )
         self._log(
             log_action,

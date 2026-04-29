@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from agentlens.schemas import TaskConfig
 
 
@@ -7,6 +9,7 @@ def validate_answer(
     answer: str | None,
     task: TaskConfig,
     final_url: str | None = None,
+    screenshot_paths: list[Path] | None = None,
 ) -> tuple[bool | None, float | None, str]:
     """Validate a final answer (and optional final UI state) against task metadata."""
     if task.answer_validator == "url_contains":
@@ -20,6 +23,23 @@ def validate_answer(
             1.0 if success else 0.0,
             f"url contains {task.expected_answer!r}" if success else f"final url {final_url!r} missing {task.expected_answer!r}",
         )
+
+    if task.answer_validator == "webjudge":
+        # LLM-as-judge: needs screenshots + goal. Final answer optional.
+        from agentlens.validators.webjudge import judge_trajectory
+
+        result = judge_trajectory(
+            goal=task.goal or "",
+            final_answer=answer,
+            final_url=final_url,
+            screenshot_paths=list(screenshot_paths or []),
+            judge_model=task.extra.get("judge_model") if task.extra else None,
+        )
+        msg = (
+            f"WebJudge({result.judge_model}) success={result.success} "
+            f"score={result.score:.2f}: {result.reason}"
+        )
+        return result.success, result.score, msg
 
     if answer is None:
         return False, 0.0, "missing final answer"

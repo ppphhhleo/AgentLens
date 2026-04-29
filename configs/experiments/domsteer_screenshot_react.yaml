@@ -77,6 +77,56 @@ tasks:
     expected_answer: "10"
     answer_validator: exact
 
+  - id: datavoyager_horsepower_range_by_origin
+    benchmark: domsteer
+    task_id: datavoyager.horsepower_range_by_origin
+    goal: Which origin's cars show the widest range of horsepower?
+    start_url: https://vega.github.io/voyager2/
+    capability_required: [browser_ui, visual_reasoning]
+    validator: final_answer
+    expected_answer: semantic pending
+    answer_validator: semantic_pending
+
+  - id: datavoyager_8_cylinder_characteristics
+    benchmark: domsteer
+    task_id: datavoyager.8_cylinder_characteristics
+    goal: What characteristics do cars with 8 cylinders have?
+    start_url: https://vega.github.io/voyager2/
+    capability_required: [browser_ui, visual_reasoning]
+    validator: final_answer
+    expected_answer: semantic pending
+    answer_validator: semantic_pending
+
+  - id: tf_wrongly_classified_point
+    benchmark: domsteer
+    task_id: tfplayground.wrongly_classified_point
+    goal: Locate one example data point that is wrongly classified.
+    start_url: https://playground.tensorflow.org/
+    capability_required: [browser_ui, visual_reasoning]
+    validator: final_answer
+    expected_answer: manual pending
+    answer_validator: manual_pending
+
+  - id: tf_general_regression_network
+    benchmark: domsteer
+    task_id: tfplayground.general_regression_network
+    goal: Design a single generalizable neural network that works on all regression datasets.
+    start_url: https://playground.tensorflow.org/
+    capability_required: [browser_ui, visual_reasoning]
+    validator: final_answer
+    expected_answer: manual pending
+    answer_validator: manual_pending
+
+  - id: tf_general_classification_network
+    benchmark: domsteer
+    task_id: tfplayground.general_classification_network
+    goal: Design a single generalized neural network that works on all four classification datasets.
+    start_url: https://playground.tensorflow.org/
+    capability_required: [browser_ui, visual_reasoning]
+    validator: final_answer
+    expected_answer: manual pending
+    answer_validator: manual_pending
+
 runs:
   - id: tf_discretize_toggle_gpt5
     model: gpt5_vision
@@ -110,3 +160,58 @@ runs:
     max_steps: 15
     output_dir: agentlens_results/domsteer_screenshot_react
     tags: [domsteer, datavoyager, gpt5]
+
+  - id: datavoyager_horsepower_range_by_origin_gpt5
+    model: gpt5_vision
+    tool_harness: screenshot_react_browser
+    memory_harness: no_memory
+    task: datavoyager_horsepower_range_by_origin
+    seeds: [0]
+    trials: 1
+    max_steps: 15
+    output_dir: agentlens_results/domsteer_screenshot_react
+    tags: [domsteer, datavoyager, gpt5, semantic_pending]
+
+  - id: datavoyager_8_cylinder_characteristics_gpt5
+    model: gpt5_vision
+    tool_harness: screenshot_react_browser
+    memory_harness: no_memory
+    task: datavoyager_8_cylinder_characteristics
+    seeds: [0]
+    trials: 1
+    max_steps: 15
+    output_dir: agentlens_results/domsteer_screenshot_react
+    tags: [domsteer, datavoyager, gpt5, semantic_pending]
+
+  - id: tf_wrongly_classified_point_gpt5
+    model: gpt5_vision
+    tool_harness: screenshot_react_browser
+    memory_harness: no_memory
+    task: tf_wrongly_classified_point
+    seeds: [0]
+    trials: 1
+    max_steps: 12
+    output_dir: agentlens_results/domsteer_screenshot_react
+    tags: [domsteer, tfplayground, gpt5, manual_pending]
+
+  - id: tf_general_regression_network_gpt5
+    model: gpt5_vision
+    tool_harness: screenshot_react_browser
+    memory_harness: no_memory
+    task: tf_general_regression_network
+    seeds: [0]
+    trials: 1
+    max_steps: 20
+    output_dir: agentlens_results/domsteer_screenshot_react
+    tags: [domsteer, tfplayground, gpt5, manual_pending]
+
+  - id: tf_general_classification_network_gpt5
+    model: gpt5_vision
+    tool_harness: screenshot_react_browser
+    memory_harness: no_memory
+    task: tf_general_classification_network
+    seeds: [0]
+    trials: 1
+    max_steps: 20
+    output_dir: agentlens_results/domsteer_screenshot_react
+    tags: [domsteer, tfplayground, gpt5, manual_pending]

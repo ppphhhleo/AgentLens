@@ -109,6 +109,7 @@ def run(
     ),
 ) -> None:
     """Run or dry-run an AgentLens experiment config."""
+    from agentlens.adapters.browsergym_bridge import BrowserGymBridgeAdapter, BrowserGymBridgeRunPlan
     from agentlens.adapters.browsergym_direct import BrowserGymDirectAdapter, BrowserGymDirectRunPlan
     from agentlens.adapters.screenshot_react import ScreenshotReactAdapter, ScreenshotReactRunPlan
     from agentlens.reports.writers import write_all_reports
@@ -147,6 +148,12 @@ def run(
             log_action=typer.echo if log_actions else None,
         )
         report_dir = plans[0].output_dir / "screenshot_react_summary"
+    elif all(isinstance(plan, BrowserGymBridgeRunPlan) for plan in plans):
+        result = BrowserGymBridgeAdapter().run_many(
+            plans,
+            log_action=typer.echo if log_actions else None,
+        )
+        report_dir = plans[0].output_dir / "browsergym_bridge_summary"
     else:
         raise typer.BadParameter(
             "mixed or unsupported execution plans; use --dry-run to inspect plans"
@@ -156,6 +163,139 @@ def run(
     typer.echo(f"Executed {len(result.run_results)} run(s).")
     for report_path in report_paths:
         typer.echo(str(report_path))
+
+
+@app.command("import-online-mind2web")
+def import_online_mind2web(
+    output: Path = typer.Option(
+        Path("configs/experiments/online_mind2web_screenshot_react.yaml"),
+        "--output",
+        help="Where to write the generated experiment config.",
+    ),
+    limit: int = typer.Option(5, "--limit", min=1, help="How many tasks to include."),
+    offset: int = typer.Option(0, "--offset", min=0, help="Offset into the dataset."),
+    level: str | None = typer.Option(
+        None, "--level", help="Filter to easy|medium|hard. Default: any."
+    ),
+    model_id: str = typer.Option(
+        "gpt-5.4", "--model", help="OpenAI vision model id used by the agent."
+    ),
+    judge_model: str = typer.Option(
+        "gpt-4o", "--judge", help="OpenAI vision model id used by WebJudge."
+    ),
+    max_steps: int = typer.Option(25, "--max-steps", help="Step cap per task."),
+) -> None:
+    """Generate an AgentLens config from the Online-Mind2Web HF dataset.
+
+    Requires HF_TOKEN in .env (gated dataset).
+    """
+    import yaml
+    from datasets import load_dataset
+
+    ds = load_dataset("osunlp/Online-Mind2Web", split="test")
+    if level:
+        ds = ds.filter(lambda ex: ex.get("level") == level)
+    rows = list(ds)[offset : offset + limit]
+    if not rows:
+        raise typer.BadParameter(
+            f"no tasks after offset={offset} limit={limit} level={level!r}"
+        )
+
+    tasks = []
+    runs = []
+    for row in rows:
+        short_id = str(row["task_id"])[:12]
+        task_id = f"om2w_{short_id}"
+        run_id = f"{task_id}_{model_id.replace('.', '_').replace('-', '_')}"
+        tasks.append(
+            {
+                "id": task_id,
+                "benchmark": "online_mind2web",
+                "task_id": row["task_id"],
+                "goal": row["confirmed_task"],
+                "start_url": row["website"],
+                "capability_required": ["browser_ui", "web_navigation"],
+                "validator": "webjudge",
+                "answer_validator": "webjudge",
+                "extra": {
+                    "reference_length": row.get("reference_length"),
+                    "level": row.get("level"),
+                    "judge_model": judge_model,
+                },
+            }
+        )
+        runs.append(
+            {
+                "id": run_id,
+                "model": "agent_model",
+                "tool_harness": "screenshot_react_browser",
+                "memory_harness": "no_memory",
+                "task": task_id,
+                "seeds": [0],
+                "trials": 1,
+                "max_steps": max_steps,
+                "output_dir": "agentlens_results/online_mind2web_screenshot_react",
+                "tags": ["online_mind2web", "gpt5"],
+            }
+        )
+
+    config = {
+        "schema_version": "0.1",
+        "id": "online_mind2web_screenshot_react",
+        "description": (
+            f"Online-Mind2Web tasks generated from osunlp/Online-Mind2Web "
+            f"(limit={limit} offset={offset} level={level or 'any'}). "
+            f"Agent: {model_id}. WebJudge: {judge_model}."
+        ),
+        "models": [
+            {
+                "id": "agent_model",
+                "provider": "openai",
+                "name": model_id,
+                "temperature": 0.0,
+                "vision": True,
+                "max_output_tokens": 1024,
+            }
+        ],
+        "tool_harnesses": [
+            {
+                "id": "screenshot_react_browser",
+                "runner": "screenshot_react",
+                "tier": "browser_only",
+                "tools": [
+                    "browser.screenshot",
+                    "browser.click",
+                    "browser.double_click",
+                    "browser.type",
+                    "browser.scroll",
+                    "browser.wait",
+                    "browser.move",
+                    "browser.keypress",
+                    "browser.drag",
+                    "browser.goto",
+                    "browser.back",
+                    "browser.forward",
+                    "browser.reload",
+                    "task.final_answer",
+                ],
+                "prompt_version": "screenshot_react_json_v1",
+                "extra": {
+                    "headless": True,
+                    "settle_ms": 2000,
+                    "viewport": {"width": 1600, "height": 900},
+                },
+            }
+        ],
+        "memory_harnesses": [{"id": "no_memory", "kind": "none", "scope": "none"}],
+        "tasks": tasks,
+        "runs": runs,
+    }
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    typer.echo(
+        f"Wrote {len(tasks)} task(s) to {output} (model={model_id}, judge={judge_model})"
+    )
 
 
 if __name__ == "__main__":

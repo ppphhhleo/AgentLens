@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +14,18 @@ def build_run_plans(
     config: ExperimentConfig,
     run_id: str | None = None,
     max_runs: int | None = None,
+    snapshot_name: str | None = None,
 ) -> list[RunPlan]:
+    """Build executable run plans from an experiment config.
+
+    Each invocation gets its own snapshot folder under each run's
+    `output_dir`, so re-running never overwrites prior trajectories or
+    reports. The snapshot folder defaults to a UTC timestamp; pass
+    `snapshot_name` to override.
+    """
+    if snapshot_name is None:
+        snapshot_name = datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
+
     run_ids = {run_id} if run_id else None
     tool_harnesses = {item.id: item for item in config.tool_harnesses}
     plans: list[RunPlan] = []
@@ -39,6 +51,11 @@ def build_run_plans(
 
             adapter = ScreenshotReactAdapter()
             plans.extend(adapter.build_run_plans(scoped_config, max_runs=max_runs))
+        elif tool_harness.runner == "browsergym_bridge":
+            from agentlens.adapters.browsergym_bridge import BrowserGymBridgeAdapter
+
+            adapter = BrowserGymBridgeAdapter()
+            plans.extend(adapter.build_run_plans(scoped_config, max_runs=max_runs))
         else:
             raise ValueError(f"unsupported runner for run '{run.id}': {tool_harness.runner}")
 
@@ -49,7 +66,23 @@ def build_run_plans(
     if run_id and not plans:
         raise ValueError(f"run id not found or produced no plans: {run_id}")
 
+    # Stamp every plan's output dir with a per-invocation snapshot folder.
+    # All downstream consumers (adapter trajectory dirs, CLI report dirs,
+    # dry-run JSON) inherit this automatically.
+    plans = [_with_snapshot_dir(plan, snapshot_name) for plan in plans]
     return plans
+
+
+def _with_snapshot_dir(plan: RunPlan, snapshot_name: str) -> RunPlan:
+    update = {"output_dir": plan.output_dir / snapshot_name}
+    if hasattr(plan, "raw_output_dir"):
+        # Re-derive raw_output_dir under the snapshot too.
+        original = plan.raw_output_dir
+        update["raw_output_dir"] = plan.output_dir / snapshot_name / original.name
+    notes = list(getattr(plan, "notes", []) or [])
+    notes.append(f"snapshot={snapshot_name}")
+    update["notes"] = notes
+    return plan.model_copy(update=update, deep=True)
 
 
 def write_run_plan_json(plans: list[RunPlan], output_path: Path) -> Path:

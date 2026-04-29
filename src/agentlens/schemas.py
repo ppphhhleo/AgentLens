@@ -56,6 +56,7 @@ class ToolHarnessConfig(BaseModel):
     runner: Literal[
         "agentlab",
         "browsergym_direct",
+        "browsergym_bridge",
         "screenshot_react",
         "agencybench",
         "human",
@@ -95,7 +96,7 @@ class MemoryHarnessConfig(BaseModel):
 
 class TaskConfig(BaseModel):
     id: str
-    benchmark: Literal["browsergym", "agentlab", "agencybench", "domsteer", "custom"]
+    benchmark: Literal["browsergym", "agentlab", "agencybench", "domsteer", "online_mind2web", "custom"]
     task_id: str
     goal: str | None = None
     start_url: str | None = None
@@ -103,7 +104,15 @@ class TaskConfig(BaseModel):
     validator: str | None = None
     expected_answer: str | None = None
     answer_validator: (
-        Literal["exact", "contains", "url_contains", "semantic_pending", "manual_pending"] | None
+        Literal[
+            "exact",
+            "contains",
+            "url_contains",
+            "webjudge",
+            "semantic_pending",
+            "manual_pending",
+        ]
+        | None
     ) = None
     extra: dict[str, Any] = Field(default_factory=dict)
 
