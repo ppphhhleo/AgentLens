@@ -75,6 +75,12 @@ class ComputerAction(BaseModel):
     # filesystem paths. read_file / write_file use `file_path`.
     file_path: str | None = None
     content: str | None = None
+    # Addressing modes (alternative to x,y for click/double_click/move/scroll
+    # /drag). At validate time exactly one of (x+y) | bid | selector | mark
+    # must be set for those action types.
+    bid: str | None = None             # accessibility-tree element id
+    selector: str | None = None        # raw CSS selector
+    mark: str | None = None            # set-of-marks label (e.g. "A3")
 
     @field_validator("path", mode="before")
     @classmethod
@@ -87,9 +93,24 @@ class ComputerAction(BaseModel):
 
     @model_validator(mode="after")
     def validate_required_fields(self) -> ComputerAction:
+        # Addressing-mode targets: exactly one of (x+y) | bid | selector | mark
         if self.type in {"click", "double_click", "move", "scroll"}:
-            if self.x is None or self.y is None:
-                raise ValueError(f"action '{self.type}' requires x and y")
+            modes_set = sum(
+                [
+                    self.x is not None and self.y is not None,
+                    self.bid is not None,
+                    self.selector is not None,
+                    self.mark is not None,
+                ]
+            )
+            if modes_set == 0:
+                raise ValueError(
+                    f"action '{self.type}' requires a target — set (x+y) OR bid OR selector OR mark"
+                )
+            if modes_set > 1:
+                raise ValueError(
+                    f"action '{self.type}' has multiple targets set; choose ONE of (x+y) / bid / selector / mark"
+                )
         if self.type == "type" and self.text is None:
             raise ValueError("action 'type' requires text")
         if self.type == "keypress" and not self.keys:

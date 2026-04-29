@@ -64,6 +64,7 @@ class ScreenshotReactAgent:
         page,
         sandbox=None,
         max_steps: int = 12,
+        input_modes: list[str] | None = None,
         log_action: Callable[[str], None] | None = None,
     ) -> None:
         self.model_config = model_config
@@ -72,6 +73,7 @@ class ScreenshotReactAgent:
         self.page = page
         self.sandbox = sandbox
         self.max_steps = max_steps
+        self.input_modes = list(input_modes or ["screenshot"])
         self.log_action = log_action
 
     def get_init_state(self, *, observation: AgentObservation) -> AgentState:
@@ -102,6 +104,7 @@ class ScreenshotReactAgent:
             run_id=run_id,
             toolset=self.toolset,
             sandbox=self.sandbox,
+            input_modes=self.input_modes,
             log_action=self.log_action,
         )
         new_state = state.model_copy(

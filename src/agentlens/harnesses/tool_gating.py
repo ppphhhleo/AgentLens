@@ -55,13 +55,13 @@ TOOL_NAME_TO_ACTION_TYPE: dict[str, str] = {v: k for k, v in TOOL_NAME_BY_ACTION
 # rendered list order in the system prompt. Keep concise — these are
 # token cost.
 _ACTION_SCHEMA_FRAGMENTS: dict[str, str] = {
-    "click":         '- {{"type": "click", "x": int, "y": int, "button": "left"|"right"|"middle", "keys": ["SHIFT"]?}}',
-    "double_click":  '- {{"type": "double_click", "x": int, "y": int, "button": "left", "keys": []?}}',
-    "scroll":        '- {{"type": "scroll", "x": int, "y": int, "scroll_x": int, "scroll_y": int, "keys": []?}}',
-    "type":          '- {{"type": "type", "text": "..."}}',
+    "click":         '- {{"type": "click", <TARGET>, "button": "left"|"right"|"middle", "keys": ["SHIFT"]?}}',
+    "double_click":  '- {{"type": "double_click", <TARGET>, "button": "left", "keys": []?}}',
+    "scroll":        '- {{"type": "scroll", <TARGET>, "scroll_x": int, "scroll_y": int, "keys": []?}}',
+    "type":          '- {{"type": "type", "text": "...", <OPTIONAL_TARGET>}}',
     "keypress":      '- {{"type": "keypress", "keys": ["Enter"]}}',
     "wait":          '- {{"type": "wait", "ms": 1000}}',
-    "move":          '- {{"type": "move", "x": int, "y": int, "keys": []?}}',
+    "move":          '- {{"type": "move", <TARGET>, "keys": []?}}',
     "drag":          '- {{"type": "drag", "path": [{{"x": int, "y": int}}, ...], "keys": []?}}',
     "goto":          '- {{"type": "goto", "url": "https://..."}}',
     "back":          '- {{"type": "back"}}',
@@ -129,15 +129,46 @@ class ToolSet:
         ]
 
 
-def render_action_schema(toolset: ToolSet) -> str:
+_TARGET_HINTS = {
+    "coordinate": '"x": int, "y": int',
+    "bid":        '"bid": "<element id from the AXTree, e.g. \\"a23\\">"',
+    "selector":   '"selector": "<CSS selector>"',
+    "mark":       '"mark": "<mark label, e.g. \\"A3\\">"',
+}
+
+
+def render_action_schema(
+    toolset: ToolSet,
+    addressing_modes: list[str] | None = None,
+) -> str:
     """Render the bullet list of allowed action shapes for the system prompt.
 
-    Used by openai_vision.SYSTEM_PROMPT_TEMPLATE so the prompt only
-    advertises tools the gate will actually accept.
+    `addressing_modes` is the list of allowed ways to address an element
+    for click/double_click/scroll/move (e.g. ["coordinate"], ["bid"],
+    ["bid", "mark"], ["coordinate", "bid"]). Defaults to ["coordinate"]
+    for backward compat. The schema fragments substitute the matching
+    `<TARGET>` placeholder with the right hint(s).
+
+    For `type`, the target is optional — the agent may either fill a
+    targeted element (bid/selector/mark) or type into whatever's
+    currently focused (no target).
     """
-    return "\n".join(
-        _ACTION_SCHEMA_FRAGMENTS[t] for t in toolset.allowed_action_types()
-    )
+    if not addressing_modes:
+        addressing_modes = ["coordinate"]
+    valid = [m for m in addressing_modes if m in _TARGET_HINTS]
+    if not valid:
+        valid = ["coordinate"]
+    target_doc = " OR ".join(_TARGET_HINTS[m] for m in valid)
+    target_block = f"({target_doc})"
+    optional_target_block = f"[OPTIONAL: {target_doc}]"
+
+    rendered: list[str] = []
+    for t in toolset.allowed_action_types():
+        frag = _ACTION_SCHEMA_FRAGMENTS[t]
+        frag = frag.replace("<TARGET>", target_block)
+        frag = frag.replace("<OPTIONAL_TARGET>", optional_target_block)
+        rendered.append(frag)
+    return "\n".join(rendered)
 
 
 def tool_name_for(action: ComputerAction) -> str:

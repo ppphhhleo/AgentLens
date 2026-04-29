@@ -308,12 +308,33 @@ class ScreenshotReactAdapter:
                         log_action=log_action,
                     )
                 else:
+                    # Read perception modes from harness extra. Defaults to
+                    # screenshot-only (current behavior).
+                    input_modes = list(
+                        plan.tool_harness.extra.get("input_modes", ["screenshot"])
+                    )
+                    # Stash addressing_modes on the model config's extra so
+                    # the model wrapper can render the right action schema.
+                    addr_modes = list(
+                        plan.tool_harness.extra.get("addressing_modes", ["coordinate"])
+                    )
+                    model_config = plan.model.model_copy(
+                        update={
+                            "extra": {
+                                **(plan.model.extra or {}),
+                                "input_modes": input_modes,
+                                "addressing_modes": addr_modes,
+                            }
+                        },
+                        deep=True,
+                    )
                     agent_actor = ScreenshotReactAgent(
-                        model_config=plan.model,
+                        model_config=model_config,
                         toolset=toolset,
                         page=page,
                         sandbox=sandbox,
                         max_steps=plan.max_steps,
+                        input_modes=input_modes,
                         log_action=log_action,
                     )
 

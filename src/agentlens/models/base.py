@@ -22,14 +22,34 @@ class ModelStep:
 
 @dataclass
 class ScreenshotObservation:
+    """Per-step observation. Now mode-aware: any combination of
+    `screenshot_path`, `axtree_text`, and `mark_registry` may be set.
+
+    The model wrapper (`OpenAIVisionModel._build_messages`) reads which
+    modalities are populated and constructs the prompt accordingly:
+        - screenshot_path set    → include image
+        - axtree_text   set    → append the AXTree text block
+        - mark_registry set    → include the mark→bid count in prompt
+
+    For backward compatibility the field name remains
+    `ScreenshotObservation`; we add a `Observation` alias below.
+    """
+
     step_index: int
-    screenshot_path: Path
     url: str
     viewport: dict[str, int]
-    # Optional text block surfaced from out-of-band tools (web_search,
-    # future shell/code tools). Persisted only for one observation —
-    # the loop clears it after building this step's user message.
+    # Visual modality (optional now)
+    screenshot_path: Path | None = None
+    # AXTree modality (optional)
+    axtree_text: str | None = None
+    # Set-of-marks modality (optional): mapping mark_id → bid
+    mark_registry: dict[str, str] | None = None
+    # Out-of-band tool output (web_search / run_python / shell / files):
     tool_output_since_last_step: str | None = None
+
+
+# Forward-compat alias — preferred name going forward.
+Observation = ScreenshotObservation
 
 
 class ChatModel(Protocol):

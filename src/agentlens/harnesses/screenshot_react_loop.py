@@ -13,6 +13,37 @@ from agentlens.models.base import ChatModel, ModelStep, ScreenshotObservation
 from agentlens.schemas import TrajectoryEvent, TrajectoryEventType
 
 
+def _maybe_axtree(page, *, capture: bool) -> str | None:
+    if not capture:
+        return None
+    try:
+        from agentlens.perception import snapshot_axtree
+        return snapshot_axtree(page).text
+    except Exception:  # noqa: BLE001 - perception is best-effort
+        return None
+
+
+def _maybe_marks(page, *, enable: bool) -> dict[str, str]:
+    if not enable:
+        return {}
+    try:
+        from agentlens.perception import inject_marks
+        som = inject_marks(page)
+        return dict(som.registry)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _strip_marks(page, *, enabled: bool) -> None:
+    if not enabled:
+        return
+    try:
+        from agentlens.perception import strip_marks
+        strip_marks(page)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def run_screenshot_react_loop(
     *,
     page,
@@ -23,19 +54,37 @@ def run_screenshot_react_loop(
     run_id: str,
     toolset: ToolSet | None = None,
     sandbox=None,                  # AIOSandboxSession or None for browser-only runs
+    input_modes: list[str] | None = None,
     log_action: Callable[[str], None] | None = None,
 ) -> tuple[str | None, list[TrajectoryEvent]]:
-    """Real screenshot ReAct loop.
+    """Mode-aware ReAct loop.
 
-    screenshot -> model.step -> execute -> screenshot, until final_answer or max_steps.
+    `input_modes` controls which perceptual modalities are placed in
+    each observation:
+      ["screenshot"]            (default) — current vision-only behavior
+      ["axtree"]                — DOM/AXTree-only (text), no screenshot in prompt
+      ["screenshot", "axtree"]  — both (max-info hybrid)
 
-    Returns (final_answer, events). final_answer is None if the loop exits without one.
+    Screenshots are ALWAYS captured to disk for trajectory record,
+    regardless of mode — they're just only fed into the model prompt
+    when "screenshot" is in input_modes.
+
+    Returns (final_answer, events). final_answer is None if the loop
+    exits without one.
     """
     events: list[TrajectoryEvent] = []
     history: list[ModelStep] = []
     answer: str | None = None
     if toolset is None:
         toolset = ToolSet(allowed=frozenset())  # unrestricted
+    if not input_modes:
+        input_modes = ["screenshot"]
+    use_screenshot = "screenshot" in input_modes
+    use_axtree = "axtree" in input_modes
+    # set_of_marks implies "screenshot" (we mark + capture). It also requires
+    # axtree to have run first so elements have bid attributes; we ensure
+    # axtree extraction below regardless of `use_axtree` if marks are on.
+    use_marks = "set_of_marks" in input_modes
 
     initial_screenshot = capture_screenshot_event(
         page=page, screenshot_dir=screenshot_dir, step_index=0, goal=goal
@@ -47,11 +96,34 @@ def run_screenshot_react_loop(
     pending_tool_output: str | None = None  # carries web_search etc. into next obs
 
     for step_index in range(1, max_steps + 1):
+        # Always extract axtree if marks are on (marks need bids on the page).
+        axtree_text = _maybe_axtree(page, capture=use_axtree or use_marks)
+        # If marks mode is enabled, inject the overlay, capture a fresh
+        # screenshot WITH marks visible, then strip them so the page stays
+        # clean for any subsequent non-marked observations.
+        mark_registry: dict[str, str] = {}
+        if use_marks:
+            mark_registry = _maybe_marks(page, enable=True)
+            # Use suffix so this doesn't collide with the post-action
+            # capture below (which writes step_NNN.png unsuffixed).
+            marked_screenshot = capture_screenshot_event(
+                page=page,
+                screenshot_dir=screenshot_dir,
+                step_index=step_index,
+                goal=goal,
+                name_suffix="marks",
+            )
+            events.append(marked_screenshot)
+            last_screenshot_path = marked_screenshot.artifact_paths[0]
+            _strip_marks(page, enabled=True)
+
         observation = ScreenshotObservation(
             step_index=step_index,
-            screenshot_path=last_screenshot_path,
+            screenshot_path=last_screenshot_path if (use_screenshot or use_marks) else None,
             url=page.url,
             viewport=page.viewport_size or {"width": 0, "height": 0},
+            axtree_text=axtree_text if use_axtree else None,
+            mark_registry=mark_registry if use_marks else None,
             tool_output_since_last_step=pending_tool_output,
         )
         pending_tool_output = None  # one-shot — model consumed it now

@@ -101,40 +101,118 @@ def show_marker(page, x: float | None, y: float | None, color: str = "#ff3b30") 
         pass
 
 
+def _resolve_target_locator(page, action: ComputerAction):
+    """Return (locator, marker_xy) for actions targeted by bid/selector/mark.
+
+    Returns (None, None) if the action targets coordinates (we keep the
+    current x,y dispatch for those).
+    """
+    if action.bid:
+        loc = page.locator(f"[bid='{action.bid}']").first
+        return loc, _bbox_center(loc)
+    if action.selector:
+        loc = page.locator(action.selector).first
+        return loc, _bbox_center(loc)
+    if action.mark:
+        # mark→bid registry is per-page; agents using marks must inject it
+        # via context.add_init_script before calling execute_action.
+        bid = page.evaluate(
+            "(m) => (window.__agentlens_marks && window.__agentlens_marks[m]) || null",
+            action.mark,
+        )
+        if not bid:
+            return None, None
+        loc = page.locator(f"[bid='{bid}']").first
+        return loc, _bbox_center(loc)
+    return None, None
+
+
+def _bbox_center(locator):
+    """Best-effort center coords for an element — for the overlay marker."""
+    try:
+        bb = locator.bounding_box()
+        if bb:
+            return (bb["x"] + bb["width"] / 2, bb["y"] + bb["height"] / 2)
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def execute_action(page, action: ComputerAction) -> str | None:
     """Execute one ComputerAction against a Playwright page. Returns error string or None."""
     try:
+        # Target resolution happens once: bid/selector/mark all flow through
+        # a Playwright Locator; coordinates take the legacy mouse path.
+        target_locator, target_xy = _resolve_target_locator(page, action)
+
         match action.type:
             case "screenshot":
                 return None
             case "click":
-                show_marker(page, action.x, action.y, "#ff3b30")
-                with _held_modifiers(page, action.keys):
-                    page.mouse.click(
-                        action.x, action.y, button=_playwright_button(action.button)
-                    )
+                if target_locator is not None:
+                    if target_xy is not None:
+                        show_marker(page, *target_xy, "#ff3b30")
+                    with _held_modifiers(page, action.keys):
+                        # force=True so we can target elements that are
+                        # functionally interactive but visually masked by
+                        # custom CSS (e.g. checkboxes hidden behind styled
+                        # toggle UIs like TF Playground's discretize switch).
+                        target_locator.click(
+                            button=_playwright_button(action.button),
+                            timeout=10000,
+                            force=True,
+                        )
+                else:
+                    show_marker(page, action.x, action.y, "#ff3b30")
+                    with _held_modifiers(page, action.keys):
+                        page.mouse.click(
+                            action.x, action.y, button=_playwright_button(action.button)
+                        )
             case "double_click":
-                show_marker(page, action.x, action.y, "#ff9500")
-                with _held_modifiers(page, action.keys):
-                    page.mouse.dblclick(
-                        action.x, action.y, button=_playwright_button(action.button)
-                    )
+                if target_locator is not None:
+                    if target_xy is not None:
+                        show_marker(page, *target_xy, "#ff9500")
+                    with _held_modifiers(page, action.keys):
+                        target_locator.dblclick(
+                            button=_playwright_button(action.button),
+                            timeout=10000,
+                            force=True,
+                        )
+                else:
+                    show_marker(page, action.x, action.y, "#ff9500")
+                    with _held_modifiers(page, action.keys):
+                        page.mouse.dblclick(
+                            action.x, action.y, button=_playwright_button(action.button)
+                        )
             case "scroll":
-                show_marker(page, action.x, action.y, "#34c759")
-                page.mouse.move(action.x, action.y)
+                if target_locator is not None and target_xy is not None:
+                    show_marker(page, *target_xy, "#34c759")
+                    target_locator.scroll_into_view_if_needed(timeout=5000)
+                else:
+                    show_marker(page, action.x, action.y, "#34c759")
+                    page.mouse.move(action.x, action.y)
                 with _held_modifiers(page, action.keys):
                     page.evaluate(
                         "(delta) => window.scrollBy(delta.scrollX, delta.scrollY)",
                         {"scrollX": action.scroll_x, "scrollY": action.scroll_y},
                     )
             case "type":
-                page.keyboard.type(action.text or "")
+                # If a target is specified, focus + fill it; else dispatch
+                # raw keyboard typing into whatever's currently focused.
+                if target_locator is not None:
+                    target_locator.fill(action.text or "", timeout=10000)
+                else:
+                    page.keyboard.type(action.text or "")
             case "wait":
                 page.wait_for_timeout(action.ms or 1000)
             case "move":
-                show_marker(page, action.x, action.y, "#5ac8fa")
-                with _held_modifiers(page, action.keys):
-                    page.mouse.move(action.x, action.y)
+                if target_locator is not None and target_xy is not None:
+                    show_marker(page, *target_xy, "#5ac8fa")
+                    target_locator.hover(timeout=5000)
+                else:
+                    show_marker(page, action.x, action.y, "#5ac8fa")
+                    with _held_modifiers(page, action.keys):
+                        page.mouse.move(action.x, action.y)
             case "keypress":
                 for key in action.keys:
                     page.keyboard.press(_normalize_key(key))
@@ -171,33 +249,60 @@ def capture_screenshot_event(
     screenshot_dir: Path,
     step_index: int,
     goal: str | None,
+    *,
+    name_suffix: str = "",
 ) -> TrajectoryEvent:
-    screenshot_path = screenshot_dir / f"step_{step_index:03d}.png"
+    """Capture viewport screenshot to step_NNN[<suffix>].png.
+
+    Use `name_suffix` (e.g. "_marks") when there are MULTIPLE captures
+    in the same step (e.g. set-of-marks pre-action vs unmarked
+    post-action) — keeps the post-action capture from overwriting the
+    pre-action one.
+    """
+    suffix = f"_{name_suffix.lstrip('_')}" if name_suffix else ""
+    screenshot_path = screenshot_dir / f"step_{step_index:03d}{suffix}.png"
     page.screenshot(path=str(screenshot_path), full_page=False)
     return TrajectoryEvent(
         event_type=TrajectoryEventType.SCREENSHOT,
         step_index=step_index,
-        data={"url": page.url, "viewport": page.viewport_size, "goal": goal},
+        data={
+            "url": page.url,
+            "viewport": page.viewport_size,
+            "goal": goal,
+            "kind": name_suffix.lstrip("_") or "post_action",
+        },
         artifact_paths=[screenshot_path],
     )
+
+
+def _target_str(action: ComputerAction) -> str:
+    """Human-readable target spec for log lines."""
+    if action.bid:
+        return f"bid={action.bid!r}"
+    if action.selector:
+        return f"selector={action.selector!r}"
+    if action.mark:
+        return f"mark={action.mark!r}"
+    return f"x={action.x} y={action.y}"
 
 
 def format_action(action: ComputerAction) -> str:
     mods = f" mods={action.keys}" if action.keys and action.type != "keypress" else ""
     match action.type:
         case "click" | "double_click":
-            return f"{action.type} x={action.x} y={action.y} button={action.button}{mods}"
+            return f"{action.type} {_target_str(action)} button={action.button}{mods}"
         case "scroll":
             return (
-                f"scroll x={action.x} y={action.y} "
+                f"scroll {_target_str(action)} "
                 f"scroll_x={action.scroll_x} scroll_y={action.scroll_y}{mods}"
             )
         case "type":
-            return f"type text={action.text!r}"
+            tgt = f"target={_target_str(action)} " if action.bid or action.selector or action.mark else ""
+            return f"type {tgt}text={action.text!r}"
         case "wait":
             return f"wait ms={action.ms or 1000}"
         case "move":
-            return f"move x={action.x} y={action.y}{mods}"
+            return f"move {_target_str(action)}{mods}"
         case "keypress":
             return f"keypress keys={action.keys}"
         case "drag":

@@ -64,7 +64,15 @@ class OpenAIVisionModel:
         if toolset is None:
             toolset = ToolSet(allowed=frozenset())  # unrestricted
         self.toolset = toolset
-        self.action_schema = render_action_schema(toolset)
+        self.addressing_modes = list(
+            (config.extra or {}).get("addressing_modes", ["coordinate"])
+        )
+        self.action_schema = render_action_schema(toolset, self.addressing_modes)
+        # Whether the prompt should advertise/require a screenshot in the
+        # user message. Driven by input_modes from the harness.
+        self.input_modes = list(
+            (config.extra or {}).get("input_modes", ["screenshot"])
+        )
 
     def step(
         self,
@@ -123,29 +131,67 @@ class OpenAIVisionModel:
                 f"{observation.tool_output_since_last_step}\n"
             )
 
+        # AXTree block — only present when the harness asks for axtree input.
+        axtree_block = ""
+        if observation.axtree_text:
+            axtree_block = (
+                f"\nINTERACTIVE-ELEMENT TREE (use the [bid] markers to target elements):\n"
+                f"{observation.axtree_text}\n"
+            )
+
+        # Mark registry hint (only present when set_of_marks is in input_modes).
+        mark_block = ""
+        if observation.mark_registry:
+            n = len(observation.mark_registry)
+            sample_keys = ", ".join(list(observation.mark_registry.keys())[:8])
+            mark_block = (
+                f"\nSET-OF-MARKS: {n} labeled elements visible in the screenshot. "
+                f"Sample marks: {sample_keys}. Use \"mark\" in your action.\n"
+            )
+
+        # Build user-side instructions about what's actually present.
+        modality_note = ""
+        if observation.screenshot_path is None and observation.axtree_text:
+            modality_note = (
+                "\nNOTE: NO screenshot is provided this step. Operate via the AXTree above; "
+                "click/scroll/etc. with bid (not x,y).\n"
+            )
+        elif observation.screenshot_path is not None and observation.axtree_text:
+            modality_note = (
+                "\nNOTE: BOTH a screenshot AND an AXTree are provided. Prefer bid for "
+                "clickable elements (more reliable); fall back to x,y when needed.\n"
+            )
+
         user_text = (
             f"Current URL: {observation.url}\n"
             f"Viewport: {observation.viewport}\n"
             f"Step index: {observation.step_index}\n"
             f"Prior steps:\n{history_block}\n"
-            f"{tool_block}\n"
-            "Inspect the screenshot (and tool output above, if any), then emit your next JSON action."
+            f"{axtree_block}"
+            f"{mark_block}"
+            f"{tool_block}"
+            f"{modality_note}"
+            "\nInspect the available context, then emit your next JSON action."
         )
 
-        image_data_url = self._image_to_data_url(observation.screenshot_path)
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
             goal=goal, action_schema=self.action_schema
         )
 
+        # Build the user-message content list. Only include the image when
+        # a screenshot is provided AND screenshot is one of the input modes.
+        content: list[dict[str, Any]] = [{"type": "text", "text": user_text}]
+        if observation.screenshot_path is not None and "screenshot" in self.input_modes:
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": self._image_to_data_url(observation.screenshot_path)},
+                }
+            )
+
         return [
             {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": user_text},
-                    {"type": "image_url", "image_url": {"url": image_data_url}},
-                ],
-            },
+            {"role": "user", "content": content},
         ]
 
     def _uses_completion_tokens_param(self) -> bool:
