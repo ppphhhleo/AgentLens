@@ -38,6 +38,7 @@ class TrajectoryEventType(StrEnum):
     VALIDATION_EVENT = "validation_event"
     ARTIFACT_CREATED = "artifact_created"
     USER_FEEDBACK = "user_feedback"
+    GATING_VIOLATION = "gating_violation"
 
 
 class ModelConfig(BaseModel):

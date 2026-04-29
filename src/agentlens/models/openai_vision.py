@@ -12,6 +12,8 @@ from agentlens.actions import ComputerAction
 from agentlens.models.base import ModelStep, ScreenshotObservation
 from agentlens.schemas import ModelConfig
 
+# The action-schema bullet list is injected at runtime from the run's
+# ToolSet, so the prompt only ever advertises tools the gate will accept.
 SYSTEM_PROMPT_TEMPLATE = """You are an autonomous agent operating inside a web application. \
 The application is already open and loaded in front of you. Navigate the interface to \
 complete the task — do not ask the user for information that is available in the application.
@@ -24,21 +26,8 @@ You see one screenshot per step. Respond ONLY with a single JSON object:
   "action": {{ ... one ComputerAction ... }}
 }}
 
-Action schema (pick exactly one per step):
-- {{"type": "click", "x": int, "y": int, "button": "left"|"right"|"middle", "keys": ["SHIFT"]?}}
-- {{"type": "double_click", "x": int, "y": int, "button": "left", "keys": []?}}
-- {{"type": "scroll", "x": int, "y": int, "scroll_x": int, "scroll_y": int, "keys": []?}}
-- {{"type": "type", "text": "..."}}
-- {{"type": "keypress", "keys": ["Enter"]}}
-- {{"type": "wait", "ms": 1000}}
-- {{"type": "move", "x": int, "y": int, "keys": []?}}
-- {{"type": "drag", "path": [{{"x": int, "y": int}}, ...], "keys": []?}}
-- {{"type": "goto", "url": "https://..."}}
-- {{"type": "back"}}
-- {{"type": "forward"}}
-- {{"type": "reload"}}
-- {{"type": "screenshot"}}
-- {{"type": "final_answer", "answer": "..."}}
+Action schema — pick EXACTLY ONE per step. ONLY these actions are available:
+{action_schema}
 
 Rules:
 - Coordinates are viewport pixels from the top-left of the screenshot.
@@ -49,6 +38,7 @@ Rules:
 - "drag.path" entries may be {{"x":.., "y":..}} objects or [x, y] arrays.
 - When you can answer the task, emit final_answer immediately; do not over-explore.
 - The "answer" field of final_answer is your ANSWER to the task.
+- Never emit an action that is not in the schema above; it will be rejected.
 - Never wrap the JSON in markdown fences.
 """
 
@@ -56,7 +46,7 @@ Rules:
 class OpenAIVisionModel:
     """OpenAI chat-completions vision model returning strict JSON actions."""
 
-    def __init__(self, config: ModelConfig) -> None:
+    def __init__(self, config: ModelConfig, toolset=None) -> None:
         self.config = config
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
@@ -68,6 +58,13 @@ class OpenAIVisionModel:
         self.model_name = config.name
         self.temperature = config.temperature
         self.max_output_tokens = config.max_output_tokens or 1024
+        # Lazy import to avoid cycles via models.base.build_model.
+        from agentlens.harnesses.tool_gating import ToolSet, render_action_schema
+
+        if toolset is None:
+            toolset = ToolSet(allowed=frozenset())  # unrestricted
+        self.toolset = toolset
+        self.action_schema = render_action_schema(toolset)
 
     def step(
         self,
@@ -119,16 +116,26 @@ class OpenAIVisionModel:
             )
         history_block = "\n".join(history_lines) if history_lines else "(none)"
 
+        tool_block = ""
+        if observation.tool_output_since_last_step:
+            tool_block = (
+                f"\nTOOL OUTPUT FROM YOUR LAST ACTION (visible only this step):\n"
+                f"{observation.tool_output_since_last_step}\n"
+            )
+
         user_text = (
             f"Current URL: {observation.url}\n"
             f"Viewport: {observation.viewport}\n"
             f"Step index: {observation.step_index}\n"
-            f"Prior steps:\n{history_block}\n\n"
-            "Inspect the screenshot, then emit your next JSON action."
+            f"Prior steps:\n{history_block}\n"
+            f"{tool_block}\n"
+            "Inspect the screenshot (and tool output above, if any), then emit your next JSON action."
         )
 
         image_data_url = self._image_to_data_url(observation.screenshot_path)
-        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(goal=goal)
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
+            goal=goal, action_schema=self.action_schema
+        )
 
         return [
             {"role": "system", "content": system_prompt},

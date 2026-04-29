@@ -212,6 +212,8 @@ def format_action(action: ComputerAction) -> str:
             return "forward"
         case "reload":
             return "reload"
+        case "web_search":
+            return f"web_search query={action.query!r}"
         case "final_answer":
             return f"final_answer answer={action.answer!r}"
 

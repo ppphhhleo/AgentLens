@@ -21,6 +21,7 @@ from agentlens.evals.aggregate import aggregate_results
 from agentlens.evals.base import ExperimentResult, SingleRunResult
 from agentlens.harnesses.browser_actions import OVERLAY_INIT_JS
 from agentlens.harnesses.screenshot_react_loop import run_screenshot_react_loop
+from agentlens.harnesses.tool_gating import ToolSet, tool_name_for
 from agentlens.models.base import build_model
 from agentlens.schemas import (
     ExperimentConfig,
@@ -166,6 +167,7 @@ class BrowserGymBridgeAdapter:
         goal = self._goal_text(obs) or plan.task.goal or ""
         self._log(log_action, f"[{plan.run_id}] goal: {goal!r}")
 
+        toolset = ToolSet.from_harness(plan.tool_harness)
         events: list[TrajectoryEvent] = []
         answer: str | None = None
         if _is_mock_model(plan.model):
@@ -192,10 +194,26 @@ class BrowserGymBridgeAdapter:
                         data={
                             "thought": f"Mock action '{action.type}'.",
                             "action": action.model_dump(mode="json"),
+                            "tool_name": tool_name_for(action),
                             "mock": True,
                         },
                     )
                 )
+                allowed, gating_msg = toolset.gate_action(action)
+                if not allowed:
+                    self._log(log_action, f"[{plan.run_id} step={step_index}] gating: {gating_msg}")
+                    events.append(
+                        TrajectoryEvent(
+                            event_type=TrajectoryEventType.GATING_VIOLATION,
+                            step_index=step_index,
+                            data={
+                                "action": action.model_dump(mode="json"),
+                                "tool_name": tool_name_for(action),
+                                "message": gating_msg,
+                            },
+                        )
+                    )
+                    continue
                 if action.type == "final_answer":
                     answer = action.answer
                     break
@@ -211,7 +229,7 @@ class BrowserGymBridgeAdapter:
                     capture_screenshot_event(page, screenshot_dir, step_index, goal)
                 )
         else:
-            model = build_model(plan.model)
+            model = build_model(plan.model, toolset=toolset)
             answer, events = run_screenshot_react_loop(
                 page=page,
                 model=model,
@@ -219,6 +237,7 @@ class BrowserGymBridgeAdapter:
                 max_steps=plan.max_steps,
                 screenshot_dir=screenshot_dir,
                 run_id=plan.run_id,
+                toolset=toolset,
                 log_action=log_action,
             )
 

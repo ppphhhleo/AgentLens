@@ -19,6 +19,7 @@ ComputerActionType = Literal[
     "back",
     "forward",
     "reload",
+    "web_search",
     "final_answer",
 ]
 
@@ -63,6 +64,7 @@ class ComputerAction(BaseModel):
     answer: str | None = None
     ms: int | None = None
     url: str | None = None
+    query: str | None = None
 
     @field_validator("path", mode="before")
     @classmethod
@@ -88,6 +90,8 @@ class ComputerAction(BaseModel):
             raise ValueError("action 'final_answer' requires answer")
         if self.type == "goto" and not self.url:
             raise ValueError("action 'goto' requires url")
+        if self.type == "web_search" and not self.query:
+            raise ValueError("action 'web_search' requires query")
         return self
 
     @classmethod

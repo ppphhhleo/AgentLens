@@ -15,6 +15,7 @@ from agentlens.harnesses.browser_actions import (
     format_action,
 )
 from agentlens.harnesses.screenshot_react_loop import run_screenshot_react_loop
+from agentlens.harnesses.tool_gating import ToolSet, tool_name_for
 from agentlens.models.base import build_model
 from agentlens.schemas import (
     ExperimentConfig,
@@ -179,10 +180,11 @@ class ScreenshotReactAdapter:
             page.goto(plan.task.start_url or "about:blank", wait_until="domcontentloaded")
             page.wait_for_timeout(int(plan.tool_harness.extra.get("settle_ms", 1500)))
 
+            toolset = ToolSet.from_harness(plan.tool_harness)
             if _is_mock_model(plan.model):
-                answer, events = self._run_mock(plan, page, screenshot_dir, log_action)
+                answer, events = self._run_mock(plan, page, screenshot_dir, log_action, toolset)
             else:
-                model = build_model(plan.model)
+                model = build_model(plan.model, toolset=toolset)
                 answer, events = run_screenshot_react_loop(
                     page=page,
                     model=model,
@@ -190,6 +192,7 @@ class ScreenshotReactAdapter:
                     max_steps=plan.max_steps,
                     screenshot_dir=screenshot_dir,
                     run_id=plan.run_id,
+                    toolset=toolset,
                     log_action=log_action,
                 )
 
@@ -301,6 +304,7 @@ class ScreenshotReactAdapter:
         page,
         screenshot_dir: Path,
         log_action: Callable[[str], None] | None,
+        toolset: ToolSet,
     ) -> tuple[str | None, list[TrajectoryEvent]]:
         events: list[TrajectoryEvent] = []
         answer: str | None = None
@@ -325,10 +329,27 @@ class ScreenshotReactAdapter:
                     data={
                         "thought": thought,
                         "action": action.model_dump(mode="json"),
+                        "tool_name": tool_name_for(action),
                         "mock": True,
                     },
                 )
             )
+
+            allowed, gating_msg = toolset.gate_action(action)
+            if not allowed:
+                self._log(log_action, f"[{plan.run_id} step={step_index}] gating: {gating_msg}")
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.GATING_VIOLATION,
+                        step_index=step_index,
+                        data={
+                            "action": action.model_dump(mode="json"),
+                            "tool_name": tool_name_for(action),
+                            "message": gating_msg,
+                        },
+                    )
+                )
+                continue
 
             if action.type == "final_answer":
                 answer = action.answer
