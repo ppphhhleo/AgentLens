@@ -84,36 +84,70 @@ class AIOSandboxSession:
         container_name: str | None = None,
         env: dict[str, str] | None = None,
         autopull: bool = True,
+        reuse_existing: bool = False,
+        keep_open_seconds: int = 0,
     ) -> None:
         self.image = image
         self.host_port = host_port
         self.container_name = container_name or f"agentlens-sandbox-{int(time.time() * 1000)}"
         self.env = env or {}
         self.autopull = autopull
+        # If an AIO Sandbox is already healthy at host_port, attach to it
+        # instead of starting our own container. Useful when the user has
+        # a long-lived sandbox open for VNC inspection.
+        self.reuse_existing = reuse_existing
+        # If > 0, sleep this many seconds after the run completes BEFORE
+        # docker-stop, so the user has time to open
+        # http://localhost:<port>/vnc/index.html and inspect final state.
+        self.keep_open_seconds = keep_open_seconds
         self.base_url = f"http://localhost:{host_port}"
         self.client = None  # agent_sandbox.Sandbox; lazily set in __enter__
         self.cdp_url: str | None = None
         self.home_dir: str | None = None
         self._started = False
+        self._we_started_it = False  # only stop containers we ourselves spawned
 
     # ---- lifecycle ----------------------------------------------------
 
     def __enter__(self) -> AIOSandboxSession:
-        if self.autopull:
-            ensure_image(self.image)
-        self._docker_run()
+        if self.reuse_existing and self._is_healthy_now():
+            # Attach to whatever's already running; don't pull/run our own.
+            self._we_started_it = False
+        else:
+            if self.autopull:
+                ensure_image(self.image)
+            self._docker_run()
+            self._we_started_it = True
         try:
             self._wait_until_healthy()
             self._open_client()
         except Exception:
-            self._docker_stop()
+            if self._we_started_it:
+                self._docker_stop()
             raise
         self._started = True
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        if self._started:
+        if not self._started:
+            return
+        if self.keep_open_seconds > 0 and self._we_started_it:
+            logger.info(
+                "AIO Sandbox %s keeping open for %ds before stop "
+                "(open http://localhost:%d/vnc/index.html?autoconnect=true to inspect)",
+                self.container_name, self.keep_open_seconds, self.host_port,
+            )
+            time.sleep(self.keep_open_seconds)
+        if self._we_started_it:
             self._docker_stop()
+
+    def _is_healthy_now(self) -> bool:
+        url = f"{self.base_url}/v1/sandbox"
+        try:
+            with urllib.request.urlopen(url, timeout=2) as resp:
+                return 200 <= resp.status < 400
+        except Exception:  # noqa: BLE001
+            return False
 
     def _docker_run(self) -> None:
         cmd = [

@@ -215,6 +215,12 @@ class ScreenshotReactAdapter:
                     "sandbox_image", "ghcr.io/agent-infra/sandbox:latest"
                 ),
                 host_port=int(plan.tool_harness.extra.get("sandbox_port", 8080)),
+                reuse_existing=bool(
+                    plan.tool_harness.extra.get("reuse_existing_sandbox", False)
+                ),
+                keep_open_seconds=int(
+                    plan.tool_harness.extra.get("keep_sandbox_open_seconds", 0)
+                ),
             )
             sandbox = sandbox_cm.__enter__()
             self._log(
