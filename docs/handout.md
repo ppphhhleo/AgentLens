@@ -27,6 +27,7 @@ The project's central thesis (`docs/general-idea.md`): **agents are opportunisti
 | **All benchmarks** + per-benchmark eval-confirmation conventions + cross-cutting pending work | `docs/benchmarks.md` |
 | **Multi-tool + sandboxed sessions plan** — Cuts 1/2/3, agent ↔ human access modes, MemoryScope policy | `docs/multi-tool-and-sessions.md` |
 | **Action schema reference** | `docs/screenshot-react-tools.md` |
+| **Trajectory data + reports + viewer** — on-disk layout, `trajectory.json` event schema, viewer/report walkthrough | `docs/trajectory-and-visualization.md` |
 | **This file** — quickstart, current state snapshot, pending todo | `docs/handout.md` |
 
 ## Core comparison axes
@@ -399,6 +400,19 @@ Different benchmarks have different "stop-and-deliver" conventions. We encode th
 | `chat_message` | append hint | build `[{role:assistant, message:answer}]` for `task.validate(page, msgs)` |
 
 See `docs/benchmarks.md` "Eval confirmation conventions" for the full per-benchmark map.
+
+## Trajectory data + visualization
+
+Full reference: **`docs/trajectory-and-visualization.md`** (on-disk layout, `trajectory.json` event schema, summary CSV columns, the viewer/report walkthrough, analysis patterns, viewer-extension guide).
+
+In brief:
+
+- Every CLI invocation snapshots to `agentlens_results/<experiment>/<UTC_ts>/` — never overwrites
+- `trajectory.json` is an ordered list of `TrajectoryEvent`s with seven event types: `MODEL_MESSAGE`, `BROWSER_ACTION`, `TOOL_CALL`, `SCREENSHOT`, `USER_INTERVENTION`, `SESSION_BOUNDARY`, `GATING_VIOLATION` — same shape across every adapter
+- Two static HTML surfaces, both self-contained (`scp`-able): `report.html` (per-experiment table) and `trajectory_viewer.html` (per-run timeline)
+- Live VNC at `http://localhost:8080/vnc/...` for sandbox runs; `trace.zip` + `video/*.webm` for local-browser runs
+- No dedicated analysis library — analysis is pandas-on-`summary.csv` today
+- Viewer doesn't yet render `USER_INTERVENTION` / `SESSION_BOUNDARY` / `GATING_VIOLATION` distinctly — see the "Trajectory viewer expansion" todo
 
 ## Known limitations (won't-fix-quickly; don't chase)
 
