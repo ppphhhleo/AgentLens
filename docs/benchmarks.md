@@ -19,7 +19,7 @@ Outputs always land under `agentlens_results/<experiment_id>/<UTC_timestamp>/...
 | **WebArena / VisualWebArena** | Self-hosted Magento, Reddit, GitLab, OSM, Wikipedia | ❌ self-hosted | `task.validate(page, [])` (programmatic) | Docker, ~130 GB | not wired |
 | **BrowseComp** | OpenAI's hard browsing QA | ✅ live | LLM-judge | `git clone` openai/simple-evals | not wired |
 | **Mind2Web-Live / WebCanvas** | Same task pool re-curated for live sites | ✅ live | Key-node JS event listeners (partial credit) | clone WebCanvas repo | not wired |
-| **CocoaBench** | Long-horizon multi-tool tasks (browser + shell + files + code) | varies — Docker-per-task | programmatic `test.py` per task | Docker + Docker Compose; uses AIO Sandbox | not wired |
+| **CocoaBench** | Long-horizon multi-tool tasks (browser + shell + files + code) | varies — Docker-per-task | programmatic `test.py` per task | Docker + Docker Compose; uses AIO Sandbox | shipped (smoke runs end-to-end; long-horizon failures known) |
 
 ---
 
@@ -208,19 +208,32 @@ When wiring, pattern would be:
 
 ---
 
-## CocoaBench / cocoa-agent (not wired yet)
+## CocoaBench / cocoa-agent
 
 Long-horizon multi-tool benchmark — each task gets browser + shell + filesystem + code interpreter via [AIO Sandbox](https://github.com/agent-infra/sandbox).
 
 **Distinguishing features:**
-- Each task is its own Docker container with `task.yaml` + `test.py`.
+- Each task is its own Docker container with `task.yaml` + `test.py` (the task's Dockerfile is `FROM ghcr.io/agent-infra/sandbox:latest`, so the same plumbing as our other sandbox runs).
 - Up to 30 iterations per task (long for agent benchmarks).
 - Real long-horizon tasks: `tableau-profit-margin-analysis`, `google-trends-ai-models`, `manhattan-trip-planner`, `us-federal-tax-calculation`, `eight-puzzle-game`.
-- **Evaluation: programmatic `test(result)` per task** — no LLM judge needed.
+- **Evaluation: programmatic `test(result)` per task** — no LLM judge needed. Uses `wrap_xml_answer` eval-confirmation protocol (`<answer>...</answer>`), declared per-task via `task.extra.answer_format`.
 
-**Setup cost:** Docker + Docker Compose; per-task containers spin up via `docker compose up`. Lighter than WebArena (no central 130 GB image stack) but heavier than Online-Mind2Web (which is just URL+goal).
+**One-time setup:**
+```bash
+mkdir -p ~/.cache/agentlens && cd ~/.cache/agentlens
+git clone https://github.com/cocoabench/cocoa-agent.git
+docker pull ghcr.io/agent-infra/sandbox:latest
+```
+Point task entries at `~/.cache/agentlens/cocoa-agent/cocoabench-example-tasks/<name>/`.
 
-**Where it fits:** would be the first benchmark exercising our `browser_files` / `full_sandbox` `ToolHarnessTier` (currently only `browser_only` is real). New adapter `src/agentlens/adapters/cocoabench.py`.
+**How to run:**
+```bash
+.venv/bin/agentlens run configs/experiments/cocoabench_smoke.yaml --execute
+```
+
+**Adapter:** `src/agentlens/adapters/cocoabench.py`. Was the first benchmark exercising `browser_files` / `full_sandbox` `ToolHarnessTier`; `screenshot_react` now also accepts those tiers.
+
+**Latest result:** `eight_puzzle_game` smoke — 0.00 (test.py rejected). Infrastructure works end-to-end (container spun, agent emitted `shell` / `run_python` / `read_file`); agent exhausted 30 steps reverse-engineering the puzzle JS rather than solving the UI. Honest failure, not a harness bug.
 
 ---
 
@@ -333,6 +346,10 @@ These are NOT benchmark-specific — they're harness improvements that lift qual
 - **Determinism options** — temperature=0 is set; could also pass `seed=` to OpenAI Responses API. Worth verifying determinism end-to-end.
 - **Trajectory replay** — load saved `trajectory.json` and re-execute the recorded action sequence on a fresh browser. Designed but not yet built (~1 hour after a real-trajectory baseline exists).
 
+### Perception / addressing modes (cross-cutting)
+
+Any benchmark using the `screenshot_react` runner can swap perception (`input_modes`) and addressing (`addressing_modes`) independently of the benchmark itself — the validator is unchanged. Modes are: `screenshot`, `axtree`, `set_of_marks` (or combinations) for perception; `coordinate`, `bid`, `selector`, `mark` for addressing. Smoke matrix in `configs/experiments/perception_modes_smoke.yaml`. Currently `browsergym_bridge` and `cocoabench` adapters do NOT yet honor these flags — pending wiring.
+
 ### Project thesis (G1, big lifts — defer)
 
 - **Human runner** (G1) — same task pool, human via noVNC, identical capture, identical WebJudge. Multi-week infra.
@@ -340,11 +357,12 @@ These are NOT benchmark-specific — they're harness improvements that lift qual
 
 ---
 
-## Important: agent ≠ judge
+## Important: agent ≠ judge ≠ user
 
-Two distinct LLM call sites in the pipeline:
+Three distinct LLM call sites in the pipeline:
 
-1. **Agent** — picks the next action each step (in `src/agentlens/models/openai_vision.py`). Configured per-run via `model: <id>` in YAML.
-2. **Judge** — runs ONCE at the end, scores the trajectory (in `src/agentlens/validators/webjudge.py`). Configured per-task via `extra.judge_model` (or `--judge` flag in `import-online-mind2web`).
+1. **Agent** — picks the next action each step (`src/agentlens/models/openai_vision.py`). Configured per-run via `model: <id>` in YAML.
+2. **Judge** — scores the trajectory (`src/agentlens/validators/webjudge.py`). Configured per-task via `extra.judge_model` (or `--judge` flag in `import-online-mind2web`).
+3. **User** — runs the user actor (`src/agentlens/actors/{simulated_judge,dialogue_user}.py`). Configured per `UserHarnessConfig.model`. Modes: `none` / `simulated_final_judge` / `simulated_dialogue` / future `human_cli` / `human_vnc`.
 
-These are independent code paths. The judge model never influences what the agent does. The two can be the same model (cheap) or different (less self-preference bias).
+These are independent code paths. The same model can serve all three (cheap iteration); for paper-grade comparisons, use different models for at least 2 of 3 to avoid self-preference bias.

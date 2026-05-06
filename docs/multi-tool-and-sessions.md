@@ -1,6 +1,6 @@
 # Multi-Tool Agent + Sandboxed Sessions — Plan
 
-Status: planning. Implementation has not started.
+**Status (2026-05):** Cut 1 ✅ shipped — multi-tool actions (`run_python`, `shell`, `read_file`, `write_file`) inside AIO Sandbox containers. Cut 2 ✅ shipped — `MemoryScope`-aware sessions (`cross_task_same_site`, `cross_benchmark`), `SESSION_BOUNDARY` events, `reuse_existing_sandbox` + `keep_sandbox_open_seconds` flags for live VNC inspection. Cut 3 ⏳ not started — `--parallel N` CLI flag with one container per worker. The rest of this doc is the original plan, kept for context; implementation details for Cuts 1+2 are in `src/agentlens/sandbox/aio_sandbox.py`, `harnesses/screenshot_react_loop.py`, and `adapters/screenshot_react.py`.
 
 ## Goals
 
