@@ -2,11 +2,10 @@
 name = "agentlens"
 version = "0.1.0"
 description = "MVP for evaluating browser agent harnesses and trajectories."
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.11,<3.15"
 dependencies = [
     "agent-sandbox>=0.0.30",
-    "agentlab>=0.4.2",
-    "browsergym>=0.14.3",
+    "agentlab>=0.4.0",
     "openai>=1.50",
     "pandas>=2.2",
     "pydantic>=2.7",

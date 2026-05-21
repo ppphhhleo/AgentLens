@@ -4,10 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-import gymnasium as gym
 from pydantic import BaseModel, Field
-
-import browsergym.core  # noqa: F401 - registers browsergym/openended
 from agentlens.evals.aggregate import aggregate_results
 from agentlens.evals.base import ExperimentResult, SingleRunResult
 from agentlens.schemas import (
@@ -197,6 +194,8 @@ class BrowserGymDirectAdapter:
         )
 
     def _make_env(self, plan: BrowserGymDirectRunPlan):
+        import gymnasium as gym
+        import browsergym.core  # noqa: F401 - registers browsergym/openended
         task_kwargs = dict(plan.task.extra.get("task_kwargs", {}))
         if plan.task.start_url:
             task_kwargs.setdefault("start_url", plan.task.start_url)
