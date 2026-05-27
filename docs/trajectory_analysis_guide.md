@@ -188,6 +188,169 @@ showing the full multi-turn negotiation.
 
 ---
 
+### 2c. Real Human Interaction via VNC (human-run)
+
+A **real human** controls the browser directly via noVNC and their
+actions (clicks, scrolls, keystrokes, navigation) are recorded as
+`browser_action` events in the same `trajectory.json` format as agent runs.
+
+This enables direct comparison of human vs agent browsing strategies.
+
+**Prerequisites** (one-time setup on EC2):
+```bash
+# Start virtual display (if not already running)
+Xvfb :99 -screen 0 1920x1080x24 &
+
+# Start VNC server
+x11vnc -display :99 -nopw -forever -rfbport 5900 -bg
+
+# Start noVNC (browser-based VNC viewer)
+websockify --web /usr/share/novnc 6080 localhost:5900 --daemon
+```
+
+**SSH tunnel on your local machine** (required for remote EC2):
+```bash
+# Open a new terminal on your Mac/PC and run:
+ssh -N -L 6080:localhost:6080 -L 8888:localhost:8888 agentlens
+# Leave this running — it forwards ports from your laptop to EC2
+```
+
+**Run a single human task**:
+```bash
+# On EC2:
+PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 \
+DISPLAY=:99 \
+  .venv/bin/agentlens human-run \
+    configs/experiments/domsteer_screenshot_react.yaml \
+    --task-id tf_discretize_toggle \
+    --timeout 600
+```
+
+**Human workflow**:
+1. Open `http://localhost:6080/vnc.html` in your local browser
+2. Click "Connect" in the noVNC interface
+3. You'll see the Chromium browser with the task page loaded
+4. A floating "🔍 AgentLens — Human Session" overlay appears in the bottom-right
+5. Complete the task by interacting with the page (click, scroll, type)
+6. Type your answer in the overlay text area
+7. Click **"✅ Submit Answer & Finish"**
+8. The session ends and trajectory.json is saved
+
+**Available task IDs** (from `domsteer_screenshot_react.yaml`):
+
+| Task ID | Goal | Website |
+|---------|------|---------|
+| `tf_discretize_toggle` | Find & click the "Discretize output" toggle | TF Playground |
+| `datavoyager_most_fuel_efficient` | Find the most fuel-efficient car | DataVoyager |
+| `datavoyager_europe_100hp_4cyl_count` | Count Europe cars with HP<100 & 4 cylinders | DataVoyager |
+| `datavoyager_horsepower_range_by_origin` | Find origin with widest HP range | DataVoyager |
+| `datavoyager_8_cylinder_characteristics` | Describe 8-cylinder car characteristics | DataVoyager |
+| `tf_wrongly_classified_point` | Find a wrongly classified data point | TF Playground |
+| `tf_general_regression_network` | Design a generalizable regression network | TF Playground |
+| `tf_general_classification_network` | Design a generalizable classification network | TF Playground |
+
+**What appears in trajectory.json**: `browser_action` events with
+`"source": "human"` that record every human interaction:
+```json
+{
+  "event_type": "browser_action",
+  "data": {
+    "source": "human",
+    "action": { "type": "click", "x": 1267, "y": 468, "button": "left" },
+    "timestamp": "2026-05-21T14:20:00.123Z",
+    "elapsed_ms": 15234,
+    "target": { "tag": "INPUT", "id": "discretize", "text": "Discretize" }
+  }
+}
+```
+
+---
+
+### 2d. Web-Based Study Platform (shareable link for participants)
+
+For running user studies with **multiple remote participants** who don't
+need SSH access or any technical setup. The study server acts as a full
+reverse proxy — it fetches target websites and serves them through our
+server with an injected event recorder. Participants just open a URL.
+
+#### Starting the Server
+
+The study server runs as a **persistent systemd service** on EC2 — it
+auto-restarts on crash and survives SSH disconnects and reboots.
+
+```bash
+# Manage the service
+sudo systemctl start agentlens-study     # Start
+sudo systemctl stop agentlens-study      # Stop
+sudo systemctl restart agentlens-study   # Restart (e.g., after code changes)
+sudo systemctl status agentlens-study    # Check status
+
+# View live logs
+sudo journalctl -u agentlens-study -f
+
+# Manual start (development/testing only)
+.venv/bin/python human_study/server.py --host 0.0.0.0 --port 8080
+```
+
+#### Sharing with Participants
+
+```
+http://<your-ec2-public-ip>:8080/
+```
+
+> **Note**: Make sure EC2 security group allows inbound TCP on port 8080.
+
+#### Participant Workflow
+
+1. Open the study URL in their browser
+2. Enter their **UMN x500 ID** (e.g., `selva053`)
+3. Click a task card to begin
+4. The target website loads with a floating AgentLens overlay
+5. Complete the task normally (click, scroll, type)
+6. Type their answer in the overlay
+7. Click **"✅ Submit Answer & Finish"**
+
+#### Results Structure
+
+Results are organized by participant UMN x500 ID for easy data gathering:
+
+```
+human_study/results/
+├── selva053/
+│   ├── tf_discretize_toggle_a9d1c382.json
+│   └── datavoyager_europe_100hp_4cyl_count_1fbd48cb.json
+└── haop001/
+    └── datavoyager_most_fuel_efficient_24b88c2f.json
+```
+
+Each trajectory JSON contains:
+```json
+{
+  "trajectory_id": "a9d1c382",
+  "task_id": "tf_discretize_toggle",
+  "participant_id": "selva053",
+  "answer": "The output became pixelated/discretized",
+  "events": [
+    {"type": "click", "x": 400, "y": 300, "elapsed_ms": 5234},
+    {"type": "scroll", "scroll_y": 300, "elapsed_ms": 8120},
+    {"type": "final_answer", "answer": "...", "elapsed_ms": 15000}
+  ],
+  "metrics": {"duration_ms": 15234, "steps": 6}
+}
+```
+
+#### Admin & Testing
+
+- **Admin dashboard**: `http://<host>:8080/admin/results` — view all
+  submitted sessions at a glance.
+- **Run simulation test** (verifies end-to-end flow with mock participants):
+  ```bash
+  PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 \
+    .venv/bin/python human_study/test_study.py
+  ```
+
+---
+
 ## 3 — Running on EC2 / Remote Servers
 
 ### 3a. Headless Mode (default — recommended for EC2)
@@ -210,26 +373,46 @@ from your local machine, you need a virtual display + VNC server.
 
 **Step 1 — Install display packages (one-time)**:
 ```bash
-sudo apt-get install -y xvfb x11vnc
+sudo apt-get install -y xvfb x11vnc novnc websockify
 ```
 
-**Step 2 — Start virtual display + VNC on EC2**:
+**Step 2 — Start virtual display + VNC + noVNC on EC2**:
 ```bash
 # Start a virtual framebuffer on display :99
 Xvfb :99 -screen 0 1920x1080x24 &
 
 # Start VNC server exposing that display (no password, port 5900)
-x11vnc -display :99 -nopw -forever -rfbport 5900 &
+x11vnc -display :99 -nopw -forever -rfbport 5900 -bg
+
+# Start noVNC (browser-based VNC viewer on port 6080)
+websockify --web /usr/share/novnc 6080 localhost:5900 --daemon
+
+# Start HTTP file server for results (port 8888)
+cd /home/ubuntu/AgentLens && nohup python3 -m http.server 8888 &
 ```
 
 **Step 3 — Create an SSH tunnel from your laptop**:
 ```bash
-# Run this on YOUR LOCAL MACHINE (not EC2)
-ssh -L 5900:localhost:5900 ubuntu@<your-ec2-public-ip>
+# Run this on YOUR LOCAL MACHINE (not EC2) in a dedicated terminal.
+# This command will appear to hang — that's normal. Leave it running.
+ssh -N \
+  -L 5900:localhost:5900 \
+  -L 6080:localhost:6080 \
+  -L 8888:localhost:8888 \
+  agentlens
 ```
 
-**Step 4 — Connect a VNC viewer on your laptop** to `localhost:5900`.
-Use any VNC client (RealVNC Viewer, TigerVNC, macOS Screen Sharing, etc.).
+> **Note**: VS Code Remote SSH does NOT forward these ports for you.
+> You must open a separate terminal on your Mac/PC and run the SSH
+> tunnel command above.
+
+**Step 4 — Connect to the browser view**:
+
+| Method | URL / Address | Best for |
+|--------|---------------|----------|
+| **noVNC** (browser) | `http://localhost:6080/vnc.html` | ✅ Easiest — works in Safari/Chrome |
+| macOS Screen Sharing | `vnc://localhost:5900` (Finder → Go → Connect to Server) | Native VNC |
+| Trajectory Viewer | `http://localhost:8888/agentlens_results/...` | Reviewing past runs |
 
 **Step 5 — Run AgentLens with `--live`**:
 ```bash
@@ -239,12 +422,16 @@ DISPLAY=:99 \
     --execute --live --log-actions
 ```
 
-The Chromium browser will appear in your VNC viewer, and you can watch
-the agent scroll, click, and type in real-time.
+The Chromium browser will appear in your VNC/noVNC viewer, and you can
+watch the agent scroll, click, and type in real-time.
 
 > **Important**: The `--live` flag will fail without a display server.
 > If you see `Missing X server or $DISPLAY`, ensure Xvfb is running and
 > the `DISPLAY=:99` env var is set.
+> 
+> **Note**: `--live` is for **watching** only — the agent still controls
+> the browser. For **real human interaction**, use `agentlens human-run`
+> (see §2c above).
 
 ### 3c. Headless vs. Live — Comparison
 

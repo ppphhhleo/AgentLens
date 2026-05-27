@@ -11,6 +11,7 @@ from agentlens.actors.base import (
     UserActor,
     build_user_actor,
 )
+from agentlens.actors.human_vnc import HumanVNCAgent
 from agentlens.actors.screenshot_react_agent import (
     MockAgent,
     ScreenshotReactAgent,
@@ -21,6 +22,7 @@ __all__ = [
     "AgentObservation",
     "AgentResponse",
     "AgentState",
+    "HumanVNCAgent",
     "MockAgent",
     "NoOpUser",
     "OpenAIConfigMixin",
