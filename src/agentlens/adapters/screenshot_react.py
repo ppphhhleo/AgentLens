@@ -156,13 +156,27 @@ class ScreenshotReactAdapter:
                 "sandbox_image", "ghcr.io/agent-infra/sandbox:latest"
             )
             sandbox_port = int(harness.extra.get("sandbox_port", 8080))
+            sandbox_cap_add = list(harness.extra.get("sandbox_cap_add", ["SYS_ADMIN"]))
+            sandbox_security_opt = list(
+                harness.extra.get("sandbox_security_opt", ["seccomp=unconfined"])
+            )
             self._log(
                 log_action,
                 f"[group{group_idx}] opening shared AIO Sandbox for "
                 f"{len(group)} plans (scope={harness and group[0].memory_harness.scope})",
             )
             with AIOSandboxSession(
-                image=sandbox_image, host_port=sandbox_port
+                image=sandbox_image,
+                host_port=sandbox_port,
+                shm_size=harness.extra.get("sandbox_shm_size", "2g"),
+                cap_add=sandbox_cap_add,
+                security_opt=sandbox_security_opt,
+                watch_paths=list(
+                    harness.extra.get(
+                        "sandbox_watch_paths",
+                        ["/home/gem", "/tmp", "/home/gem/Downloads"],
+                    )
+                ),
             ) as session:
                 for plan_idx, plan in enumerate(group):
                     result = self.run(
@@ -215,6 +229,21 @@ class ScreenshotReactAdapter:
                     "sandbox_image", "ghcr.io/agent-infra/sandbox:latest"
                 ),
                 host_port=int(plan.tool_harness.extra.get("sandbox_port", 8080)),
+                shm_size=plan.tool_harness.extra.get("sandbox_shm_size", "2g"),
+                cap_add=list(
+                    plan.tool_harness.extra.get("sandbox_cap_add", ["SYS_ADMIN"])
+                ),
+                security_opt=list(
+                    plan.tool_harness.extra.get(
+                        "sandbox_security_opt", ["seccomp=unconfined"]
+                    )
+                ),
+                watch_paths=list(
+                    plan.tool_harness.extra.get(
+                        "sandbox_watch_paths",
+                        ["/home/gem", "/tmp", "/home/gem/Downloads"],
+                    )
+                ),
                 reuse_existing=bool(
                     plan.tool_harness.extra.get("reuse_existing_sandbox", False)
                 ),
@@ -305,6 +334,8 @@ class ScreenshotReactAdapter:
                         mock_answer_fallback=fallback,
                         page=page,
                         toolset=toolset,
+                        sandbox=sandbox,
+                        intervention_config=plan.tool_harness.extra.get("intervention"),
                         log_action=log_action,
                     )
                 else:
@@ -335,6 +366,7 @@ class ScreenshotReactAdapter:
                         sandbox=sandbox,
                         max_steps=plan.max_steps,
                         input_modes=input_modes,
+                        intervention_config=plan.tool_harness.extra.get("intervention"),
                         log_action=log_action,
                     )
 
@@ -513,7 +545,11 @@ class ScreenshotReactAdapter:
                 steps=self._count_model_steps(events),
                 tokens_input=self._sum_tokens(events, "prompt_tokens"),
                 tokens_output=self._sum_tokens(events, "completion_tokens"),
-                tool_calls=self._count_browser_actions(events),
+                tool_calls=self._count_action_events(events),
+                extra={
+                    "browser_actions": self._count_browser_actions(events),
+                    "io_tool_calls": self._count_tool_calls(events),
+                },
             ),
             artifact_dir=artifact_dir,
         )
@@ -547,6 +583,12 @@ class ScreenshotReactAdapter:
 
     def _count_browser_actions(self, events: list[TrajectoryEvent]) -> int:
         return sum(event.event_type == TrajectoryEventType.BROWSER_ACTION for event in events)
+
+    def _count_tool_calls(self, events: list[TrajectoryEvent]) -> int:
+        return sum(event.event_type == TrajectoryEventType.TOOL_CALL for event in events)
+
+    def _count_action_events(self, events: list[TrajectoryEvent]) -> int:
+        return self._count_browser_actions(events) + self._count_tool_calls(events)
 
     def _sum_tokens(self, events: list[TrajectoryEvent], key: str) -> int | None:
         total = 0

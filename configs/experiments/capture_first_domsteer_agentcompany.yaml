@@ -1,0 +1,177 @@
+schema_version: "0.1"
+id: capture_first_domsteer_agentcompany
+description: >
+  Capture-first pilot for complex GUI/data-analysis trajectories.
+  Includes one DOMSteer visual-analytics task and one TheAgentCompany-style
+  workplace task that exercises browser + code/shell/file I/O telemetry.
+
+models:
+  - id: cheap_vision
+    provider: openai
+    name: gpt-5.4-nano
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+
+  - id: mock_screenshot_react
+    provider: local
+    name: mock_screenshot_react
+    temperature: 0.0
+    vision: true
+
+tool_harnesses:
+  - id: browser_capture
+    runner: screenshot_react
+    tier: browser_only
+    tools:
+      - browser.screenshot
+      - browser.click
+      - browser.double_click
+      - browser.type
+      - browser.scroll
+      - browser.wait
+      - browser.move
+      - browser.keypress
+      - browser.drag
+      - browser.goto
+      - browser.back
+      - browser.forward
+      - browser.reload
+      - task.final_answer
+    prompt_version: screenshot_react_json_v1
+    extra:
+      headless: true
+      settle_ms: 2000
+      slow_mo_ms: 350
+      viewport: {width: 1600, height: 900}
+      intervention:
+        enabled: true
+        repeated_action:
+          enabled: true
+          threshold: 5
+          mode: warn
+          signature: type
+          message: "You are repeating the same action. Pause, inspect the screen, and try a different strategy."
+
+  - id: virtual_computer_full_capture
+    runner: screenshot_react
+    tier: full_sandbox
+    tools:
+      - browser.screenshot
+      - browser.click
+      - browser.double_click
+      - browser.type
+      - browser.scroll
+      - browser.wait
+      - browser.move
+      - browser.keypress
+      - browser.drag
+      - browser.goto
+      - browser.back
+      - browser.forward
+      - browser.reload
+      - web.openai_search
+      - code.run_python
+      - code.shell
+      - files.read
+      - files.write
+      - task.final_answer
+    prompt_version: screenshot_react_json_v1
+    extra:
+      browser_source: aio_sandbox
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads]
+      headless: true
+      settle_ms: 1000
+      stealth: true
+      viewport: {width: 1600, height: 900}
+      intervention:
+        enabled: true
+        repeated_action:
+          enabled: true
+          threshold: 5
+          mode: warn
+          signature: type
+          message: "You are repeating the same action. Pause, inspect the screen, and try a different strategy."
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+tasks:
+  - id: domsteer_datavoyager_most_fuel_efficient
+    benchmark: domsteer
+    task_id: datavoyager.most_fuel_efficient
+    goal: What is the most fuel-efficient car in the dataset?
+    start_url: https://vega.github.io/voyager2/
+    capability_required: [browser_ui, visual_reasoning, data_analysis]
+    validator: final_answer
+    expected_answer: Mazda GLC
+    answer_validator: exact
+    extra:
+      task_family: visual_analytics
+      capture_priority: [screenshots, browser_actions, final_answer]
+
+  - id: the_agent_company_io_capture_smoke
+    benchmark: the_agent_company
+    task_id: tac.capture_smoke.io_artifact
+    goal: >
+      Complete the workplace-style data task by creating /tmp/agentlens_capture_smoke.csv,
+      using Python to compute its total revenue, writing a short report to
+      /tmp/agentlens_capture_report.txt, reading the report back, and answering
+      "revenue total 60". This smoke mirrors TheAgentCompany's browser+code+
+      file workflow shape while the full TAC task container is not mounted.
+    start_url: https://example.com/
+    capability_required: [browser_ui, code_execution, file_io, workplace_task]
+    validator: final_answer
+    expected_answer: revenue total 60
+    answer_validator: exact
+    extra:
+      source_benchmark: TheAgentCompany
+      source_url: https://github.com/TheAgentCompany/TheAgentCompany
+      task_family: workplace_data_analysis
+      mock_actions:
+        - type: write_file
+          file_path: /tmp/agentlens_capture_smoke.csv
+          content: "account,revenue\nalpha,10\nbeta,20\ngamma,30\n"
+        - type: run_python
+          code: |
+            import csv
+            rows = list(csv.DictReader(open('/tmp/agentlens_capture_smoke.csv')))
+            total = sum(int(r['revenue']) for r in rows)
+            open('/tmp/agentlens_capture_report.txt', 'w').write(f'revenue total {total}\n')
+            print(total)
+        - type: shell
+          cmd: "wc -l /tmp/agentlens_capture_smoke.csv && cat /tmp/agentlens_capture_report.txt"
+        - type: read_file
+          file_path: /tmp/agentlens_capture_report.txt
+        - type: final_answer
+          answer: revenue total 60
+
+runs:
+  - id: domsteer_datavoyager_capture_nano
+    model: cheap_vision
+    tool_harness: browser_capture
+    memory_harness: no_memory
+    task: domsteer_datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    max_steps: 15
+    output_dir: agentlens_results/capture_first_domsteer_agentcompany
+    tags: [capture_first, domsteer, visual_analytics, gpt54_nano]
+
+  - id: tac_io_capture_mock
+    model: mock_screenshot_react
+    tool_harness: virtual_computer_full_capture
+    memory_harness: no_memory
+    task: the_agent_company_io_capture_smoke
+    seeds: [0]
+    trials: 1
+    max_steps: 8
+    output_dir: agentlens_results/capture_first_domsteer_agentcompany
+    tags: [capture_first, the_agent_company, virtual_computer, mock]

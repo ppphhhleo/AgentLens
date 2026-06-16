@@ -68,6 +68,21 @@ OVERLAY_INIT_JS = """
       z-index: 2147483647;
       animation: agentlens-pulse 1.0s ease-out forwards;
     }
+    .agentlens-hint {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      max-width: min(420px, calc(100vw - 32px));
+      padding: 12px 14px;
+      background: rgba(20, 24, 31, 0.94);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+      font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      pointer-events: none;
+      z-index: 2147483647;
+    }
   `;
   document.head.appendChild(style);
   window.__agentlens_show = (x, y, color) => {
@@ -78,6 +93,15 @@ OVERLAY_INIT_JS = """
     if (color) m.style.borderColor = color;
     document.body.appendChild(m);
     setTimeout(() => m.remove(), 1000);
+  };
+  window.__agentlens_hint = (text, ms) => {
+    const old = document.querySelector('.agentlens-hint');
+    if (old) old.remove();
+    const h = document.createElement('div');
+    h.className = 'agentlens-hint';
+    h.textContent = String(text || '');
+    document.body.appendChild(h);
+    setTimeout(() => h.remove(), ms || 4500);
   };
 })();
 """
@@ -96,6 +120,19 @@ def show_marker(page, x: float | None, y: float | None, color: str = "#ff3b30") 
         page.evaluate(
             "([x, y, c]) => window.__agentlens_show && window.__agentlens_show(x, y, c)",
             [x, y, color],
+        )
+    except Exception:  # noqa: BLE001 - overlay is best-effort
+        pass
+
+
+def show_hint(page, text: str, *, ms: int = 4500) -> None:
+    """Display a transient AgentLens hint on the active page."""
+    if not text:
+        return
+    try:
+        page.evaluate(
+            "([text, ms]) => window.__agentlens_hint && window.__agentlens_hint(text, ms)",
+            [text, ms],
         )
     except Exception:  # noqa: BLE001 - overlay is best-effort
         pass

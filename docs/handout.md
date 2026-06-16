@@ -16,7 +16,7 @@ The project's central thesis (`docs/general-idea.md`): **agents are opportunisti
    - `src/agentlens/orchestrator/turns.py` — the pure message-passing layer between AgentActor and UserActor
    - `src/agentlens/adapters/screenshot_react.py` — wires Playwright + sandbox lifecycle around the loop
 3. **Run something** — `agentlens run configs/experiments/domsteer_screenshot_react.yaml --execute --live --log-actions` (needs `OPENAI_API_KEY`). Smoke configs in `configs/experiments/*_smoke.yaml`.
-4. **What changed recently** — D1+D2+D3 perception-modes refactor (commit `0634795`): AXTree extraction + bid/selector/mark addressing + Set-of-Marks. 5/5 modes verified on TF Playground (4/5 PASS). Smoke config: `configs/experiments/perception_modes_smoke.yaml`.
+4. **What changed recently** — capture-first virtual-computer support is now wired for AWS smoke runs: screenshots + browser actions + Python/shell/file I/O + artifact diffs. The current pilot config is `configs/experiments/capture_first_domsteer_agentcompany.yaml`; the deterministic intervention smoke is `configs/experiments/intervention_repeated_action_smoke.yaml`.
 5. **Where to extend** — the four pluggable axes are AgentActor, UserActor, perception modes, and addressing modes. The orchestrator is **not** pluggable — it's the contract.
 
 ## Where to find what
@@ -28,6 +28,8 @@ The project's central thesis (`docs/general-idea.md`): **agents are opportunisti
 | **Multi-tool + sandboxed sessions plan** — Cuts 1/2/3, agent ↔ human access modes, MemoryScope policy | `docs/multi-tool-and-sessions.md` |
 | **Action schema reference** | `docs/screenshot-react-tools.md` |
 | **Trajectory data + reports + viewer** — on-disk layout, `trajectory.json` event schema, viewer/report walkthrough | `docs/trajectory-and-visualization.md` |
+| **Capture-first virtual computer + intervention plan** — AWS setup notes, I/O capture, repeated-action intervention | `docs/capture-first-computer-use-and-intervention.md` |
+| **Trajectory processing v0** — raw actions → workflow steps → behavior labels | `docs/trajectory-processing-v0.md` |
 | **This file** — quickstart, current state snapshot, pending todo | `docs/handout.md` |
 
 ## Core comparison axes
@@ -91,6 +93,7 @@ agentlens run <config.yaml> --execute --log-actions
 agentlens run <config.yaml> --run-id <one_run> --execute --log-actions
 agentlens import-online-mind2web --limit 5 --output configs/...   # generate OM2W config from HF
 agentlens trajectory-viewer <summary.json>        # static HTML viewer
+agentlens process-trajectories agentlens_results --output-dir agentlens_results/trajectory_processing/local_v0
 ```
 
 Every CLI `run` invocation auto-snapshots its outputs to `agentlens_results/<experiment>/<UTC_timestamp>/...` so re-running never overwrites prior trajectories or reports.
@@ -156,8 +159,10 @@ harnesses/
   eval_protocol.py        Per-task output-format hints + answer reshape
                           (identity / wrap_xml_answer / chat_message)
   screenshot_react_loop.py
-                          The inner agent loop (unchanged across these refactors)
-  browser_actions.py      Playwright execution + screenshot capture helpers
+                          The inner agent loop; now includes sandbox I/O
+                          telemetry and optional step-level interventions
+  browser_actions.py      Playwright execution + screenshot/hint overlay helpers
+  interventions.py        Rule monitors; currently repeated-action warning
 
 models/
   base.py                 ChatModel protocol, build_model()
@@ -165,7 +170,8 @@ models/
 
 sandbox/
   aio_sandbox.py          AIO Sandbox container lifecycle
-                          + reuse_existing_sandbox + keep_open_seconds flags
+                          + AWS Docker runtime flags, reuse_existing_sandbox,
+                          keep_open_seconds, code/shell/file fallbacks
 
 tools/
   openai_search.py        Native OpenAI web_search via Responses API
@@ -183,6 +189,12 @@ validators/
 reports/
   writers.py              summary.json/csv/raw + report.html
   trajectory_viewer.py    Static-HTML per-run viewer
+
+analysis/
+  trajectory_processing.py
+                          Deterministic offline processor:
+                          trajectory.json -> workflow_steps.jsonl,
+                          trajectory_summaries.csv/jsonl, behavior codebook
 ```
 
 The agent's **inner loop** in `screenshot_react_loop.py` has remained stable through every refactor — gating, eval-protocol, orchestrator, AgentActor were all added *around* it without changing it.
@@ -197,6 +209,7 @@ The agent's **inner loop** in `screenshot_react_loop.py` has remained stable thr
 | **Online-Mind2Web** | `screenshot_react` + `import-online-mind2web` CLI | WebJudge LLM-as-judge (single-stage MVP) | ✅ wired (mean 0.34 on 5-task slice) | `online_mind2web_screenshot_react.yaml`, `online_mind2web_session.yaml` |
 | **CocoaBench** | `cocoabench` (per-task AIO Sandbox image) | `cocoa.test.py` (XML-wrapped answer) | ✅ wired; long-horizon failure cases known | `cocoabench_smoke.yaml` |
 | **DOMSteer-via-sandbox** (DOMSteer tasks executed inside AIO Sandbox) | `screenshot_react` + `browser_source: aio_sandbox` | same as DOMSteer | ✅ wired | `domsteer_sandbox.yaml`, `online_mind2web_multitool.yaml` |
+| **Capture-first pilot** (DOMSteer + AgentCompany-style I/O smoke) | `screenshot_react` local/AIO Sandbox | final answer + artifact diffs | ✅ wired; AWS smoke verified | `capture_first_domsteer_agentcompany.yaml` |
 | WorkArena, BrowseComp, WebCanvas, full WebArena, VisualWebArena | — | — | ⏳ planned | — |
 
 Per-benchmark eval-confirmation conventions (identity / wrap_xml_answer / chat_message) live in `docs/benchmarks.md`.
@@ -227,6 +240,13 @@ Pluggable on three axes — agent style, user style, perception/addressing — b
 | `HumanCLIUser` | `human_cli` — accept/reject/feedback over stdin | ⏳ |
 | `HumanVNCUser` | `human_vnc` — submit overlay on noVNC stream (G1) | ⏳ |
 | Checkpoint user | mid-stream observe every N steps | ⏳ |
+
+**Step-level intervention monitor** (`harnesses/interventions.py`): separate from `UserActor`.
+It runs inside the agent action loop, before execution, and can record warnings
+or future blocks. Current implementation is warning-only repeated-action
+detection. This is deliberately distinct from `SimulatedDialogueUser`: the
+simulated user is a turn-level collaborator/judge; the intervention monitor is
+a step-level detector/coach.
 
 **Orchestrator** (`orchestrator/turns.py`): `TurnBasedOrchestrator` is the protocol layer — pure message-passing between AgentActor and UserActor, emits `SESSION_BOUNDARY` events, terminates on accept / reject / no-intervention / max_turns. **Not pluggable** — it's the contract, not a strategy.
 
@@ -285,7 +305,9 @@ The `tools` allowlist further narrows the tier (e.g. tier `full_sandbox` with `t
   - **Perception**: `input_modes`, `addressing_modes`
   - **Browser source**: `browser_source: local | aio_sandbox`, `headless`, `slow_mo_ms`, `settle_ms`, `viewport`, `stealth`
   - **Sandbox**: `sandbox_image`, `sandbox_port`, `reuse_existing_sandbox`, `keep_sandbox_open_seconds`
+  - **AWS sandbox runtime**: `sandbox_shm_size`, `sandbox_cap_add`, `sandbox_security_opt`, `sandbox_watch_paths`
   - **Recording**: `tracing`, `record_video`
+  - **Intervention**: `intervention.enabled`, `intervention.repeated_action.threshold`, `mode`, `signature`, `message`
 
 **UserHarnessConfig**: `mode`, `model`, `tools` (allowlisted UserActions), `persona`, `intervention_policy`, `combine_with_validator` (`annotate_only` | `and` | `override`), `max_turns`, `extra`.
 
@@ -303,6 +325,8 @@ The `tools` allowlist further narrows the tier (e.g. tier `full_sandbox` with `t
 | Per-step `tool_name` telemetry in trajectory | ✅ |
 | Native OpenAI `web_search` (Responses API, same backend as GPT Atlas) | ✅ |
 | Multi-tool actions in sandbox: `run_python`, `shell`, `read_file`, `write_file` | ✅ |
+| Artifact diffs around sandbox tool calls (`created`, `modified`, `deleted`) | ✅ |
+| AWS EC2 AIO Sandbox launch with Chrome CDP (`--shm-size=2g`, `SYS_ADMIN`, unconfined seccomp) | ✅ |
 | `MemoryScope`-aware sessions: shared container across tasks (`cross_task_same_site`, `cross_benchmark`) | ✅ |
 | `SESSION_BOUNDARY` events recording turn / position metadata | ✅ |
 | **Single-turn user**: `SimulatedFinalJudge` LLM-as-reviewer with `accept` / `reject` / `annotate_only` policies | ✅ |
@@ -319,8 +343,10 @@ The `tools` allowlist further narrows the tier (e.g. tier `full_sandbox` with `t
 | `GATING_VIOLATION` events when agent emits disallowed action | ✅ |
 | Static `trajectory_viewer.html` per experiment (limited; full Gradio viewer pending) | ✅ |
 | Sandbox **`reuse_existing_sandbox: true`** + **`keep_sandbox_open_seconds: N`** flags for live VNC inspection | ✅ |
+| Warning-only repeated-action intervention with page text hint + `USER_INTERVENTION` event | ✅ |
+| Offline trajectory processing: raw events → workflow steps → behavior labels/summaries | ✅ |
 
-## Verified results (real OpenAI calls, gpt-5.4)
+## Verified results
 
 | Run | Score | Notes |
 |---|---|---|
@@ -333,6 +359,10 @@ The `tools` allowlist further narrows the tier (e.g. tier `full_sandbox` with `t
 | **DOMSteer `tf_discretize_toggle_judged` (single-turn final-judge user)** | depends on policy | judge verdict recorded; with `combine_with_validator: and` + force-reject persona, the validator's True flips to False and message annotated |
 | **DOMSteer `tf_discretize_dialogue` (multi-turn dialogue user)** | 1.00 | turn 1: agent answers without URL hash → user `send_message` requesting it → turn 2: agent updates → user `accept`. 2/3 turns used. |
 | CocoaBench `eight_puzzle_game` smoke (multi-tool) | 0.00 (test.py rejected) | infrastructure works end-to-end (container spun, agent used `shell`/`run_python`/`read_file`); agent exhausted 30 steps reverse-engineering the puzzle JS rather than solving the UI. Honest failure, not a harness bug. |
+| AWS `tac_io_capture_mock` | 1.00 | AIO Sandbox started on EC2, captured screenshot + `write_file`/`run_python`/`shell`/`read_file`, and recorded artifact diffs for `/tmp/agentlens_capture_smoke.csv` and `/tmp/agentlens_capture_report.txt`. |
+| AWS DOMSteer DataVoyager with `gpt-4o-mini-2024-07-18` before intervention | 0.00 | Capture worked; model repeated drag actions for 11 steps, then hit a short TPM rate limit. Useful initial repeated-action challenge case. Config now uses `gpt-5.4-nano`. |
+| Local `intervention_repeated_action_smoke` | 1.00 | Three repeated mock drags triggered exactly one warning-only `USER_INTERVENTION` event. |
+| Local `process-trajectories agentlens_results` | 41 trajectories processed | Produced `workflow_steps.jsonl`, `trajectory_summaries.jsonl`, `trajectory_summaries.csv`, and `behavior_codebook.json` under `agentlens_results/trajectory_processing/local_v0`. |
 
 The DataVoyager flip (FAIL → PASS via `run_python`) and the dialogue retry (turn 1 wrong answer → user feedback → turn 2 correct) are the headline cases — concrete evidence the framework can capture trajectory-shape changes that the project's thesis is about.
 

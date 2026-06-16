@@ -19,8 +19,16 @@ from agentlens.harnesses.browser_actions import (
     capture_screenshot_event,
     execute_action,
     format_action,
+    show_hint,
 )
-from agentlens.harnesses.screenshot_react_loop import run_screenshot_react_loop
+from agentlens.harnesses.interventions import RepeatedActionIntervention
+from agentlens.harnesses.screenshot_react_loop import (
+    _diff_file_manifests,
+    _format_sandbox_result,
+    _run_sandbox_action,
+    _snapshot_sandbox_files,
+    run_screenshot_react_loop,
+)
 from agentlens.harnesses.tool_gating import ToolSet, tool_name_for
 from agentlens.models.base import build_model
 from agentlens.schemas import (
@@ -65,6 +73,7 @@ class ScreenshotReactAgent:
         sandbox=None,
         max_steps: int = 12,
         input_modes: list[str] | None = None,
+        intervention_config: dict | None = None,
         log_action: Callable[[str], None] | None = None,
     ) -> None:
         self.model_config = model_config
@@ -74,6 +83,7 @@ class ScreenshotReactAgent:
         self.sandbox = sandbox
         self.max_steps = max_steps
         self.input_modes = list(input_modes or ["screenshot"])
+        self.intervention_config = intervention_config or {}
         self.log_action = log_action
 
     def get_init_state(self, *, observation: AgentObservation) -> AgentState:
@@ -105,6 +115,7 @@ class ScreenshotReactAgent:
             toolset=self.toolset,
             sandbox=self.sandbox,
             input_modes=self.input_modes,
+            intervention_config=self.intervention_config,
             log_action=self.log_action,
         )
         new_state = state.model_copy(
@@ -127,12 +138,16 @@ class MockAgent:
         mock_answer_fallback: str,
         page,
         toolset: ToolSet,
+        sandbox=None,
+        intervention_config: dict | None = None,
         log_action: Callable[[str], None] | None = None,
     ) -> None:
         self.mock_actions = mock_actions
         self.mock_answer_fallback = mock_answer_fallback
         self.page = page
         self.toolset = toolset
+        self.sandbox = sandbox
+        self.intervention_config = intervention_config or {}
         self.log_action = log_action
 
     def get_init_state(self, *, observation: AgentObservation) -> AgentState:
@@ -161,6 +176,7 @@ class MockAgent:
             )
         ]
         answer: str | None = None
+        intervention = RepeatedActionIntervention.from_config(self.intervention_config)
         for step_index, raw in enumerate(self.mock_actions, start=1):
             action = ComputerAction.from_raw(raw)
             self._log(f"[{run_id} step={step_index}] {format_action(action)}")
@@ -176,6 +192,26 @@ class MockAgent:
                     },
                 )
             )
+            decision = intervention.observe(action)
+            if decision.triggered:
+                self._log(
+                    f"[{run_id} step={step_index}] intervention: "
+                    f"{decision.kind} mode={decision.mode}"
+                )
+                show_hint(self.page, decision.message)
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.USER_INTERVENTION,
+                        step_index=step_index,
+                        data={
+                            "source": "intervention_monitor",
+                            "kind": decision.kind,
+                            "mode": decision.mode,
+                            "message": decision.message,
+                            "details": decision.details,
+                        },
+                    )
+                )
             allowed, gating_msg = self.toolset.gate_action(action)
             if not allowed:
                 self._log(f"[{run_id} step={step_index}] gating: {gating_msg}")
@@ -194,6 +230,50 @@ class MockAgent:
             if action.type == "final_answer":
                 answer = action.answer
                 break
+            if action.type in {"run_python", "shell", "read_file", "write_file"}:
+                if self.sandbox is None:
+                    err = (
+                        f"action {action.type!r} requires a sandbox session "
+                        f"(set tool_harness.extra.browser_source=aio_sandbox)"
+                    )
+                    self._log(f"[{run_id} step={step_index}] {action.type}: {err}")
+                    events.append(
+                        TrajectoryEvent(
+                            event_type=TrajectoryEventType.TOOL_CALL,
+                            step_index=step_index,
+                            data={
+                                "tool_name": tool_name_for(action),
+                                "action": action.model_dump(mode="json"),
+                                "error": err,
+                            },
+                        )
+                    )
+                    continue
+                manifest_before = _snapshot_sandbox_files(self.sandbox)
+                result = _run_sandbox_action(self.sandbox, action)
+                manifest_after = _snapshot_sandbox_files(self.sandbox)
+                artifact_diff = _diff_file_manifests(manifest_before, manifest_after)
+                self._log(
+                    f"[{run_id} step={step_index}] {action.type} -> "
+                    f"{'ok' if result.ok else 'err'} ({len(result.output)} chars)"
+                )
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.TOOL_CALL,
+                        step_index=step_index,
+                        data={
+                            "tool_name": tool_name_for(action),
+                            "action": action.model_dump(mode="json"),
+                            "ok": result.ok,
+                            "output": result.output,
+                            "error": result.error,
+                            "extra": result.extra,
+                            "artifact_diff": artifact_diff,
+                            "observation_text": _format_sandbox_result(action, result),
+                        },
+                    )
+                )
+                continue
             err = execute_action(self.page, action)
             events.append(
                 TrajectoryEvent(

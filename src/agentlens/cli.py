@@ -89,6 +89,38 @@ def trajectory_viewer(
     typer.echo(str(viewer_path))
 
 
+@app.command("process-trajectories")
+def process_trajectories_cmd(
+    inputs: list[Path] = typer.Argument(
+        ...,
+        help="One or more trajectory.json files or directories containing trajectories.",
+    ),
+    output_dir: Path = typer.Option(
+        Path("agentlens_results/trajectory_processing"),
+        "--output-dir",
+        "-o",
+        help="Directory for workflow_steps.jsonl and summary files.",
+    ),
+    repeat_threshold: int = typer.Option(
+        5,
+        "--repeat-threshold",
+        min=2,
+        help="Consecutive same-action threshold for repeated-action loop labels.",
+    ),
+) -> None:
+    """Aggregate raw trajectories into workflow steps and behavior labels."""
+    from agentlens.analysis.trajectory_processing import process_trajectories
+
+    paths = process_trajectories(
+        inputs,
+        output_dir,
+        repeat_threshold=repeat_threshold,
+    )
+    typer.echo(f"Processed trajectories into {output_dir}")
+    for name, path in paths.items():
+        typer.echo(f"{name}: {path}")
+
+
 @app.command()
 def run(
     path: Path,
@@ -126,10 +158,6 @@ def run(
     ),
 ) -> None:
     """Run or dry-run an AgentLens experiment config."""
-    from agentlens.adapters.browsergym_bridge import BrowserGymBridgeAdapter, BrowserGymBridgeRunPlan
-    from agentlens.adapters.browsergym_direct import BrowserGymDirectAdapter, BrowserGymDirectRunPlan
-    from agentlens.adapters.cocoabench import CocoaBenchAdapter, CocoaBenchRunPlan
-    from agentlens.adapters.screenshot_react import ScreenshotReactAdapter, ScreenshotReactRunPlan
     from agentlens.reports.writers import write_all_reports
     from agentlens.run_plans import build_run_plans, with_live_mode, write_run_plan_json
 
@@ -157,22 +185,31 @@ def run(
         plans = with_live_mode(plans)
         typer.echo("Live mode enabled: launching headed browser windows.")
 
-    if all(isinstance(plan, BrowserGymDirectRunPlan) for plan in plans):
+    adapters = {getattr(plan, "adapter", None) for plan in plans}
+    if adapters == {"browsergym_direct"}:
+        from agentlens.adapters.browsergym_direct import BrowserGymDirectAdapter
+
         result = BrowserGymDirectAdapter().run_many(plans)
         report_dir = plans[0].output_dir / "browsergym_direct_summary"
-    elif all(isinstance(plan, ScreenshotReactRunPlan) for plan in plans):
+    elif adapters == {"screenshot_react"}:
+        from agentlens.adapters.screenshot_react import ScreenshotReactAdapter
+
         result = ScreenshotReactAdapter().run_many(
             plans,
             log_action=typer.echo if log_actions else None,
         )
         report_dir = plans[0].output_dir / "screenshot_react_summary"
-    elif all(isinstance(plan, BrowserGymBridgeRunPlan) for plan in plans):
+    elif adapters == {"browsergym_bridge"}:
+        from agentlens.adapters.browsergym_bridge import BrowserGymBridgeAdapter
+
         result = BrowserGymBridgeAdapter().run_many(
             plans,
             log_action=typer.echo if log_actions else None,
         )
         report_dir = plans[0].output_dir / "browsergym_bridge_summary"
-    elif all(isinstance(plan, CocoaBenchRunPlan) for plan in plans):
+    elif adapters == {"cocoabench"}:
+        from agentlens.adapters.cocoabench import CocoaBenchAdapter
+
         result = CocoaBenchAdapter().run_many(
             plans,
             log_action=typer.echo if log_actions else None,

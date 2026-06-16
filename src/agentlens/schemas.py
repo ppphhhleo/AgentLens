@@ -145,6 +145,7 @@ class TaskConfig(BaseModel):
         "agencybench",
         "domsteer",
         "online_mind2web",
+        "the_agent_company",
         "cocoabench",
         "custom",
     ]

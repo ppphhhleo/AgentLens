@@ -10,6 +10,8 @@ Same container hosts both the agent (CDP) and any future human runner
 from __future__ import annotations
 
 import logging
+import json
+import shlex
 import shutil
 import subprocess
 import time
@@ -24,7 +26,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_IMAGE = "ghcr.io/agent-infra/sandbox:latest"
 DEFAULT_HOST_PORT = 8080
 CONTAINER_PORT = 8080
-HEALTH_TIMEOUT_SEC = 60
+HEALTH_TIMEOUT_SEC = 180
 HEALTH_POLL_INTERVAL_SEC = 1.0
 
 
@@ -83,6 +85,10 @@ class AIOSandboxSession:
         host_port: int = DEFAULT_HOST_PORT,
         container_name: str | None = None,
         env: dict[str, str] | None = None,
+        shm_size: str | None = "2g",
+        cap_add: list[str] | None = None,
+        security_opt: list[str] | None = None,
+        watch_paths: list[str] | None = None,
         autopull: bool = True,
         reuse_existing: bool = False,
         keep_open_seconds: int = 0,
@@ -91,6 +97,15 @@ class AIOSandboxSession:
         self.host_port = host_port
         self.container_name = container_name or f"agentlens-sandbox-{int(time.time() * 1000)}"
         self.env = env or {}
+        self.shm_size = shm_size
+        # Chromium inside the AIO image can crash before opening CDP on EC2's
+        # default Docker seccomp/capability profile. Keep these runtime knobs
+        # configurable, but default to the settings validated on AWS.
+        self.cap_add = cap_add if cap_add is not None else ["SYS_ADMIN"]
+        self.security_opt = (
+            security_opt if security_opt is not None else ["seccomp=unconfined"]
+        )
+        self.watch_paths = watch_paths
         self.autopull = autopull
         # If an AIO Sandbox is already healthy at host_port, attach to it
         # instead of starting our own container. Useful when the user has
@@ -100,7 +115,10 @@ class AIOSandboxSession:
         # docker-stop, so the user has time to open
         # http://localhost:<port>/vnc/index.html and inspect final state.
         self.keep_open_seconds = keep_open_seconds
-        self.base_url = f"http://localhost:{host_port}"
+        # Prefer IPv4 loopback. Some Docker Desktop/macOS combinations make
+        # localhost alternate between IPv4/IPv6 during container boot, which
+        # can surface as transient 502/timeout failures from the sandbox nginx.
+        self.base_url = f"http://127.0.0.1:{host_port}"
         self.client = None  # agent_sandbox.Sandbox; lazily set in __enter__
         self.cdp_url: str | None = None
         self.home_dir: str | None = None
@@ -144,7 +162,7 @@ class AIOSandboxSession:
     def _is_healthy_now(self) -> bool:
         url = f"{self.base_url}/v1/sandbox"
         try:
-            with urllib.request.urlopen(url, timeout=2) as resp:
+            with urllib.request.urlopen(url, timeout=10) as resp:
                 return 200 <= resp.status < 400
         except Exception:  # noqa: BLE001
             return False
@@ -156,6 +174,12 @@ class AIOSandboxSession:
             "--name", self.container_name,
             "-p", f"{self.host_port}:{CONTAINER_PORT}",
         ]
+        if self.shm_size:
+            cmd.extend(["--shm-size", self.shm_size])
+        for value in self.cap_add:
+            cmd.extend(["--cap-add", value])
+        for value in self.security_opt:
+            cmd.extend(["--security-opt", value])
         for k, v in self.env.items():
             cmd.extend(["-e", f"{k}={v}"])
         cmd.append(self.image)
@@ -178,7 +202,7 @@ class AIOSandboxSession:
         last_err: Exception | None = None
         while time.time() < deadline:
             try:
-                with urllib.request.urlopen(url, timeout=2) as resp:
+                with urllib.request.urlopen(url, timeout=10) as resp:
                     if 200 <= resp.status < 400:
                         return
             except (urllib.error.URLError, urllib.error.HTTPError, ConnectionError) as e:
@@ -211,25 +235,51 @@ class AIOSandboxSession:
             )
         except Exception:  # noqa: BLE001 - non-fatal; default home dir
             self.home_dir = "/home/gem"
-        try:
-            info = self.client.browser.get_info()
-            self.cdp_url = getattr(getattr(info, "data", info), "cdp_url", None)
-        except Exception as exc:  # noqa: BLE001
-            raise RuntimeError(
-                f"could not fetch CDP url from sandbox: {exc!r}"
-            ) from exc
+        last_exc: Exception | None = None
+        for _ in range(30):
+            try:
+                info = self.client.browser.get_info()
+                self.cdp_url = getattr(getattr(info, "data", info), "cdp_url", None)
+                if self.cdp_url:
+                    break
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+            self.cdp_url = self._browser_cdp_url_http()
+            if self.cdp_url:
+                break
+            time.sleep(1)
         if not self.cdp_url:
-            raise RuntimeError("AIO Sandbox returned no CDP url")
+            raise RuntimeError(f"AIO Sandbox returned no CDP url; last error={last_exc!r}")
+
+    def _browser_cdp_url_http(self) -> str | None:
+        """Direct HTTP fallback for browser info.
+
+        The generated SDK can raise when sandbox nginx briefly returns a
+        non-JSON 502 during browser boot. The raw endpoint usually stabilizes a
+        second later; this helper keeps startup tolerant without changing the
+        public session API.
+        """
+        try:
+            with urllib.request.urlopen(f"{self.base_url}/v1/browser/info", timeout=10) as resp:
+                if not (200 <= resp.status < 400):
+                    return None
+                payload = json.loads(resp.read().decode("utf-8"))
+        except Exception:  # noqa: BLE001
+            return None
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, dict):
+            return None
+        cdp_url = data.get("cdp_url")
+        return str(cdp_url) if cdp_url else None
 
     # ---- multi-tool methods -------------------------------------------
     # All methods return CodeResult; never raise on tool errors so the
     # agent can see + recover.
 
     def run_python(self, code: str) -> CodeResult:
-        try:
-            r = self.client.jupyter.execute_code(code=code)
-        except Exception as exc:  # noqa: BLE001
-            return CodeResult(ok=False, output="", error=f"{type(exc).__name__}: {exc}")
+        r, exc = self._call_with_retries(lambda: self.client.jupyter.execute_code(code=code))
+        if exc is not None:
+            return self._docker_run_python(code, sdk_error=exc)
         data = getattr(r, "data", r)
         outputs = getattr(data, "outputs", []) or []
         stdout, errtext = _format_jupyter_outputs(outputs)
@@ -247,10 +297,11 @@ class AIOSandboxSession:
         )
 
     def shell(self, cmd: str, timeout_sec: int = 30) -> CodeResult:
-        try:
-            r = self.client.shell.exec_command(command=cmd, timeout=timeout_sec)
-        except Exception as exc:  # noqa: BLE001
-            return CodeResult(ok=False, output="", error=f"{type(exc).__name__}: {exc}")
+        r, exc = self._call_with_retries(
+            lambda: self.client.shell.exec_command(command=cmd, timeout=timeout_sec)
+        )
+        if exc is not None:
+            return self._docker_shell(cmd, timeout_sec=timeout_sec, sdk_error=exc)
         data = getattr(r, "data", r)
         output = getattr(data, "output", "") or ""
         exit_code = getattr(data, "exit_code", None)
@@ -263,10 +314,9 @@ class AIOSandboxSession:
         )
 
     def read_file(self, path: str) -> CodeResult:
-        try:
-            r = self.client.file.read_file(file=path)
-        except Exception as exc:  # noqa: BLE001
-            return CodeResult(ok=False, output="", error=f"{type(exc).__name__}: {exc}")
+        r, exc = self._call_with_retries(lambda: self.client.file.read_file(file=path))
+        if exc is not None:
+            return self._docker_read_file(path, sdk_error=exc)
         data = getattr(r, "data", r)
         content = (
             getattr(data, "content", None)
@@ -277,11 +327,138 @@ class AIOSandboxSession:
         return CodeResult(ok=True, output=str(content))
 
     def write_file(self, path: str, text: str) -> CodeResult:
-        try:
-            self.client.file.write_file(file=path, content=text)
-        except Exception as exc:  # noqa: BLE001
-            return CodeResult(ok=False, output="", error=f"{type(exc).__name__}: {exc}")
+        _, exc = self._call_with_retries(
+            lambda: self.client.file.write_file(file=path, content=text)
+        )
+        if exc is not None:
+            return self._docker_write_file(path, text, sdk_error=exc)
         return CodeResult(ok=True, output=f"wrote {len(text)} chars to {path}")
+
+    def _call_with_retries(self, fn, *, attempts: int = 3, delay_sec: float = 0.5):
+        last_exc: Exception | None = None
+        for _ in range(attempts):
+            try:
+                return fn(), None
+            except Exception as exc:  # noqa: BLE001 - sandbox services boot independently
+                last_exc = exc
+                time.sleep(delay_sec)
+        return None, last_exc
+
+    def _docker_shell(
+        self,
+        cmd: str,
+        *,
+        timeout_sec: int = 30,
+        sdk_error: Exception | None = None,
+    ) -> CodeResult:
+        try:
+            result = subprocess.run(
+                ["docker", "exec", self.container_name, "bash", "-lc", cmd],
+                capture_output=True,
+                text=True,
+                timeout=timeout_sec,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return CodeResult(
+                ok=False,
+                output="",
+                error=f"{type(exc).__name__}: {exc}; sdk_error={sdk_error!r}",
+            )
+        return CodeResult(
+            ok=result.returncode == 0,
+            output=result.stdout,
+            error=result.stderr,
+            extra={
+                "exit_code": result.returncode,
+                "backend": "docker_exec",
+                "sdk_error": repr(sdk_error) if sdk_error else None,
+            },
+        )
+
+    def _docker_run_python(
+        self,
+        code: str,
+        *,
+        sdk_error: Exception | None = None,
+    ) -> CodeResult:
+        try:
+            result = subprocess.run(
+                ["docker", "exec", "-i", self.container_name, "python3", "-"],
+                input=code,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return CodeResult(
+                ok=False,
+                output="",
+                error=f"{type(exc).__name__}: {exc}; sdk_error={sdk_error!r}",
+            )
+        return CodeResult(
+            ok=result.returncode == 0,
+            output=result.stdout,
+            error=result.stderr,
+            extra={
+                "exit_code": result.returncode,
+                "backend": "docker_exec",
+                "sdk_error": repr(sdk_error) if sdk_error else None,
+            },
+        )
+
+    def _docker_read_file(
+        self,
+        path: str,
+        *,
+        sdk_error: Exception | None = None,
+    ) -> CodeResult:
+        return self._docker_shell(
+            f"cat {shlex.quote(path)}",
+            timeout_sec=10,
+            sdk_error=sdk_error,
+        )
+
+    def _docker_write_file(
+        self,
+        path: str,
+        text: str,
+        *,
+        sdk_error: Exception | None = None,
+    ) -> CodeResult:
+        quoted_path = shlex.quote(path)
+        quoted_dir = shlex.quote(str(__import__("posixpath").dirname(path) or "."))
+        try:
+            result = subprocess.run(
+                [
+                    "docker",
+                    "exec",
+                    "-i",
+                    self.container_name,
+                    "bash",
+                    "-lc",
+                    f"mkdir -p {quoted_dir} && cat > {quoted_path}",
+                ],
+                input=text,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return CodeResult(
+                ok=False,
+                output="",
+                error=f"{type(exc).__name__}: {exc}; sdk_error={sdk_error!r}",
+            )
+        return CodeResult(
+            ok=result.returncode == 0,
+            output=f"wrote {len(text)} chars to {path}" if result.returncode == 0 else result.stdout,
+            error=result.stderr,
+            extra={
+                "exit_code": result.returncode,
+                "backend": "docker_exec",
+                "sdk_error": repr(sdk_error) if sdk_error else None,
+            },
+        )
 
 
 def _format_jupyter_outputs(outputs) -> tuple[str, str]:

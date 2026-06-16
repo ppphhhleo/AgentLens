@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
+import json
+import subprocess
 from typing import Callable
 
 from agentlens.harnesses.browser_actions import (
     capture_screenshot_event,
     execute_action,
     format_action,
+    show_hint,
 )
+from agentlens.harnesses.interventions import RepeatedActionIntervention
 from agentlens.harnesses.tool_gating import ToolSet, tool_name_for
 from agentlens.models.base import ChatModel, ModelStep, ScreenshotObservation
 from agentlens.schemas import TrajectoryEvent, TrajectoryEventType
@@ -55,6 +60,7 @@ def run_screenshot_react_loop(
     toolset: ToolSet | None = None,
     sandbox=None,                  # AIOSandboxSession or None for browser-only runs
     input_modes: list[str] | None = None,
+    intervention_config: dict | None = None,
     log_action: Callable[[str], None] | None = None,
 ) -> tuple[str | None, list[TrajectoryEvent]]:
     """Mode-aware ReAct loop.
@@ -94,6 +100,7 @@ def run_screenshot_react_loop(
 
     last_screenshot_path: Path = initial_screenshot.artifact_paths[0]
     pending_tool_output: str | None = None  # carries web_search etc. into next obs
+    intervention = RepeatedActionIntervention.from_config(intervention_config)
 
     for step_index in range(1, max_steps + 1):
         # Always extract axtree if marks are on (marks need bids on the page).
@@ -162,6 +169,32 @@ def run_screenshot_react_loop(
                 },
             )
         )
+
+        decision = intervention.observe(action)
+        if decision.triggered:
+            _log(
+                log_action,
+                f"[{run_id} step={step_index}] intervention: "
+                f"{decision.kind} mode={decision.mode}",
+            )
+            show_hint(page, decision.message)
+            pending_tool_output = _merge_tool_outputs(
+                pending_tool_output,
+                f"[intervention:{decision.kind}]\n{decision.message}",
+            )
+            events.append(
+                TrajectoryEvent(
+                    event_type=TrajectoryEventType.USER_INTERVENTION,
+                    step_index=step_index,
+                    data={
+                        "source": "intervention_monitor",
+                        "kind": decision.kind,
+                        "mode": decision.mode,
+                        "message": decision.message,
+                        "details": decision.details,
+                    },
+                )
+            )
 
         # Gate the action against the harness's tool allow-list.
         allowed, gating_msg = toolset.gate_action(action)
@@ -240,7 +273,10 @@ def run_screenshot_react_loop(
                     )
                 )
                 continue
+            manifest_before = _snapshot_sandbox_files(sandbox)
             result = _run_sandbox_action(sandbox, action)
+            manifest_after = _snapshot_sandbox_files(sandbox)
+            artifact_diff = _diff_file_manifests(manifest_before, manifest_after)
             pending_tool_output = _format_sandbox_result(action, result)
             _log(
                 log_action,
@@ -259,6 +295,7 @@ def run_screenshot_react_loop(
                         "output": result.output,
                         "error": result.error,
                         "extra": result.extra,
+                        "artifact_diff": artifact_diff,
                     },
                 )
             )
@@ -315,3 +352,115 @@ def _format_sandbox_result(action, result, max_chars: int = 1500) -> str:
     if len(body) > max_chars:
         body = body[:max_chars] + "...[truncated]"
     return f"{head}\n{body or '(no output)'}"
+
+
+def _merge_tool_outputs(left: str | None, right: str) -> str:
+    if not left:
+        return right
+    return f"{left}\n\n{right}"
+
+
+def _snapshot_sandbox_files(sandbox, *, max_files: int = 2000) -> dict[str, dict]:
+    """Best-effort file manifest for sandbox artifact tracking.
+
+    This is intentionally independent from the agent-visible tool result: it
+    records whether code/shell/file actions created or modified artifacts
+    without injecting extra text into the model context.
+    """
+    home_dir = getattr(sandbox, "home_dir", None) or "/home/gem"
+    roots = list(
+        getattr(sandbox, "watch_paths", None)
+        or [home_dir, "/tmp", f"{home_dir}/Downloads"]
+    )
+    cmd = (
+        "python3 - <<'PY'\n"
+        "import json, os\n"
+        f"roots = {roots!r}\n"
+        "skip_dirs = {'.cache', '.config', '.local', '.npm', '__pycache__', "
+        "'node_modules', '.venv'}\n"
+        "items = {}\n"
+        "for root in roots:\n"
+        "    if not os.path.exists(root):\n"
+        "        continue\n"
+        "    for dirpath, dirnames, filenames in os.walk(root):\n"
+        "        dirnames[:] = [d for d in dirnames if d not in skip_dirs]\n"
+        "        for name in filenames:\n"
+        "            path = os.path.join(dirpath, name)\n"
+        "            try:\n"
+        "                st = os.stat(path)\n"
+        "            except OSError:\n"
+        "                continue\n"
+        "            items[path] = {'size': st.st_size, 'mtime': round(st.st_mtime, 6)}\n"
+        f"            if len(items) >= {max_files}:\n"
+        "                print(json.dumps(items, sort_keys=True))\n"
+        "                raise SystemExit\n"
+        "print(json.dumps(items, sort_keys=True))\n"
+        "PY"
+    )
+    output: str | None = _snapshot_with_docker_exec(sandbox, cmd)
+    if output is None:
+        try:
+            result = sandbox.shell(cmd, timeout_sec=15)
+        except Exception:  # noqa: BLE001
+            return {}
+        if not getattr(result, "ok", False):
+            return {}
+        output = result.output or "{}"
+    try:
+        payload = json.loads(output)
+    except Exception:  # noqa: BLE001
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        str(path): meta
+        for path, meta in payload.items()
+        if isinstance(path, str) and isinstance(meta, Mapping)
+    }
+
+
+def _snapshot_with_docker_exec(sandbox, cmd: str) -> str | None:
+    container_name = getattr(sandbox, "container_name", None)
+    if not container_name:
+        return None
+    try:
+        result = subprocess.run(
+            ["docker", "exec", container_name, "bash", "-lc", cmd],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def _diff_file_manifests(
+    before: dict[str, dict],
+    after: dict[str, dict],
+    *,
+    max_paths: int = 200,
+) -> dict[str, object]:
+    before_keys = set(before)
+    after_keys = set(after)
+    created = sorted(after_keys - before_keys)
+    deleted = sorted(before_keys - after_keys)
+    modified = sorted(
+        path
+        for path in (before_keys & after_keys)
+        if before.get(path) != after.get(path)
+    )
+    return {
+        "created": created[:max_paths],
+        "modified": modified[:max_paths],
+        "deleted": deleted[:max_paths],
+        "truncated": (
+            len(created) > max_paths
+            or len(modified) > max_paths
+            or len(deleted) > max_paths
+        ),
+        "before_count": len(before),
+        "after_count": len(after),
+    }
