@@ -24,6 +24,7 @@ ComputerActionType = Literal[
     "shell",
     "read_file",
     "write_file",
+    "mcp_tool",
     "final_answer",
 ]
 
@@ -75,6 +76,8 @@ class ComputerAction(BaseModel):
     # filesystem paths. read_file / write_file use `file_path`.
     file_path: str | None = None
     content: str | None = None
+    mcp_tool: str | None = None
+    mcp_args: dict[str, Any] = Field(default_factory=dict)
     # Addressing modes (alternative to x,y for click/double_click/move/scroll
     # /drag). At validate time exactly one of (x+y) | bid | selector | mark
     # must be set for those action types.
@@ -94,7 +97,7 @@ class ComputerAction(BaseModel):
     @model_validator(mode="after")
     def validate_required_fields(self) -> ComputerAction:
         # Addressing-mode targets: exactly one of (x+y) | bid | selector | mark
-        if self.type in {"click", "double_click", "move", "scroll"}:
+        if self.type in {"click", "double_click", "move", "scroll", "type"}:
             modes_set = sum(
                 [
                     self.x is not None and self.y is not None,
@@ -104,9 +107,10 @@ class ComputerAction(BaseModel):
                 ]
             )
             if modes_set == 0:
-                raise ValueError(
-                    f"action '{self.type}' requires a target — set (x+y) OR bid OR selector OR mark"
-                )
+                if self.type != "type":
+                    raise ValueError(
+                        f"action '{self.type}' requires a target — set (x+y) OR bid OR selector OR mark"
+                    )
             if modes_set > 1:
                 raise ValueError(
                     f"action '{self.type}' has multiple targets set; choose ONE of (x+y) / bid / selector / mark"
@@ -134,6 +138,8 @@ class ComputerAction(BaseModel):
                 raise ValueError("action 'write_file' requires file_path")
             if self.content is None:
                 raise ValueError("action 'write_file' requires content")
+        if self.type == "mcp_tool" and not self.mcp_tool:
+            raise ValueError("action 'mcp_tool' requires mcp_tool")
         return self
 
     @classmethod

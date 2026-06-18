@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from pathlib import Path
 import json
 import subprocess
+import time
 from typing import Callable
 
 from agentlens.harnesses.browser_actions import (
@@ -61,6 +62,8 @@ def run_screenshot_react_loop(
     sandbox=None,                  # AIOSandboxSession or None for browser-only runs
     input_modes: list[str] | None = None,
     intervention_config: dict | None = None,
+    model_max_attempts: int = 3,
+    model_retry_sleep_s: float = 1.0,
     log_action: Callable[[str], None] | None = None,
 ) -> tuple[str | None, list[TrajectoryEvent]]:
     """Mode-aware ReAct loop.
@@ -126,6 +129,7 @@ def run_screenshot_react_loop(
 
         observation = ScreenshotObservation(
             step_index=step_index,
+            max_steps=max_steps,
             screenshot_path=last_screenshot_path if (use_screenshot or use_marks) else None,
             url=page.url,
             viewport=page.viewport_size or {"width": 0, "height": 0},
@@ -135,18 +139,35 @@ def run_screenshot_react_loop(
         )
         pending_tool_output = None  # one-shot — model consumed it now
 
-        try:
-            model_step = model.step(goal=goal, observation=observation, history=history)
-        except Exception as exc:  # noqa: BLE001 - model errors belong in trajectory data.
-            err = f"{type(exc).__name__}: {exc}"
-            _log(log_action, f"[{run_id} step={step_index}] model_error: {err}")
-            events.append(
-                TrajectoryEvent(
-                    event_type=TrajectoryEventType.MODEL_MESSAGE,
-                    step_index=step_index,
-                    data={"error": err, "mock": False},
+        model_step: ModelStep | None = None
+        for attempt in range(1, max(model_max_attempts, 1) + 1):
+            try:
+                model_step = model.step(goal=goal, observation=observation, history=history)
+                break
+            except Exception as exc:  # noqa: BLE001 - model errors belong in trajectory data.
+                err = f"{type(exc).__name__}: {exc}"
+                exhausted = attempt >= max(model_max_attempts, 1)
+                _log(
+                    log_action,
+                    f"[{run_id} step={step_index}] model_error "
+                    f"attempt={attempt}/{max(model_max_attempts, 1)}: {err}",
                 )
-            )
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.MODEL_MESSAGE,
+                        step_index=step_index,
+                        data={
+                            "error": err,
+                            "mock": False,
+                            "retry_attempt": attempt,
+                            "retry_exhausted": exhausted,
+                        },
+                    )
+                )
+                if exhausted:
+                    break
+                time.sleep(model_retry_sleep_s * attempt)
+        if model_step is None:
             break
 
         history.append(model_step)
@@ -159,12 +180,13 @@ def run_screenshot_react_loop(
                 step_index=step_index,
                 data={
                     "thought": model_step.thought,
-                    "action": action.model_dump(mode="json"),
+                    "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
                     "tool_name": tool_name_for(action),
                     "raw_response": model_step.raw_response,
                     "prompt_tokens": model_step.prompt_tokens,
                     "completion_tokens": model_step.completion_tokens,
                     "model_meta": model_step.extra,
+                    "provider_tool_call": (model_step.extra or {}).get("provider_tool_call"),
                     "mock": False,
                 },
             )
@@ -205,7 +227,7 @@ def run_screenshot_react_loop(
                     event_type=TrajectoryEventType.GATING_VIOLATION,
                     step_index=step_index,
                     data={
-                        "action": action.model_dump(mode="json"),
+                        "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
                         "tool_name": tool_name_for(action),
                         "message": gating_msg,
                     },
@@ -252,6 +274,46 @@ def run_screenshot_react_loop(
             )
             continue
 
+        if action.type == "mcp_tool":
+            from agentlens.tools.mcp import format_for_observation, run_mcp_tool
+
+            mcp_result = run_mcp_tool(action, page=page)
+            pending_tool_output = format_for_observation(mcp_result)
+            _log(
+                log_action,
+                f"[{run_id} step={step_index}] {action.mcp_tool} -> "
+                f"{'ok' if mcp_result.ok else 'err'}"
+                + (f" err={mcp_result.error[:80]!r}" if mcp_result.error else ""),
+            )
+            events.append(
+                TrajectoryEvent(
+                    event_type=TrajectoryEventType.TOOL_CALL,
+                    step_index=step_index,
+                    data={
+                        "tool_name": tool_name_for(action),
+                        "action": action.model_dump(
+                            mode="json",
+                            exclude_none=True,
+                            exclude_defaults=True,
+                        ),
+                        "ok": mcp_result.ok,
+                        "output": mcp_result.output,
+                        "error": mcp_result.error,
+                        "extra": mcp_result.extra,
+                    },
+                )
+            )
+            screenshot_event = capture_screenshot_event(
+                page=page,
+                screenshot_dir=screenshot_dir,
+                step_index=step_index,
+                goal=goal,
+            )
+            events.append(screenshot_event)
+            last_screenshot_path = screenshot_event.artifact_paths[0]
+            _log(log_action, f"[{run_id} step={step_index}] screenshot -> {last_screenshot_path}")
+            continue
+
         # Sandbox-only multi-tool actions. Require an AIOSandboxSession.
         if action.type in {"run_python", "shell", "read_file", "write_file"}:
             if sandbox is None:
@@ -267,7 +329,7 @@ def run_screenshot_react_loop(
                         step_index=step_index,
                         data={
                             "tool_name": tool_name_for(action),
-                            "action": action.model_dump(mode="json"),
+                            "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
                             "error": err_msg,
                         },
                     )
@@ -290,7 +352,7 @@ def run_screenshot_react_loop(
                     step_index=step_index,
                     data={
                         "tool_name": tool_name_for(action),
-                        "action": action.model_dump(mode="json"),
+                        "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
                         "ok": result.ok,
                         "output": result.output,
                         "error": result.error,
@@ -309,7 +371,7 @@ def run_screenshot_react_loop(
                 event_type=TrajectoryEventType.BROWSER_ACTION,
                 step_index=step_index,
                 data={
-                    "action": action.model_dump(mode="json"),
+                    "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
                     "error": action_error,
                 },
             )

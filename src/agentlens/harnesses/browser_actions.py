@@ -175,6 +175,26 @@ def _bbox_center(locator):
     return None
 
 
+def _click_locator(locator, *, button: str, timeout: int = 5000) -> None:
+    """Click a locator with actionability checks, then fall back to force.
+
+    The normal click is more faithful to what a user can do. The forced
+    fallback keeps compatibility with custom-styled controls where the real
+    input is visually covered by a label/toggle shell.
+    """
+    try:
+        locator.click(button=button, timeout=timeout)
+    except Exception:  # noqa: BLE001 - fallback is intentional for custom controls
+        locator.click(button=button, timeout=10000, force=True)
+
+
+def _dblclick_locator(locator, *, button: str, timeout: int = 5000) -> None:
+    try:
+        locator.dblclick(button=button, timeout=timeout)
+    except Exception:  # noqa: BLE001
+        locator.dblclick(button=button, timeout=10000, force=True)
+
+
 def execute_action(page, action: ComputerAction) -> str | None:
     """Execute one ComputerAction against a Playwright page. Returns error string or None."""
     try:
@@ -190,15 +210,7 @@ def execute_action(page, action: ComputerAction) -> str | None:
                     if target_xy is not None:
                         show_marker(page, *target_xy, "#ff3b30")
                     with _held_modifiers(page, action.keys):
-                        # force=True so we can target elements that are
-                        # functionally interactive but visually masked by
-                        # custom CSS (e.g. checkboxes hidden behind styled
-                        # toggle UIs like TF Playground's discretize switch).
-                        target_locator.click(
-                            button=_playwright_button(action.button),
-                            timeout=10000,
-                            force=True,
-                        )
+                        _click_locator(target_locator, button=_playwright_button(action.button))
                 else:
                     show_marker(page, action.x, action.y, "#ff3b30")
                     with _held_modifiers(page, action.keys):
@@ -210,11 +222,7 @@ def execute_action(page, action: ComputerAction) -> str | None:
                     if target_xy is not None:
                         show_marker(page, *target_xy, "#ff9500")
                     with _held_modifiers(page, action.keys):
-                        target_locator.dblclick(
-                            button=_playwright_button(action.button),
-                            timeout=10000,
-                            force=True,
-                        )
+                        _dblclick_locator(target_locator, button=_playwright_button(action.button))
                 else:
                     show_marker(page, action.x, action.y, "#ff9500")
                     with _held_modifiers(page, action.keys):
@@ -238,6 +246,10 @@ def execute_action(page, action: ComputerAction) -> str | None:
                 # raw keyboard typing into whatever's currently focused.
                 if target_locator is not None:
                     target_locator.fill(action.text or "", timeout=10000)
+                elif action.x is not None and action.y is not None:
+                    show_marker(page, action.x, action.y, "#007aff")
+                    page.mouse.click(action.x, action.y)
+                    page.keyboard.type(action.text or "")
                 else:
                     page.keyboard.type(action.text or "")
             case "wait":
@@ -364,6 +376,8 @@ def format_action(action: ComputerAction) -> str:
             return f"read_file file_path={action.file_path!r}"
         case "write_file":
             return f"write_file file_path={action.file_path!r} content=({len(action.content or '')} chars)"
+        case "mcp_tool":
+            return f"mcp_tool name={action.mcp_tool!r} args={action.mcp_args!r}"
         case "final_answer":
             return f"final_answer answer={action.answer!r}"
 

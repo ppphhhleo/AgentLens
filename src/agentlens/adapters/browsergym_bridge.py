@@ -193,7 +193,7 @@ class BrowserGymBridgeAdapter:
                         step_index=step_index,
                         data={
                             "thought": f"Mock action '{action.type}'.",
-                            "action": action.model_dump(mode="json"),
+                            "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
                             "tool_name": tool_name_for(action),
                             "mock": True,
                         },
@@ -207,7 +207,7 @@ class BrowserGymBridgeAdapter:
                             event_type=TrajectoryEventType.GATING_VIOLATION,
                             step_index=step_index,
                             data={
-                                "action": action.model_dump(mode="json"),
+                                "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
                                 "tool_name": tool_name_for(action),
                                 "message": gating_msg,
                             },
@@ -222,7 +222,7 @@ class BrowserGymBridgeAdapter:
                     TrajectoryEvent(
                         event_type=TrajectoryEventType.BROWSER_ACTION,
                         step_index=step_index,
-                        data={"action": action.model_dump(mode="json"), "error": err},
+                        data={"action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True), "error": err},
                     )
                 )
                 events.append(

@@ -20,13 +20,13 @@ complete the task — do not ask the user for information that is available in t
 
 Task: {goal}
 
-You see one screenshot per step. Respond ONLY with a single JSON object:
+{context_description} Respond ONLY with a single JSON object:
 {{
   "thought": "<short reasoning, 1-3 sentences>",
   "action": {{ ... one ComputerAction ... }}
 }}
 
-Action schema — pick EXACTLY ONE per step. ONLY these actions are available:
+Action schema — pick EXACTLY ONE atomic action per step. ONLY these actions are available:
 {action_schema}
 
 Rules:
@@ -119,9 +119,8 @@ class OpenAIVisionModel:
     ) -> list[dict[str, Any]]:
         history_lines: list[str] = []
         for i, past in enumerate(history, start=1):
-            history_lines.append(
-                f"Step {i}: thought={past.thought!r} action={past.action.model_dump(mode='json')}"
-            )
+            action_json = past.action.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
+            history_lines.append(f"Step {i}: thought={past.thought!r} action={action_json}")
         history_block = "\n".join(history_lines) if history_lines else "(none)"
 
         tool_block = ""
@@ -162,10 +161,24 @@ class OpenAIVisionModel:
                 "clickable elements (more reliable); fall back to x,y when needed.\n"
             )
 
+        step_budget = ""
+        if observation.max_steps is not None:
+            remaining = max(observation.max_steps - observation.step_index, 0)
+            step_budget = (
+                f"Max steps: {observation.max_steps}\n"
+                f"Steps remaining after this action: {remaining}\n"
+            )
+            if remaining == 0:
+                step_budget += (
+                    "This is the final allowed step. If you have enough evidence, "
+                    "emit final_answer now.\n"
+                )
+
         user_text = (
             f"Current URL: {observation.url}\n"
             f"Viewport: {observation.viewport}\n"
             f"Step index: {observation.step_index}\n"
+            f"{step_budget}"
             f"Prior steps:\n{history_block}\n"
             f"{axtree_block}"
             f"{mark_block}"
@@ -175,7 +188,9 @@ class OpenAIVisionModel:
         )
 
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
-            goal=goal, action_schema=self.action_schema
+            goal=goal,
+            action_schema=self.action_schema,
+            context_description=self._context_description(),
         )
 
         # Build the user-message content list. Only include the image when
@@ -198,6 +213,16 @@ class OpenAIVisionModel:
         """gpt-5.x and o-series reject max_tokens + custom temperature."""
         name = self.model_name.lower()
         return name.startswith(("gpt-5", "o1", "o3", "o4"))
+
+    def _context_description(self) -> str:
+        modes = set(self.input_modes)
+        if "screenshot" in modes and "axtree" in modes:
+            return "You see one screenshot and one interactive-element tree per step."
+        if "screenshot" in modes or "set_of_marks" in modes:
+            return "You see one screenshot per step."
+        if "axtree" in modes:
+            return "You see an interactive-element tree and any tool output per step. No screenshot is provided to you."
+        return "You see textual context and any tool output per step. No screenshot is provided to you."
 
     @staticmethod
     def _image_to_data_url(path: Path) -> str:

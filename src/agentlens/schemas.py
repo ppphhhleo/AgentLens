@@ -159,6 +159,7 @@ class TaskConfig(BaseModel):
         Literal[
             "exact",
             "contains",
+            "number_exact",
             "url_contains",
             "webjudge",
             "cocoabench_test_py",

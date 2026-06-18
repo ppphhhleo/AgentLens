@@ -108,6 +108,8 @@ def process_trajectories(
     repeat_threshold: int = 5,
 ) -> dict[str, Path]:
     """Process trajectory.json files into workflow steps and behavior summaries."""
+    from agentlens.analysis.methods import process_method_outputs
+
     trajectory_paths = _resolve_trajectory_paths(inputs)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -129,11 +131,13 @@ def process_trajectories(
 
     _write_summaries_csv(summaries, summaries_csv_path)
     codebook_path.write_text(json.dumps(CODEBOOK, indent=2, ensure_ascii=False), encoding="utf-8")
+    method_paths = process_method_outputs(trajectory_paths, output_dir / "methods")
     return {
         "workflow_steps": steps_path,
         "trajectory_summaries_jsonl": summaries_jsonl_path,
         "trajectory_summaries_csv": summaries_csv_path,
         "behavior_codebook": codebook_path,
+        **{f"methods_{name}": path for name, path in method_paths.items()},
     }
 
 

@@ -38,6 +38,7 @@ class ScreenshotObservation:
     step_index: int
     url: str
     viewport: dict[str, int]
+    max_steps: int | None = None
     # Visual modality (optional now)
     screenshot_path: Path | None = None
     # AXTree modality (optional)
@@ -71,6 +72,13 @@ def build_model(config: ModelConfig, toolset=None) -> ChatModel:
     here to avoid an import cycle). Models use it to render the prompt's
     action schema so prompt advertising and runtime gating stay in sync.
     """
+    interaction_backend = (config.extra or {}).get("interaction_backend", "legacy_json_action")
+
+    if config.provider == "openai" and interaction_backend == "tool_call":
+        from agentlens.models.openai_tool_call import OpenAIToolCallModel
+
+        return OpenAIToolCallModel(config, toolset=toolset)
+
     if config.provider == "openai":
         from agentlens.models.openai_vision import OpenAIVisionModel
 

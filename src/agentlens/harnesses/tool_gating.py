@@ -46,6 +46,7 @@ TOOL_NAME_BY_ACTION_TYPE: dict[str, str] = {
     "read_file": "files.read",
     "write_file": "files.write",
     "final_answer": "task.final_answer",
+    "mcp_tool": "mcp.*",
 }
 
 TOOL_NAME_TO_ACTION_TYPE: dict[str, str] = {v: k for k, v in TOOL_NAME_BY_ACTION_TYPE.items()}
@@ -101,6 +102,8 @@ class ToolSet:
         """True iff the given ComputerAction.type is permitted."""
         if self.is_unrestricted:
             return True
+        if action_type == "mcp_tool":
+            return False
         tool_name = TOOL_NAME_BY_ACTION_TYPE.get(action_type)
         if tool_name is None:
             # Unknown action types are conservatively rejected when gating
@@ -110,6 +113,15 @@ class ToolSet:
 
     def gate_action(self, action: ComputerAction) -> tuple[bool, str | None]:
         """Returns (allowed, error_message_if_denied)."""
+        if action.type == "mcp_tool":
+            tool_name = action.mcp_tool or "mcp.unknown"
+            if self.is_unrestricted or tool_name in self.allowed:
+                return True, None
+            return (
+                False,
+                f"MCP tool {tool_name!r} is not in this harness's allowed tools: "
+                f"{sorted(self.allowed)}",
+            )
         if self.is_allowed(action.type):
             return True, None
         return (
@@ -173,6 +185,8 @@ def render_action_schema(
 
 def tool_name_for(action: ComputerAction) -> str:
     """Lookup helper for telemetry — never raises."""
+    if action.type == "mcp_tool":
+        return action.mcp_tool or "mcp.unknown"
     return TOOL_NAME_BY_ACTION_TYPE.get(action.type, f"unknown.{action.type}")
 
 

@@ -1,0 +1,66 @@
+schema_version: "0.1"
+id: mcp_chrome_poc
+description: >
+  Minimal proof-of-concept config showing how Chrome MCP tools are registered,
+  exposed through a harness, gated, executed against the live browser page, and
+  recorded.
+
+models:
+  - id: gpt5_mini_toolcall
+    provider: openai
+    name: gpt-5-mini
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+    extra:
+      interaction_backend: tool_call
+
+tool_harnesses:
+  - id: chrome_mcp_poc
+    runner: screenshot_react
+    tier: full_sandbox
+    tools:
+      - mcp.chrome.snapshot
+      - mcp.chrome.goto
+      - mcp.chrome.click_selector
+      - mcp.chrome.type_selector
+      - mcp.chrome.get_text
+      - mcp.chrome.evaluate
+      - task.final_answer
+    prompt_version: tool_call_v1
+    extra:
+      browser_source: aio_sandbox
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      headless: true
+      viewport: {width: 1600, height: 900}
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+tasks:
+  - id: chrome_mcp_smoke
+    benchmark: custom
+    task_id: chrome_mcp.smoke
+    goal: Inspect the current page using Chrome MCP-style tools and answer "ok" if the page title or body indicates Example Domain.
+    start_url: https://example.com/
+    validator: final_answer
+    expected_answer: ok
+    answer_validator: exact
+
+runs:
+  - id: chrome_mcp_poc_smoke
+    model: gpt5_mini_toolcall
+    tool_harness: chrome_mcp_poc
+    memory_harness: no_memory
+    task: chrome_mcp_smoke
+    seeds: [0]
+    trials: 1
+    max_steps: 5
+    output_dir: agentlens_results/mcp_chrome_poc
+    tags: [mcp, chrome, poc, tool_call]

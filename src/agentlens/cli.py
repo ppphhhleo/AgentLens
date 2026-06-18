@@ -121,6 +121,107 @@ def process_trajectories_cmd(
         typer.echo(f"{name}: {path}")
 
 
+@app.command("compare-trajectory-methods")
+def compare_trajectory_methods_cmd(
+    trajectory: Path = typer.Argument(..., help="A single trajectory.json file."),
+    output_dir: Path = typer.Option(
+        Path("agentlens_results/method_comparison"),
+        "--output-dir",
+        "-o",
+        help="Directory for method outputs and the side-by-side HTML report.",
+    ),
+    state_diff_threshold: float = typer.Option(
+        8000.0,
+        "--state-diff-threshold",
+        help="Wang-style state-difference segmentation threshold.",
+    ),
+    annotation_mode: str = typer.Option(
+        "rule",
+        "--annotation-mode",
+        help="Analysis mode: 'rule' for deterministic labels or 'llm' for LLM-refined labels.",
+    ),
+    llm_provider: str = typer.Option(
+        "auto",
+        "--llm-provider",
+        help="LLM provider for --annotation-mode llm: auto, claude_cli, or openai.",
+    ),
+    llm_model: str | None = typer.Option(
+        None,
+        "--llm-model",
+        help="Optional provider model name, e.g. gpt-5.4-nano.",
+    ),
+) -> None:
+    """Compare Wang-style and Act-onomy-style analyses for one trajectory."""
+    from agentlens.reports.method_comparison import write_method_comparison_report
+
+    html_path = write_method_comparison_report(
+        trajectory,
+        output_dir,
+        state_diff_threshold=state_diff_threshold,
+        annotation_mode=annotation_mode,
+        llm_provider=llm_provider,
+        llm_model=llm_model,
+    )
+    typer.echo(str(html_path))
+
+
+@app.command("matrix-dashboard")
+def matrix_dashboard_cmd(
+    config_path: Path = typer.Argument(..., help="Experiment config defining the matrix."),
+    trajectory_root: Path = typer.Option(
+        Path("agentlens_results/domsteer_datavoyager_matrix"),
+        "--trajectory-root",
+        help="Directory to scan for generated trajectory.json files.",
+    ),
+    output: Path = typer.Option(
+        Path("agentlens_results/domsteer_datavoyager_matrix/dashboard.html"),
+        "--output",
+        "-o",
+        help="Where to write the reusable dashboard HTML.",
+    ),
+    report_root: Path = typer.Option(
+        Path("agentlens_results/method_comparison/domsteer_datavoyager_matrix"),
+        "--report-root",
+        help="Directory for per-trajectory method-comparison reports.",
+    ),
+    generate_reports: bool = typer.Option(
+        False,
+        "--generate-reports/--no-generate-reports",
+        help="Generate missing per-trajectory method-comparison reports.",
+    ),
+    annotation_mode: str = typer.Option(
+        "llm",
+        "--annotation-mode",
+        help="Analysis mode for generated reports: rule or llm.",
+    ),
+    llm_provider: str = typer.Option(
+        "openai",
+        "--llm-provider",
+        help="LLM provider for generated reports.",
+    ),
+    llm_model: str = typer.Option(
+        "gpt-5.4-mini",
+        "--llm-model",
+        help="LLM model for generated reports.",
+    ),
+) -> None:
+    """Render a reusable model x task x harness trajectory dashboard."""
+    from agentlens.reports.experiment_dashboard import write_matrix_dashboard
+
+    config = load_experiment_config(config_path)
+    html_path = write_matrix_dashboard(
+        config,
+        trajectory_root=trajectory_root,
+        output_path=output,
+        report_root=report_root,
+        generate_reports=generate_reports,
+        annotation_mode=annotation_mode,
+        llm_provider=llm_provider,
+        llm_model=llm_model,
+    )
+    typer.echo(str(html_path))
+
+
 @app.command()
 def run(
     path: Path,

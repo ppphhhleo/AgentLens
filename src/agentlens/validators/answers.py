@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
+import re
 
 from agentlens.schemas import TaskConfig
 
@@ -58,6 +60,17 @@ def validate_answer(
         success = expected in normalized_answer
         return success, 1.0 if success else 0.0, "contains match" if success else "contains mismatch"
 
+    if task.answer_validator == "number_exact":
+        expected_number = _to_decimal(expected)
+        answer_numbers = [_to_decimal(match) for match in _NUMBER_RE.findall(normalized_answer)]
+        answer_numbers = [number for number in answer_numbers if number is not None]
+        success = expected_number is not None and expected_number in answer_numbers
+        return (
+            success,
+            1.0 if success else 0.0,
+            "number exact match" if success else "number exact mismatch",
+        )
+
     if task.answer_validator == "semantic_pending":
         return None, None, "semantic validation pending"
 
@@ -66,3 +79,12 @@ def validate_answer(
 
     return None, None, f"unsupported validator: {task.answer_validator}"
 
+
+_NUMBER_RE = re.compile(r"(?<![\w.])-?\d+(?:\.\d+)?(?![\w.])")
+
+
+def _to_decimal(value: str) -> Decimal | None:
+    try:
+        return Decimal(value)
+    except (InvalidOperation, ValueError):
+        return None

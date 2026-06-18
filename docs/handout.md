@@ -29,7 +29,7 @@ The project's central thesis (`docs/general-idea.md`): **agents are opportunisti
 | **Action schema reference** | `docs/screenshot-react-tools.md` |
 | **Trajectory data + reports + viewer** — on-disk layout, `trajectory.json` event schema, viewer/report walkthrough | `docs/trajectory-and-visualization.md` |
 | **Capture-first virtual computer + intervention plan** — AWS setup notes, I/O capture, repeated-action intervention | `docs/capture-first-computer-use-and-intervention.md` |
-| **Trajectory processing v0** — raw actions → workflow steps → behavior labels | `docs/trajectory-processing-v0.md` |
+| **Trajectory processing v0** — raw actions → Wang-style workflow steps + Act-onomy sessions + behavior labels | `docs/trajectory-processing-v0.md` |
 | **This file** — quickstart, current state snapshot, pending todo | `docs/handout.md` |
 
 ## Core comparison axes
@@ -94,6 +94,7 @@ agentlens run <config.yaml> --run-id <one_run> --execute --log-actions
 agentlens import-online-mind2web --limit 5 --output configs/...   # generate OM2W config from HF
 agentlens trajectory-viewer <summary.json>        # static HTML viewer
 agentlens process-trajectories agentlens_results --output-dir agentlens_results/trajectory_processing/local_v0
+agentlens compare-trajectory-methods <trajectory.json> --output-dir agentlens_results/method_comparison/<run>
 ```
 
 Every CLI `run` invocation auto-snapshots its outputs to `agentlens_results/<experiment>/<UTC_timestamp>/...` so re-running never overwrites prior trajectories or reports.
@@ -191,10 +192,17 @@ reports/
   trajectory_viewer.py    Static-HTML per-run viewer
 
 analysis/
+  canonical.py              trajectory.json -> action-bearing canonical events
+  wang_workflow.py          Wang-style action nodes -> state segments -> workflow steps
+  actonomy.py               Act-onomy taxonomy assignment -> sessions/profile
+  methods.py                Runs both method pipelines and writes aggregate outputs
   trajectory_processing.py
                           Deterministic offline processor:
                           trajectory.json -> workflow_steps.jsonl,
-                          trajectory_summaries.csv/jsonl, behavior codebook
+                          trajectory_summaries.csv/jsonl, behavior codebook,
+                          methods/{wang_*,actonomy_*,canonical_events.jsonl}
+reports/
+  method_comparison.py      Side-by-side HTML for Wang vs Act-onomy + raw screenshots/logs
 ```
 
 The agent's **inner loop** in `screenshot_react_loop.py` has remained stable through every refactor — gating, eval-protocol, orchestrator, AgentActor were all added *around* it without changing it.
@@ -345,6 +353,7 @@ The `tools` allowlist further narrows the tier (e.g. tier `full_sandbox` with `t
 | Sandbox **`reuse_existing_sandbox: true`** + **`keep_sandbox_open_seconds: N`** flags for live VNC inspection | ✅ |
 | Warning-only repeated-action intervention with page text hint + `USER_INTERVENTION` event | ✅ |
 | Offline trajectory processing: raw events → workflow steps → behavior labels/summaries | ✅ |
+| Separate Wang-style and Act-onomy-style trajectory processors + side-by-side HTML comparison | ✅ |
 
 ## Verified results
 
@@ -362,7 +371,8 @@ The `tools` allowlist further narrows the tier (e.g. tier `full_sandbox` with `t
 | AWS `tac_io_capture_mock` | 1.00 | AIO Sandbox started on EC2, captured screenshot + `write_file`/`run_python`/`shell`/`read_file`, and recorded artifact diffs for `/tmp/agentlens_capture_smoke.csv` and `/tmp/agentlens_capture_report.txt`. |
 | AWS DOMSteer DataVoyager with `gpt-4o-mini-2024-07-18` before intervention | 0.00 | Capture worked; model repeated drag actions for 11 steps, then hit a short TPM rate limit. Useful initial repeated-action challenge case. Config now uses `gpt-5.4-nano`. |
 | Local `intervention_repeated_action_smoke` | 1.00 | Three repeated mock drags triggered exactly one warning-only `USER_INTERVENTION` event. |
-| Local `process-trajectories agentlens_results` | 41 trajectories processed | Produced `workflow_steps.jsonl`, `trajectory_summaries.jsonl`, `trajectory_summaries.csv`, and `behavior_codebook.json` under `agentlens_results/trajectory_processing/local_v0`. |
+| Local `process-trajectories agentlens_results` | 41 trajectories processed | Produced `workflow_steps.jsonl`, `trajectory_summaries.jsonl`, `trajectory_summaries.csv`, `behavior_codebook.json`, and method outputs under `methods/`. |
+| Local method comparison reports | 2 generated | `agentlens_results/method_comparison/domsteer_datavoyager_gpt5/method_comparison.html` and `agentlens_results/method_comparison/tac_io_capture_mock/method_comparison.html` compare Wang-style workflow induction vs Act-onomy codebook aggregation with raw screenshots/logs. |
 
 The DataVoyager flip (FAIL → PASS via `run_python`) and the dialogue retry (turn 1 wrong answer → user feedback → turn 2 correct) are the headline cases — concrete evidence the framework can capture trajectory-shape changes that the project's thesis is about.
 
