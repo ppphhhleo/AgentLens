@@ -60,5 +60,23 @@ Build the generic image:
 docker build -t agentlens/desktop-poc:latest docker/desktop-poc
 ```
 
+Or run the repeatable preparation script, which validates the config, ensures a
+usable desktop image tag exists, verifies desktop tools, and writes a dry-run
+plan:
+
+```bash
+scripts/prepare_workflow_desktop_poc.sh
+```
+
+If the project source is synced without its own virtualenv, point the script at
+an existing AgentLens executable. The script prepends the current checkout's
+`src` directory to `PYTHONPATH`, so shared virtualenvs still use the synced
+source:
+
+```bash
+AGENTLENS_CLI=/home/ubuntu/AgentLens/.venv/bin/agentlens \
+  scripts/prepare_workflow_desktop_poc.sh
+```
+
 For real Workflow-GYM app tasks, extend that image with Unity, Blender, or the
 target desktop application.

@@ -43,6 +43,12 @@ def validate_answer(
         )
         return result.success, result.score, msg
 
+    if task.answer_validator == "semantic_pending":
+        return None, None, "semantic validation pending"
+
+    if task.answer_validator == "manual_pending":
+        return None, None, "manual validation pending"
+
     if answer is None:
         return False, 0.0, "missing final answer"
 
@@ -70,12 +76,6 @@ def validate_answer(
             1.0 if success else 0.0,
             "number exact match" if success else "number exact mismatch",
         )
-
-    if task.answer_validator == "semantic_pending":
-        return None, None, "semantic validation pending"
-
-    if task.answer_validator == "manual_pending":
-        return None, None, "manual validation pending"
 
     return None, None, f"unsupported validator: {task.answer_validator}"
 
