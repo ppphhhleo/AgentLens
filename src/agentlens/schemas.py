@@ -69,10 +69,12 @@ class ToolHarnessConfig(BaseModel):
         "browsergym_direct",
         "browsergym_bridge",
         "screenshot_react",
+        "desktop_react",
         "agencybench",
         "cocoabench",
         "human",
         "custom",
+        "workflow_gym",
     ]
     tier: ToolHarnessTier
     tools: list[str] = Field(default_factory=list)
@@ -147,6 +149,7 @@ class TaskConfig(BaseModel):
         "online_mind2web",
         "the_agent_company",
         "cocoabench",
+        "workflow_gym",
         "custom",
     ]
     task_id: str

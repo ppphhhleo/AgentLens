@@ -1,0 +1,85 @@
+schema_version: "0.1"
+id: workflow_desktop_poc
+description: >
+  Desktop-app acting/evaluating proof of concept for Workflow-GYM-style tasks.
+  The sandbox image is intentionally replaceable so Unity, Blender, or other
+  app-specific images can be swapped in without changing AgentLens code.
+
+models:
+  - id: cheap_smoke
+    provider: openai
+    name: gpt-4o-mini
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 512
+    extra:
+      interaction_backend: tool_call
+
+tool_harnesses:
+  - id: ubuntu_desktop
+    runner: desktop_react
+    tier: full_sandbox
+    tools:
+      - desktop.screenshot
+      - desktop.click
+      - desktop.type
+      - desktop.keypress
+      - desktop.shell
+      - desktop.wait
+      - task.final_answer
+    prompt_version: desktop_tool_call_v1
+    extra:
+      sandbox_image: agentlens/desktop-poc:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads, /workspace]
+      keep_sandbox_open_seconds: 0
+      intervention:
+        enabled: true
+        repeated_action:
+          enabled: true
+          threshold: 5
+          mode: warn
+          signature: type
+          message: "You are repeating the same desktop action. Pause, inspect the screenshot, and try a different strategy."
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+tasks:
+  - id: workflowgym_unity_scene_smoke
+    benchmark: workflow_gym
+    task_id: unity.scene_smoke
+    goal: >
+      In the Ubuntu desktop sandbox, use the Unity desktop application to
+      create or open a scene containing a cube named AgentLensCube, save the
+      scene, and answer done. Use Ubuntu commands such as unity-editor or
+      unityhub if you need to launch Unity; do not use macOS open commands.
+    capability_required: [desktop_gui, visual_reasoning, artifact_creation]
+    validator: final_answer
+    expected_answer: done
+    answer_validator: manual_pending
+    extra:
+      task_family: desktop_app
+      app: unity
+      desktop_start_cmd: "nohup bash -lc 'unity-editor || unityhub || true' >/tmp/agentlens_unity.log 2>&1 &"
+      app_launch_commands: [unity-editor, unityhub]
+      expected_artifacts:
+        - /home/gem/UnityProjects/AgentLensPOC
+      image_requirement: "Provide a sandbox image with Unity installed, or replace sandbox_image with one that has the target app."
+
+runs:
+  - id: unity_scene_smoke__cheap
+    model: cheap_smoke
+    tool_harness: ubuntu_desktop
+    memory_harness: no_memory
+    task: workflowgym_unity_scene_smoke
+    seeds: [0]
+    trials: 1
+    max_steps: 8
+    output_dir: agentlens_results/workflow_desktop_poc
+    tags: [workflow_gym, unity, desktop_poc, cheap_smoke]

@@ -199,9 +199,22 @@ def _codes_for_event(event: CanonicalEvent) -> list[tuple[str, str, str]]:
         codes.append(("T2.2.2.2", _short(thought or action_text), "programmatic analysis/computation"))
     elif action_type == "shell":
         codes.append(("T3.1.3.3", action_text, "executes a shell command"))
-    elif action_type in {"click", "double_click", "drag", "type", "keypress", "scroll", "move"}:
+    elif action_type in {
+        "click",
+        "double_click",
+        "drag",
+        "type",
+        "keypress",
+        "scroll",
+        "move",
+        "desktop_click",
+        "desktop_type",
+        "desktop_keypress",
+    }:
         codes.append(("T3.1.3.1", action_text, "grounds work in the visible GUI/action surface"))
         codes.append(("T3.2.1.1", action_text, "performs a concrete UI action"))
+    elif action_type == "desktop_shell":
+        codes.append(("T3.1.3.3", action_text, "executes a shell command in the desktop environment"))
     elif action_type in {"goto", "back", "forward", "reload"}:
         codes.append(("T3.1.3.1", action_text, "navigates the browser state"))
     elif action_type == "final_answer":
@@ -341,6 +354,10 @@ def _actonomy_phase(event: CanonicalEvent) -> str:
         "run_python",
         "shell",
         "write_file",
+        "desktop_shell",
+        "desktop_click",
+        "desktop_type",
+        "desktop_keypress",
     }:
         return "edit"
     if _has_verification_signal(event):

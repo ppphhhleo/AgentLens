@@ -25,6 +25,12 @@ ComputerActionType = Literal[
     "read_file",
     "write_file",
     "mcp_tool",
+    "desktop_screenshot",
+    "desktop_click",
+    "desktop_type",
+    "desktop_keypress",
+    "desktop_shell",
+    "desktop_wait",
     "final_answer",
 ]
 
@@ -117,6 +123,12 @@ class ComputerAction(BaseModel):
                 )
         if self.type == "type" and self.text is None:
             raise ValueError("action 'type' requires text")
+        if self.type == "desktop_click" and (self.x is None or self.y is None):
+            raise ValueError("action 'desktop_click' requires x and y")
+        if self.type == "desktop_type" and self.text is None:
+            raise ValueError("action 'desktop_type' requires text")
+        if self.type == "desktop_keypress" and not self.keys:
+            raise ValueError("action 'desktop_keypress' requires keys")
         if self.type == "keypress" and not self.keys:
             raise ValueError("action 'keypress' requires keys")
         if self.type == "drag" and len(self.path) < 2:
@@ -131,6 +143,8 @@ class ComputerAction(BaseModel):
             raise ValueError("action 'run_python' requires code")
         if self.type == "shell" and not self.cmd:
             raise ValueError("action 'shell' requires cmd")
+        if self.type == "desktop_shell" and not self.cmd:
+            raise ValueError("action 'desktop_shell' requires cmd")
         if self.type == "read_file" and not self.file_path:
             raise ValueError("action 'read_file' requires file_path")
         if self.type == "write_file":

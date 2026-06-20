@@ -306,6 +306,66 @@ def default_tool_registry() -> ToolRegistry:
                 ),
             ),
             ToolSpec(
+                name="desktop.screenshot",
+                action_type="desktop_screenshot",
+                executor_family="desktop",
+                description="Capture the whole virtual desktop screenshot.",
+                parameters=_object_schema({}),
+            ),
+            ToolSpec(
+                name="desktop.click",
+                action_type="desktop_click",
+                executor_family="desktop",
+                description="Click a point on the virtual desktop screen.",
+                parameters=_object_schema(
+                    {
+                        "x": {"type": "number", "description": "Screen x coordinate."},
+                        "y": {"type": "number", "description": "Screen y coordinate."},
+                        "button": {"type": "string", "enum": ["left", "right", "middle"]},
+                    },
+                    required=["x", "y"],
+                ),
+            ),
+            ToolSpec(
+                name="desktop.type",
+                action_type="desktop_type",
+                executor_family="desktop",
+                description="Type text into the currently focused desktop application.",
+                parameters=_object_schema(
+                    {"text": {"type": "string", "description": "Text to type."}},
+                    required=["text"],
+                ),
+            ),
+            ToolSpec(
+                name="desktop.keypress",
+                action_type="desktop_keypress",
+                executor_family="desktop",
+                description="Press one or more keyboard keys in the virtual desktop.",
+                parameters=_object_schema(
+                    {"keys": _string_array("Keys to press, e.g. ctrl+s, Enter, Escape.")},
+                    required=["keys"],
+                ),
+            ),
+            ToolSpec(
+                name="desktop.shell",
+                action_type="desktop_shell",
+                executor_family="desktop",
+                description="Run a shell command in the desktop sandbox, usually to launch or inspect a GUI app.",
+                parameters=_object_schema(
+                    {"cmd": {"type": "string", "description": "Shell command to execute."}},
+                    required=["cmd"],
+                ),
+            ),
+            ToolSpec(
+                name="desktop.wait",
+                action_type="desktop_wait",
+                executor_family="desktop",
+                description="Wait for the desktop application to settle.",
+                parameters=_object_schema(
+                    {"ms": {"type": "integer", "description": "Milliseconds to wait."}}
+                ),
+            ),
+            ToolSpec(
                 name="task.final_answer",
                 action_type="final_answer",
                 executor_family="task",

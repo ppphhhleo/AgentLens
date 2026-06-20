@@ -165,6 +165,74 @@ def compare_trajectory_methods_cmd(
     typer.echo(str(html_path))
 
 
+@app.command("evaluate-trajectory")
+def evaluate_trajectory_cmd(
+    trajectory: Path = typer.Argument(..., help="A single trajectory.json file."),
+    output_dir: Path = typer.Option(
+        Path("agentlens_results/evaluations/single"),
+        "--output-dir",
+        "-o",
+        help="Directory for evaluation_bundle.json.",
+    ),
+    config_path: Path | None = typer.Option(
+        None,
+        "--config",
+        help="Optional experiment config for recomputing current outcome validators.",
+    ),
+    state_diff_threshold: float = typer.Option(
+        8000.0,
+        "--state-diff-threshold",
+        help="Wang-style state-difference segmentation threshold.",
+    ),
+) -> None:
+    """Evaluate a completed trajectory after acting has finished."""
+    from agentlens.evaluators.bundle import evaluate_trajectory_bundle
+
+    bundle = evaluate_trajectory_bundle(
+        trajectory,
+        output_dir,
+        config_path=config_path,
+        state_diff_threshold=state_diff_threshold,
+    )
+    typer.echo(bundle.get("bundle_path") or output_dir / "evaluation_bundle.json")
+
+
+@app.command("evaluate-batch")
+def evaluate_batch_cmd(
+    inputs: list[Path] = typer.Argument(
+        ...,
+        help="Trajectory files or directories containing trajectory.json files.",
+    ),
+    output_dir: Path = typer.Option(
+        Path("agentlens_results/evaluations/batch"),
+        "--output-dir",
+        "-o",
+        help="Directory for evaluation_bundles.jsonl and summary.",
+    ),
+    config_path: Path | None = typer.Option(
+        None,
+        "--config",
+        help="Optional experiment config for recomputing current outcome validators.",
+    ),
+    state_diff_threshold: float = typer.Option(
+        8000.0,
+        "--state-diff-threshold",
+        help="Wang-style state-difference segmentation threshold.",
+    ),
+) -> None:
+    """Evaluate many completed trajectories after acting has finished."""
+    from agentlens.evaluators.bundle import evaluate_trajectory_batch
+
+    paths = evaluate_trajectory_batch(
+        inputs,
+        output_dir,
+        config_path=config_path,
+        state_diff_threshold=state_diff_threshold,
+    )
+    for name, path in paths.items():
+        typer.echo(f"{name}: {path}")
+
+
 @app.command("matrix-dashboard")
 def matrix_dashboard_cmd(
     config_path: Path = typer.Argument(..., help="Experiment config defining the matrix."),
@@ -300,6 +368,14 @@ def run(
             log_action=typer.echo if log_actions else None,
         )
         report_dir = plans[0].output_dir / "screenshot_react_summary"
+    elif adapters == {"desktop_react"}:
+        from agentlens.adapters.desktop_react import DesktopReactAdapter
+
+        result = DesktopReactAdapter().run_many(
+            plans,
+            log_action=typer.echo if log_actions else None,
+        )
+        report_dir = plans[0].output_dir / "desktop_react_summary"
     elif adapters == {"browsergym_bridge"}:
         from agentlens.adapters.browsergym_bridge import BrowserGymBridgeAdapter
 

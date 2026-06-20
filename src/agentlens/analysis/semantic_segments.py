@@ -58,6 +58,12 @@ ACTION_TITLE = {
     "shell": "Inspect or execute via shell",
     "final_answer": "Submit the final answer",
     "mcp_tool": "Use browser automation",
+    "desktop_screenshot": "Observe the desktop",
+    "desktop_wait": "Wait for desktop state",
+    "desktop_click": "Interact with the desktop app",
+    "desktop_type": "Enter information",
+    "desktop_keypress": "Use keyboard shortcut",
+    "desktop_shell": "Launch or inspect desktop app",
 }
 
 
@@ -68,13 +74,13 @@ def semantic_intent(text: str, action_type: str | None = None) -> str:
     for intent, patterns in INTENT_PATTERNS:
         if any(_contains_pattern(lowered, pattern) for pattern in patterns):
             return intent
-    if action_type in {"run_python", "shell"}:
+    if action_type in {"run_python", "shell", "desktop_shell"}:
         return "compute_or_analyze"
     if action_type in {"read_file", "web_search"}:
         return "retrieve_information"
-    if action_type in {"write_file", "type", "keypress"}:
+    if action_type in {"write_file", "type", "keypress", "desktop_type", "desktop_keypress"}:
         return "create_or_modify_artifact"
-    if action_type in {"click", "double_click", "drag", "scroll", "move"}:
+    if action_type in {"click", "double_click", "drag", "scroll", "move", "desktop_click"}:
         return "interact_with_interface"
     return "general_task_work"
 
@@ -116,7 +122,7 @@ def action_target_signature(action_type: str | None, action_text: str) -> str:
         points = re.findall(r"'x': ([0-9.]+), 'y': ([0-9.]+)", action_text)
         if points:
             return "drag:" + "->".join(f"{round(float(x))},{round(float(y))}" for x, y in points)
-    if action_type in {"click", "double_click", "move"}:
+    if action_type in {"click", "double_click", "move", "desktop_click"}:
         match = re.search(r"x=([^ ]+) y=([^ ]+)", action_text)
         if match:
             return f"{action_type}:{match.group(1)},{match.group(2)}"
@@ -128,7 +134,7 @@ def action_target_signature(action_type: str | None, action_text: str) -> str:
         if "selector" in action_text:
             return compact_text(action_text, limit=80)
         return action_text.split(":", 1)[0]
-    if action_type in {"run_python", "shell", "web_search", "final_answer", "goto"}:
+    if action_type in {"run_python", "shell", "desktop_shell", "web_search", "final_answer", "goto"}:
         return compact_text(action_text, limit=80)
     return action_type
 

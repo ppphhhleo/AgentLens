@@ -27,6 +27,12 @@ ACTION_PHASES = {
     "read_file": "programmatic_work",
     "write_file": "programmatic_work",
     "final_answer": "finalize",
+    "desktop_screenshot": "observe",
+    "desktop_wait": "observe",
+    "desktop_click": "gui_manipulate",
+    "desktop_type": "gui_manipulate",
+    "desktop_keypress": "gui_manipulate",
+    "desktop_shell": "programmatic_work",
 }
 
 
@@ -164,6 +170,16 @@ def action_to_text(action: dict[str, Any]) -> str:
         tool_name = action.get("mcp_tool") or "mcp.unknown"
         args = action.get("mcp_args") or {}
         return f"{tool_name}: {json.dumps(args, ensure_ascii=False, sort_keys=True)}"
+    if action_type == "desktop_click":
+        return f"desktop_click: x={action.get('x')} y={action.get('y')}"
+    if action_type == "desktop_type":
+        return f"desktop_type: {action.get('text') or ''}".strip()
+    if action_type == "desktop_keypress":
+        return f"desktop_keypress: {action.get('keys') or []}"
+    if action_type == "desktop_shell":
+        return f"desktop_shell: {action.get('cmd') or ''}".strip()
+    if action_type in {"desktop_screenshot", "desktop_wait"}:
+        return str(action)
     if action_type == "final_answer":
         return f"final_answer: {action.get('answer')}"
     if action_type == "run_python":

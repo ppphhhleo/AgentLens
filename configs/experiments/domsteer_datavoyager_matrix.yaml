@@ -176,6 +176,34 @@ tasks:
       canonical_task: datavoyager_europe_100hp_4cyl_count
       task_family: visual_analytics
 
+  - id: datavoyager_horsepower_range_by_origin
+    benchmark: domsteer
+    task_id: datavoyager.horsepower_range_by_origin
+    goal: Which origin's cars show the widest range of horsepower?
+    start_url: https://vega.github.io/voyager2/
+    capability_required: [browser_ui, visual_reasoning, data_analysis]
+    validator: final_answer
+    expected_answer: USA
+    answer_validator: exact
+    extra:
+      canonical_task: datavoyager_horsepower_range_by_origin
+      task_family: visual_analytics
+      task_registry_only: true
+
+  - id: datavoyager_8_cylinder_origin
+    benchmark: domsteer
+    task_id: datavoyager.8_cylinder_origin
+    goal: What origin are all cars with 8 cylinders from in the dataset?
+    start_url: https://vega.github.io/voyager2/
+    capability_required: [browser_ui, visual_reasoning, data_analysis]
+    validator: final_answer
+    expected_answer: USA
+    answer_validator: exact
+    extra:
+      canonical_task: datavoyager_8_cylinder_origin
+      task_family: visual_analytics
+      task_registry_only: true
+
 runs:
   - id: dv_most_fuel__gpt54mini__browser
     model: gpt54_mini

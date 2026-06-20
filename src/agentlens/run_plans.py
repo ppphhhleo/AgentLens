@@ -53,6 +53,11 @@ def build_run_plans(
 
             adapter = ScreenshotReactAdapter()
             plans.extend(adapter.build_run_plans(scoped_config, max_runs=max_runs))
+        elif tool_harness.runner == "desktop_react":
+            from agentlens.adapters.desktop_react import DesktopReactAdapter
+
+            adapter = DesktopReactAdapter()
+            plans.extend(adapter.build_run_plans(scoped_config, max_runs=max_runs))
         elif tool_harness.runner == "browsergym_bridge":
             from agentlens.adapters.browsergym_bridge import BrowserGymBridgeAdapter
 

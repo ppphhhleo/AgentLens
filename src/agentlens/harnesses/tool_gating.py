@@ -47,6 +47,12 @@ TOOL_NAME_BY_ACTION_TYPE: dict[str, str] = {
     "write_file": "files.write",
     "final_answer": "task.final_answer",
     "mcp_tool": "mcp.*",
+    "desktop_screenshot": "desktop.screenshot",
+    "desktop_click": "desktop.click",
+    "desktop_type": "desktop.type",
+    "desktop_keypress": "desktop.keypress",
+    "desktop_shell": "desktop.shell",
+    "desktop_wait": "desktop.wait",
 }
 
 TOOL_NAME_TO_ACTION_TYPE: dict[str, str] = {v: k for k, v in TOOL_NAME_BY_ACTION_TYPE.items()}
@@ -74,6 +80,12 @@ _ACTION_SCHEMA_FRAGMENTS: dict[str, str] = {
     "read_file":     '- {{"type": "read_file", "file_path": "/abs/or/workspace/path"}}  (reads file contents from sandbox; result in NEXT observation)',
     "write_file":    '- {{"type": "write_file", "file_path": "...", "content": "..."}}  (writes content to a sandbox file; confirmation in NEXT observation)',
     "screenshot":    '- {{"type": "screenshot"}}',
+    "desktop_screenshot": '- {{"type": "desktop_screenshot"}}',
+    "desktop_click":      '- {{"type": "desktop_click", "x": int, "y": int, "button": "left"|"right"|"middle"}}',
+    "desktop_type":       '- {{"type": "desktop_type", "text": "..."}}',
+    "desktop_keypress":   '- {{"type": "desktop_keypress", "keys": ["Enter"]}}',
+    "desktop_shell":      '- {{"type": "desktop_shell", "cmd": "..."}}  (runs a shell command in the desktop sandbox; output in NEXT observation)',
+    "desktop_wait":       '- {{"type": "desktop_wait", "ms": 1000}}',
     "final_answer":  '- {{"type": "final_answer", "answer": "..."}}',
 }
 
