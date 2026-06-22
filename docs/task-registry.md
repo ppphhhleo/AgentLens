@@ -20,16 +20,18 @@ scope, readiness, images, and evaluators.
 | `datavoyager_horsepower_range_by_origin` | Domsteer/DataVoyager | Visual analytics, data analysis | Browser/sandbox harnesses | `registry-only` | `exact`, expected `USA` | Add to matrix when expanding from 2 to 4 tasks. |
 | `datavoyager_8_cylinder_origin` | Domsteer/DataVoyager | Visual analytics, data analysis | Browser/sandbox harnesses | `registry-only` | `exact`, expected `USA` | Reworded from broad characteristics to exact verifiable answer. |
 | `workflowgym_unity_scene_smoke` | Workflow-GYM-style local POC | Visual-spatial GUI workflow | `desktop_react` | `runnable` as harness smoke, `blocked` for real Unity completion | `manual_pending` | Generic desktop image lacks Unity. Use this to test desktop capture/actions/intervention only. |
+| `workflowgym_weka_iris_smoke` | Workflow-GYM-style local POC | Desktop data analysis | `desktop_react` | `runnable` as harness smoke | `manual_pending` | Uses `agentlens/desktop-apps-poc:latest`; local and AWS smoke completed; evaluator intentionally deferred. |
+| `workflowgym_blender_cube_smoke` | Workflow-GYM-style local POC | Visual-spatial GUI workflow | `desktop_react` | `runnable` as harness smoke | `manual_pending` | Uses `agentlens/desktop-apps-poc:latest`; local and AWS smoke completed; evaluator intentionally deferred. |
 
 ## Near-Term Candidate Desktop Tasks
 
 | Candidate | Why It Matters | Environment/Image Need | Evaluator Direction | Priority |
 | --- | --- | --- | --- | --- |
-| Weka Iris preprocessing/classification | Lightweight data-analysis desktop workflow; close to Workflow-GYM representative task. | Java + Weka + Iris `.arff`. | Check saved `.arff`; parse classifier output metrics. | High |
+| Weka Iris preprocessing/classification | Lightweight data-analysis desktop workflow; close to Workflow-GYM representative task. | Java + Weka + Iris `.arff`. | Check saved `.arff`; parse classifier output metrics. | Implemented as smoke; evaluator next |
 | KNIME mini dashboard | Strong visual data-analysis workflow with node graph behavior and long-horizon planning. | KNIME desktop image with sample data. | Check workflow files/components and exported view metadata/screenshots. | High |
 | QGIS shapefile/statistics task | Visual analytics plus spatial reasoning; useful for expert-style comparison. | QGIS image + small shapefile bundle. | Check exported CSV/GeoJSON/TXT and selected feature outputs. | High |
 | FreeCAD stepped solid | Visual-spatial CAD workflow; easier than Unity and objectively evaluable. | FreeCAD image. | Use FreeCAD Python/API to verify object dimensions, volume, surface area. | High |
-| Blender object/material scene | Visual-spatial creative workflow; easier install than Unity. | Blender image. | Use Blender Python to inspect scene objects, transforms, materials, camera/lights. | Medium |
+| Blender object/material scene | Visual-spatial creative workflow; easier install than Unity. | Blender image. | Use Blender Python to inspect scene objects, transforms, materials, camera/lights. | Implemented as smoke; evaluator next |
 | Unity cube scene | High-value visual-spatial/game-development workflow. | Unity/Unity Hub image; licensing/login must be solved. | Inspect Unity scene/project artifacts for object names/transforms/materials. | Medium after FreeCAD/Blender |
 
 ## Workflow-GYM Public Proxy
@@ -65,7 +67,9 @@ Choose the next task by balancing:
 
 Current recommendation:
 
-1. Add Weka or KNIME as the first real desktop data-analysis workflow.
-2. Add FreeCAD or Blender as the first visual-spatial workflow.
-3. Keep Unity as a higher-value second-phase stress test after the desktop
+1. Add lightweight artifact/state evaluators for Weka and Blender.
+2. Tighten desktop prompt/tool behavior so GUI app launch does not block the
+   shell tool after `desktop_start_cmd`.
+3. Consider KNIME/QGIS/FreeCAD next.
+4. Keep Unity as a higher-value second-phase stress test after the desktop
    evaluator pattern is stable.

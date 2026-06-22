@@ -1,0 +1,114 @@
+schema_version: "0.1"
+id: workflow_desktop_apps_poc
+description: >
+  Desktop-app smoke tasks for Weka data-analysis and Blender visual-spatial GUI
+  workflows. Outcome validation is intentionally manual/mock for now; the goal
+  is to verify capture, action execution, intervention, and post-hoc analysis.
+
+models:
+  - id: cheap_smoke
+    provider: openai
+    name: gpt-4o-mini
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 512
+    extra:
+      interaction_backend: tool_call
+
+tool_harnesses:
+  - id: ubuntu_desktop_apps
+    runner: desktop_react
+    tier: full_sandbox
+    tools:
+      - desktop.screenshot
+      - desktop.click
+      - desktop.type
+      - desktop.keypress
+      - desktop.shell
+      - desktop.wait
+      - task.final_answer
+    prompt_version: desktop_tool_call_v1
+    extra:
+      sandbox_image: agentlens/desktop-apps-poc:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads, /workspace]
+      keep_sandbox_open_seconds: 0
+      intervention:
+        enabled: true
+        repeated_action:
+          enabled: true
+          threshold: 5
+          mode: warn
+          signature: type
+          message: "You are repeating the same desktop action. Pause, inspect the screenshot, and try a different strategy."
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+tasks:
+  - id: workflowgym_weka_iris_smoke
+    benchmark: workflow_gym
+    task_id: weka.iris_smoke
+    goal: >
+      In the Ubuntu desktop sandbox, use the already-launched Weka Explorer to
+      open the Iris dataset at /workspace/data/iris.arff if available, inspect
+      the dataset summary, and answer done.
+    capability_required: [desktop_gui, data_analysis]
+    validator: final_answer
+    expected_answer: done
+    answer_validator: manual_pending
+    extra:
+      task_family: desktop_app
+      app: weka
+      desktop_start_cmd: "nohup bash -lc 'weka >/tmp/agentlens_weka.log 2>&1 || java -jar /usr/share/java/weka.jar >/tmp/agentlens_weka.log 2>&1 || true' &"
+      app_launch_commands: [weka, "java -jar /usr/share/java/weka.jar"]
+      input_artifacts:
+        - /workspace/data/iris.arff
+
+  - id: workflowgym_blender_cube_smoke
+    benchmark: workflow_gym
+    task_id: blender.cube_smoke
+    goal: >
+      In the Ubuntu desktop sandbox, use the already-launched Blender window to
+      create or inspect a simple scene containing a cube, name it AgentLensCube
+      if possible, save the file to /workspace/output/agentlens_cube.blend if
+      possible, and answer done.
+    capability_required: [desktop_gui, visual_spatial, artifact_creation]
+    validator: final_answer
+    expected_answer: done
+    answer_validator: manual_pending
+    extra:
+      task_family: desktop_app
+      app: blender
+      desktop_start_cmd: "nohup bash -lc 'blender >/tmp/agentlens_blender.log 2>&1 || true' &"
+      app_launch_commands: [blender]
+      expected_artifacts:
+        - /workspace/output/agentlens_cube.blend
+
+runs:
+  - id: weka_iris_smoke__cheap
+    model: cheap_smoke
+    tool_harness: ubuntu_desktop_apps
+    memory_harness: no_memory
+    task: workflowgym_weka_iris_smoke
+    seeds: [0]
+    trials: 1
+    max_steps: 8
+    output_dir: agentlens_results/workflow_desktop_apps_poc
+    tags: [workflow_gym, weka, desktop_poc, cheap_smoke]
+
+  - id: blender_cube_smoke__cheap
+    model: cheap_smoke
+    tool_harness: ubuntu_desktop_apps
+    memory_harness: no_memory
+    task: workflowgym_blender_cube_smoke
+    seeds: [0]
+    trials: 1
+    max_steps: 8
+    output_dir: agentlens_results/workflow_desktop_apps_poc
+    tags: [workflow_gym, blender, desktop_poc, cheap_smoke]

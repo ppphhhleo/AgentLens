@@ -44,6 +44,46 @@ Important replacement note:
   the next real Workflow-GYM milestone. When that happens, update this file with
   the image tag, installed application version, launch command, and evaluator.
 
+## 2026-06-22: Weka And Blender Desktop App Smoke Tasks
+
+What changed:
+
+- Added Workflow-GYM-style desktop app smoke config:
+  - `configs/experiments/workflow_desktop_apps_poc.yaml`
+- Added replaceable app image scaffold:
+  - `docker/desktop-apps-poc/`
+  - image tag: `agentlens/desktop-apps-poc:latest`
+  - installed apps: Weka, Blender, Java runtime
+- Added prep script:
+  - `scripts/prepare_workflow_desktop_apps_poc.sh`
+  - prefers Dockerfile build;
+  - falls back to run-plus-commit build on hosts where Docker's legacy builder
+    stalls, while restoring the AIO sandbox entrypoint `/opt/gem/run.sh`.
+- Registered tasks:
+  - `workflowgym_weka_iris_smoke`
+  - `workflowgym_blender_cube_smoke`
+
+Validated:
+
+- Local smoke generated two trajectories:
+  - `agentlens_results/workflow_desktop_apps_poc/2026-06-22_07-24-14/`
+- Local post-hoc evaluation bundles generated under:
+  - `agentlens_results/evaluations/workflow_desktop_apps_poc/2026-06-22_07-24-14/`
+- AWS smoke generated two trajectories from `/home/ubuntu/AgentLens_desktop_poc`
+  and was synced back locally:
+  - `agentlens_results/workflow_desktop_apps_poc/2026-06-22_07-48-38_aws/`
+- AWS post-hoc evaluation bundles generated under:
+  - `agentlens_results/evaluations/workflow_desktop_apps_poc/2026-06-22_07-48-38_aws/`
+
+Important smoke finding:
+
+- When the app is already launched by `desktop_start_cmd`, the agent may still
+  call `desktop.shell` with GUI commands such as `weka` or `blender`. These
+  foreground GUI processes can block the shell tool. Short-term mitigation is
+  to avoid telling the model to launch already-started GUI apps; longer-term
+  fix is to make desktop shell execution safer for GUI commands, such as
+  detached launch helpers or timeout/kill handling.
+
 ## Current Practical Commands
 
 Prepare desktop POC locally or on AWS:
@@ -81,9 +121,13 @@ Evaluate one completed trajectory:
 
 ## Open Items
 
-- Provide or build a Unity/Blender/Workflow-GYM-ready sandbox image.
+- Keep Weka/Blender outcome validation as `manual_pending` until real
+  artifact/state evaluators are added.
+- Provide or build a Unity/official Workflow-GYM-ready sandbox image.
 - Replace `manual_pending` for real desktop app tasks with an artifact/state
   evaluator once the target application is actually installed.
+- Tighten desktop prompts/tool behavior so shell is not used for foreground GUI
+  app launch once `desktop_start_cmd` has already opened the app.
 - Decide whether to reconcile or replace the dirty AWS checkout at
   `/home/ubuntu/AgentLens`; current POC work used `/home/ubuntu/AgentLens_desktop_poc`
   to avoid overwriting server-side changes.
