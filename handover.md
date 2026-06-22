@@ -4,6 +4,9 @@ This file tracks big implementation milestones and replacement-sensitive
 decisions. Update it whenever a major harness, task source, evaluator, image,
 or analysis pipeline is replaced.
 
+Task planning lives in `docs/task-registry.md`. Update that registry whenever
+adding, replacing, retiring, or reprioritizing runnable or candidate tasks.
+
 ## 2026-06-20: Desktop POC And Post-Hoc Evaluation
 
 Commit: `a225bbd Add desktop POC and trajectory evaluator pipeline`
