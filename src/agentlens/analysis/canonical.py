@@ -32,6 +32,7 @@ ACTION_PHASES = {
     "desktop_click": "gui_manipulate",
     "desktop_type": "gui_manipulate",
     "desktop_keypress": "gui_manipulate",
+    "desktop_launch_app": "programmatic_work",
     "desktop_shell": "programmatic_work",
 }
 
@@ -176,6 +177,8 @@ def action_to_text(action: dict[str, Any]) -> str:
         return f"desktop_type: {action.get('text') or ''}".strip()
     if action_type == "desktop_keypress":
         return f"desktop_keypress: {action.get('keys') or []}"
+    if action_type == "desktop_launch_app":
+        return f"desktop_launch_app: {action.get('app') or ''}".strip()
     if action_type == "desktop_shell":
         return f"desktop_shell: {action.get('cmd') or ''}".strip()
     if action_type in {"desktop_screenshot", "desktop_wait"}:

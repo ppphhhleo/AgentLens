@@ -29,6 +29,7 @@ ComputerActionType = Literal[
     "desktop_click",
     "desktop_type",
     "desktop_keypress",
+    "desktop_launch_app",
     "desktop_shell",
     "desktop_wait",
     "final_answer",
@@ -78,6 +79,7 @@ class ComputerAction(BaseModel):
     query: str | None = None
     code: str | None = None
     cmd: str | None = None
+    app: str | None = None
     # NOTE: `path` (above) is the drag-coordinate path; do NOT reuse it for
     # filesystem paths. read_file / write_file use `file_path`.
     file_path: str | None = None
@@ -129,6 +131,8 @@ class ComputerAction(BaseModel):
             raise ValueError("action 'desktop_type' requires text")
         if self.type == "desktop_keypress" and not self.keys:
             raise ValueError("action 'desktop_keypress' requires keys")
+        if self.type == "desktop_launch_app" and not self.app:
+            raise ValueError("action 'desktop_launch_app' requires app")
         if self.type == "keypress" and not self.keys:
             raise ValueError("action 'keypress' requires keys")
         if self.type == "drag" and len(self.path) < 2:

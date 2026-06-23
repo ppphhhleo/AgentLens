@@ -347,10 +347,20 @@ def default_tool_registry() -> ToolRegistry:
                 ),
             ),
             ToolSpec(
+                name="desktop.launch_app",
+                action_type="desktop_launch_app",
+                executor_family="desktop",
+                description="Launch a GUI application in the desktop sandbox without blocking the shell tool.",
+                parameters=_object_schema(
+                    {"app": {"type": "string", "description": "Application command, e.g. blender or weka."}},
+                    required=["app"],
+                ),
+            ),
+            ToolSpec(
                 name="desktop.shell",
                 action_type="desktop_shell",
                 executor_family="desktop",
-                description="Run a shell command in the desktop sandbox, usually to launch or inspect a GUI app.",
+                description="Run a non-GUI shell command in the desktop sandbox for inspection or file operations.",
                 parameters=_object_schema(
                     {"cmd": {"type": "string", "description": "Shell command to execute."}},
                     required=["cmd"],

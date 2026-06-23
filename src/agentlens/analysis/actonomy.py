@@ -213,6 +213,9 @@ def _codes_for_event(event: CanonicalEvent) -> list[tuple[str, str, str]]:
     }:
         codes.append(("T3.1.3.1", action_text, "grounds work in the visible GUI/action surface"))
         codes.append(("T3.2.1.1", action_text, "performs a concrete UI action"))
+    elif action_type == "desktop_launch_app":
+        codes.append(("T3.1.3.1", action_text, "opens a desktop application for GUI work"))
+        codes.append(("T3.2.1.1", action_text, "prepares the visible work surface"))
     elif action_type == "desktop_shell":
         codes.append(("T3.1.3.3", action_text, "executes a shell command in the desktop environment"))
     elif action_type in {"goto", "back", "forward", "reload"}:
@@ -354,6 +357,7 @@ def _actonomy_phase(event: CanonicalEvent) -> str:
         "run_python",
         "shell",
         "write_file",
+        "desktop_launch_app",
         "desktop_shell",
         "desktop_click",
         "desktop_type",

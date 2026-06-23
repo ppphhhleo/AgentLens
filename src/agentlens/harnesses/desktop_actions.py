@@ -7,6 +7,11 @@ from pathlib import Path
 from agentlens.actions import ComputerAction
 from agentlens.schemas import TrajectoryEvent, TrajectoryEventType
 
+GUI_LAUNCH_COMMANDS = {
+    "blender",
+    "weka",
+}
+
 
 def capture_desktop_screenshot_event(
     sandbox,
@@ -46,8 +51,22 @@ def execute_desktop_action(sandbox, action: ComputerAction) -> tuple[str, str]:
         ms = action.ms or 1000
         result = sandbox.shell(f"sleep {max(ms, 0) / 1000:.3f}", timeout_sec=max(2, int(ms / 1000) + 2))
         return result.output, result.error
+    if action.type == "desktop_launch_app":
+        result = _launch_desktop_app(sandbox, action.app or "")
+        return result.output, result.error
     if action.type == "desktop_shell":
-        result = sandbox.shell(action.cmd or "", timeout_sec=60)
+        cmd = action.cmd or ""
+        safe_cmd = _detached_gui_command(cmd)
+        if safe_cmd:
+            result = sandbox.shell(safe_cmd, timeout_sec=5)
+            output = result.output
+            if result.ok:
+                output = (
+                    output.rstrip()
+                    + f"\n[agentlens] Detached foreground GUI command: {cmd!r}\n"
+                ).lstrip()
+            return output, result.error
+        result = sandbox.shell(cmd, timeout_sec=60)
         return result.output, result.error
     if action.type == "desktop_click":
         button = {"left": 1, "middle": 2, "right": 3}.get(action.button, 1)
@@ -72,6 +91,8 @@ def format_desktop_action(action: ComputerAction) -> str:
         return f"desktop_type text={action.text!r}"
     if action.type == "desktop_keypress":
         return f"desktop_keypress keys={action.keys}"
+    if action.type == "desktop_launch_app":
+        return f"desktop_launch_app app={action.app!r}"
     if action.type == "desktop_shell":
         return f"desktop_shell cmd={action.cmd!r}"
     if action.type == "desktop_wait":
@@ -124,6 +145,46 @@ def _desktop_tool_error(result, tool_name: str) -> str:
     if "not found" in err or "command not found" in err:
         return f"{tool_name} is not installed in the desktop sandbox image"
     return err
+
+
+def _launch_desktop_app(sandbox, app: str):
+    command = _detached_gui_command(app) or _detached_command(app)
+    return sandbox.shell(command, timeout_sec=5)
+
+
+def _detached_gui_command(cmd: str) -> str | None:
+    stripped = cmd.strip()
+    if not stripped:
+        return None
+    try:
+        parts = shlex.split(stripped)
+    except ValueError:
+        return None
+    if not parts:
+        return None
+    if parts[0] in GUI_LAUNCH_COMMANDS:
+        return _detached_command(stripped)
+    if (
+        parts[:2] == ["java", "-jar"]
+        and len(parts) >= 3
+        and parts[2].endswith("/weka.jar")
+    ):
+        return _detached_command(stripped)
+    return None
+
+
+def _detached_command(cmd: str) -> str:
+    quoted_cmd = shlex.quote(cmd)
+    log_path = shlex.quote(f"/tmp/agentlens_launch_{_safe_launch_name(cmd)}.log")
+    return f"nohup bash -lc {quoted_cmd} >{log_path} 2>&1 & echo $!"
+
+
+def _safe_launch_name(cmd: str) -> str:
+    try:
+        first = shlex.split(cmd)[0]
+    except (IndexError, ValueError):
+        first = "app"
+    return "".join(ch if ch.isalnum() or ch in {"_", "-"} else "_" for ch in first) or "app"
 
 
 def _xdotool_key(key: str) -> str:

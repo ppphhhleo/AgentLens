@@ -51,6 +51,7 @@ TOOL_NAME_BY_ACTION_TYPE: dict[str, str] = {
     "desktop_click": "desktop.click",
     "desktop_type": "desktop.type",
     "desktop_keypress": "desktop.keypress",
+    "desktop_launch_app": "desktop.launch_app",
     "desktop_shell": "desktop.shell",
     "desktop_wait": "desktop.wait",
 }
@@ -84,6 +85,7 @@ _ACTION_SCHEMA_FRAGMENTS: dict[str, str] = {
     "desktop_click":      '- {{"type": "desktop_click", "x": int, "y": int, "button": "left"|"right"|"middle"}}',
     "desktop_type":       '- {{"type": "desktop_type", "text": "..."}}',
     "desktop_keypress":   '- {{"type": "desktop_keypress", "keys": ["Enter"]}}',
+    "desktop_launch_app": '- {{"type": "desktop_launch_app", "app": "blender"}}  (launches a GUI app detached from the shell tool)',
     "desktop_shell":      '- {{"type": "desktop_shell", "cmd": "..."}}  (runs a shell command in the desktop sandbox; output in NEXT observation)',
     "desktop_wait":       '- {{"type": "desktop_wait", "ms": 1000}}',
     "final_answer":  '- {{"type": "final_answer", "answer": "..."}}',

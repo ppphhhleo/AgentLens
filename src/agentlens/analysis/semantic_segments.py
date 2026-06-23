@@ -63,6 +63,7 @@ ACTION_TITLE = {
     "desktop_click": "Interact with the desktop app",
     "desktop_type": "Enter information",
     "desktop_keypress": "Use keyboard shortcut",
+    "desktop_launch_app": "Launch desktop app",
     "desktop_shell": "Launch or inspect desktop app",
 }
 
@@ -76,6 +77,8 @@ def semantic_intent(text: str, action_type: str | None = None) -> str:
             return intent
     if action_type in {"run_python", "shell", "desktop_shell"}:
         return "compute_or_analyze"
+    if action_type == "desktop_launch_app":
+        return "retrieve_information"
     if action_type in {"read_file", "web_search"}:
         return "retrieve_information"
     if action_type in {"write_file", "type", "keypress", "desktop_type", "desktop_keypress"}:
@@ -134,7 +137,15 @@ def action_target_signature(action_type: str | None, action_text: str) -> str:
         if "selector" in action_text:
             return compact_text(action_text, limit=80)
         return action_text.split(":", 1)[0]
-    if action_type in {"run_python", "shell", "desktop_shell", "web_search", "final_answer", "goto"}:
+    if action_type in {
+        "run_python",
+        "shell",
+        "desktop_launch_app",
+        "desktop_shell",
+        "web_search",
+        "final_answer",
+        "goto",
+    }:
         return compact_text(action_text, limit=80)
     return action_type
 

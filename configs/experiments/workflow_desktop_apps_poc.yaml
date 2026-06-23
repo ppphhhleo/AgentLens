@@ -24,6 +24,7 @@ tool_harnesses:
       - desktop.click
       - desktop.type
       - desktop.keypress
+      - desktop.launch_app
       - desktop.shell
       - desktop.wait
       - task.final_answer

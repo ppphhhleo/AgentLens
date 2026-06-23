@@ -92,6 +92,12 @@ Prepare desktop POC locally or on AWS:
 scripts/prepare_workflow_desktop_poc.sh
 ```
 
+Prepare Weka/Blender desktop app POC locally or on AWS:
+
+```bash
+scripts/prepare_workflow_desktop_apps_poc.sh
+```
+
 For the isolated AWS POC sync at `/home/ubuntu/AgentLens_desktop_poc`, reuse
 the existing AgentLens virtualenv. The script prepends the current checkout's
 `src` directory to `PYTHONPATH`, so the shared executable still imports the
@@ -126,8 +132,41 @@ Evaluate one completed trajectory:
 - Provide or build a Unity/official Workflow-GYM-ready sandbox image.
 - Replace `manual_pending` for real desktop app tasks with an artifact/state
   evaluator once the target application is actually installed.
-- Tighten desktop prompts/tool behavior so shell is not used for foreground GUI
-  app launch once `desktop_start_cmd` has already opened the app.
+- Broaden the detached GUI launch guard if future desktop tasks add additional
+  foreground GUI apps beyond Weka and Blender.
 - Decide whether to reconcile or replace the dirty AWS checkout at
   `/home/ubuntu/AgentLens`; current POC work used `/home/ubuntu/AgentLens_desktop_poc`
   to avoid overwriting server-side changes.
+
+## 2026-06-23: Safer Desktop GUI Launch Behavior
+
+What changed:
+
+- Added `desktop.launch_app` as the explicit detached GUI app launch tool.
+- Kept `desktop.shell` available for non-GUI inspection and file/programmatic
+  work, but added a runtime guard for known foreground GUI launch commands:
+  - `blender`
+  - `weka`
+  - `java -jar /usr/share/java/weka.jar`
+- If an agent still emits one of those commands through `desktop.shell`, the
+  executor converts it to a detached `nohup bash -lc ... &` launch and returns
+  promptly instead of blocking the trajectory loop.
+- Added the new action to tool gating, OpenAI tool-call registration, trajectory
+  formatting, Wang-style canonical phases, and Actonomy-style labels.
+- Updated `workflow_desktop_apps_poc.yaml` to expose `desktop.launch_app`.
+
+Validated:
+
+- `agentlens validate-config configs/experiments/workflow_desktop_apps_poc.yaml`
+- `ruff check src/agentlens tests`
+- `scripts/prepare_workflow_desktop_apps_poc.sh`
+- Direct helper check confirmed `blender` detaches and `ls /tmp` stays a normal
+  shell command.
+
+Note:
+
+- `pytest` 9.0.3 is installed in the local venv, but both
+  `.venv/bin/python -m pytest tests/test_desktop_actions.py` and
+  `.venv/bin/pytest tests/test_desktop_actions.py` exited with code `-1`
+  without stdout/stderr in this desktop session. Keep the focused test file; it
+  should run in CI or a normal shell environment.
