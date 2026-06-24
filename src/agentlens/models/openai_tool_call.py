@@ -48,6 +48,7 @@ class OpenAIToolCallModel:
         self.temperature = config.temperature
         self.max_output_tokens = config.max_output_tokens or 1024
         self.input_modes = list((config.extra or {}).get("input_modes", ["screenshot"]))
+        self.addressing_modes = list((config.extra or {}).get("addressing_modes", ["coordinate"]))
 
         from agentlens.harnesses.tool_gating import ToolSet
 
@@ -55,7 +56,10 @@ class OpenAIToolCallModel:
             toolset = ToolSet(allowed=frozenset())
         self.toolset = toolset
         self.registry = default_tool_registry()
-        self.provider_adapter = OpenAIToolAdapter(self.registry)
+        self.provider_adapter = OpenAIToolAdapter(
+            self.registry,
+            addressing_modes=self.addressing_modes,
+        )
         if toolset.is_unrestricted:
             self.tool_specs = self.registry.specs_for_tool_names([])
         else:

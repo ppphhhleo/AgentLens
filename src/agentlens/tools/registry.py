@@ -474,8 +474,9 @@ def default_tool_registry() -> ToolRegistry:
 class OpenAIToolAdapter:
     provider = "openai"
 
-    def __init__(self, registry: ToolRegistry) -> None:
+    def __init__(self, registry: ToolRegistry, addressing_modes: list[str] | None = None) -> None:
         self.registry = registry
+        self.addressing_modes = list(addressing_modes or ["coordinate"])
         self._provider_to_canonical: dict[str, str] = {}
 
     def tool_payloads(self, specs: list[ToolSpec]) -> list[dict[str, Any]]:
@@ -484,7 +485,12 @@ class OpenAIToolAdapter:
         for spec in specs:
             provider_name = _provider_tool_name(spec.name)
             self._provider_to_canonical[provider_name] = spec.name
-            parameters = _openai_compatible_schema(_with_reasoning(spec.parameters))
+            parameters = _provider_visible_schema(
+                spec,
+                _with_reasoning(spec.parameters),
+                addressing_modes=self.addressing_modes,
+            )
+            parameters = _openai_compatible_schema(parameters)
             tools.append(
                 {
                     "type": "function",
@@ -549,8 +555,9 @@ class OpenAIToolAdapter:
 class AnthropicToolAdapter:
     provider = "anthropic"
 
-    def __init__(self, registry: ToolRegistry) -> None:
+    def __init__(self, registry: ToolRegistry, addressing_modes: list[str] | None = None) -> None:
         self.registry = registry
+        self.addressing_modes = list(addressing_modes or ["coordinate"])
         self._provider_to_canonical: dict[str, str] = {}
 
     def tool_payloads(self, specs: list[ToolSpec]) -> list[dict[str, Any]]:
@@ -563,7 +570,11 @@ class AnthropicToolAdapter:
                 {
                     "name": provider_name,
                     "description": spec.description,
-                    "input_schema": _with_reasoning(spec.parameters),
+                    "input_schema": _provider_visible_schema(
+                        spec,
+                        _with_reasoning(spec.parameters),
+                        addressing_modes=self.addressing_modes,
+                    ),
                 }
             )
         return tools
@@ -649,6 +660,55 @@ def _openai_compatible_schema(parameters: dict[str, Any]) -> dict[str, Any]:
     for key in ("oneOf", "anyOf", "allOf", "not", "const"):
         updated.pop(key, None)
     return updated
+
+
+def _provider_visible_schema(
+    spec: ToolSpec,
+    parameters: dict[str, Any],
+    *,
+    addressing_modes: list[str],
+) -> dict[str, Any]:
+    """Hide target-addressing fields unavailable in the current observation mode."""
+
+    updated = json.loads(json.dumps(parameters))
+    properties = updated.get("properties")
+    if not isinstance(properties, dict):
+        return updated
+
+    target_fields = {"x", "y", "bid", "selector", "mark"}
+    if not target_fields.intersection(properties):
+        return updated
+
+    modes = set(addressing_modes or ["coordinate"])
+    allowed: set[str] = set()
+    if "coordinate" in modes:
+        allowed.update({"x", "y"})
+    if "bid" in modes or "axtree" in modes:
+        allowed.add("bid")
+    if "selector" in modes or "css" in modes:
+        allowed.add("selector")
+    if "mark" in modes or "set_of_marks" in modes:
+        allowed.add("mark")
+
+    for field in target_fields - allowed:
+        properties.pop(field, None)
+
+    required = [item for item in updated.get("required", []) if item in properties]
+    if spec.action_type in {"click", "double_click", "move"} and {"x", "y"}.issubset(properties):
+        required = _unique_required([*required, "x", "y"])
+    updated["required"] = required
+    return updated
+
+
+def _unique_required(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for item in items:
+        if item in seen:
+            continue
+        result.append(item)
+        seen.add(item)
+    return result
 
 
 def _target_props() -> dict[str, Any]:
