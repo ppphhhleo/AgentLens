@@ -254,3 +254,24 @@ Recommended next step:
 - Run one smoke trajectory first, render the dashboard from only the tool-call
   `raw/` root, inspect screenshots/final answer, then run the full 18-run
   matrix.
+
+## 2026-06-24: Batch Retry Policy
+
+What changed:
+
+- Kept `browser_only` as pure screenshot + pixel-coordinate targeting for now.
+- Added model-call retry backoff in the screenshot ReAct loop:
+  - parses provider hints such as "try again in 341ms";
+  - falls back to exponential backoff;
+  - records `retry_sleep_s` in trajectory model-error events.
+- Added per-harness retry settings to
+  `configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml`:
+  - `model_max_attempts: 6`
+  - `model_retry_sleep_s: 2.0`
+  - `model_retry_max_sleep_s: 60.0`
+
+Note:
+
+- Set-of-marks stays disabled. If richer browser grounding is needed later,
+  prefer an existing package or browser-agent/MCP implementation instead of
+  hand-rolling a new marking method.

@@ -57,6 +57,9 @@ tool_harnesses:
       settle_ms: 2000
       slow_mo_ms: 350
       viewport: {width: 1600, height: 900}
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
       intervention:
         enabled: true
         repeated_action:
@@ -102,6 +105,9 @@ tool_harnesses:
       settle_ms: 1000
       stealth: true
       viewport: {width: 1600, height: 900}
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
       intervention:
         enabled: true
         repeated_action:
@@ -135,6 +141,9 @@ tool_harnesses:
       stealth: true
       viewport: {width: 1600, height: 900}
       input_modes: [axtree]
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
       intervention:
         enabled: true
         repeated_action:

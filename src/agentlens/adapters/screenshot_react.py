@@ -367,6 +367,15 @@ class ScreenshotReactAdapter:
                         max_steps=plan.max_steps,
                         input_modes=input_modes,
                         intervention_config=plan.tool_harness.extra.get("intervention"),
+                        model_max_attempts=int(
+                            plan.tool_harness.extra.get("model_max_attempts", 6)
+                        ),
+                        model_retry_sleep_s=float(
+                            plan.tool_harness.extra.get("model_retry_sleep_s", 2.0)
+                        ),
+                        model_retry_max_sleep_s=float(
+                            plan.tool_harness.extra.get("model_retry_max_sleep_s", 60.0)
+                        ),
                         log_action=log_action,
                     )
 

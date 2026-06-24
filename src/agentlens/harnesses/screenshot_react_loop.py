@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 import json
+import re
 import subprocess
 import time
 from typing import Callable
@@ -50,6 +51,39 @@ def _strip_marks(page, *, enabled: bool) -> None:
         pass
 
 
+def _model_retry_delay_seconds(
+    exc: Exception,
+    *,
+    attempt: int,
+    base_sleep_s: float,
+    max_sleep_s: float,
+) -> float:
+    """Choose a retry delay, respecting provider rate-limit hints when present."""
+
+    base = max(float(base_sleep_s), 0.1)
+    cap = max(float(max_sleep_s), base)
+    exponential = min(cap, base * (2 ** max(attempt - 1, 0)))
+    hinted = _provider_retry_hint_seconds(str(exc))
+    if hinted is None:
+        return exponential
+    return min(cap, max(exponential, hinted * 1.5, base))
+
+
+def _provider_retry_hint_seconds(message: str) -> float | None:
+    match = re.search(
+        r"try again in\s+([0-9]+(?:\.[0-9]+)?)\s*(ms|s|sec|seconds?)",
+        message,
+        re.I,
+    )
+    if not match:
+        return None
+    value = float(match.group(1))
+    unit = match.group(2).lower()
+    if unit == "ms":
+        return value / 1000.0
+    return value
+
+
 def run_screenshot_react_loop(
     *,
     page,
@@ -64,6 +98,7 @@ def run_screenshot_react_loop(
     intervention_config: dict | None = None,
     model_max_attempts: int = 3,
     model_retry_sleep_s: float = 1.0,
+    model_retry_max_sleep_s: float = 45.0,
     log_action: Callable[[str], None] | None = None,
 ) -> tuple[str | None, list[TrajectoryEvent]]:
     """Mode-aware ReAct loop.
@@ -152,6 +187,12 @@ def run_screenshot_react_loop(
                     f"[{run_id} step={step_index}] model_error "
                     f"attempt={attempt}/{max(model_max_attempts, 1)}: {err}",
                 )
+                retry_sleep_s = _model_retry_delay_seconds(
+                    exc,
+                    attempt=attempt,
+                    base_sleep_s=model_retry_sleep_s,
+                    max_sleep_s=model_retry_max_sleep_s,
+                )
                 events.append(
                     TrajectoryEvent(
                         event_type=TrajectoryEventType.MODEL_MESSAGE,
@@ -161,12 +202,18 @@ def run_screenshot_react_loop(
                             "mock": False,
                             "retry_attempt": attempt,
                             "retry_exhausted": exhausted,
+                            "retry_sleep_s": None if exhausted else retry_sleep_s,
                         },
                     )
                 )
                 if exhausted:
                     break
-                time.sleep(model_retry_sleep_s * attempt)
+                _log(
+                    log_action,
+                    f"[{run_id} step={step_index}] retrying model call "
+                    f"in {retry_sleep_s:.1f}s",
+                )
+                time.sleep(retry_sleep_s)
         if model_step is None:
             break
 

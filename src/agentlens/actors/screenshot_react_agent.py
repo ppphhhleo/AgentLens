@@ -74,6 +74,9 @@ class ScreenshotReactAgent:
         max_steps: int = 12,
         input_modes: list[str] | None = None,
         intervention_config: dict | None = None,
+        model_max_attempts: int = 3,
+        model_retry_sleep_s: float = 1.0,
+        model_retry_max_sleep_s: float = 45.0,
         log_action: Callable[[str], None] | None = None,
     ) -> None:
         self.model_config = model_config
@@ -84,6 +87,9 @@ class ScreenshotReactAgent:
         self.max_steps = max_steps
         self.input_modes = list(input_modes or ["screenshot"])
         self.intervention_config = intervention_config or {}
+        self.model_max_attempts = model_max_attempts
+        self.model_retry_sleep_s = model_retry_sleep_s
+        self.model_retry_max_sleep_s = model_retry_max_sleep_s
         self.log_action = log_action
 
     def get_init_state(self, *, observation: AgentObservation) -> AgentState:
@@ -116,6 +122,9 @@ class ScreenshotReactAgent:
             sandbox=self.sandbox,
             input_modes=self.input_modes,
             intervention_config=self.intervention_config,
+            model_max_attempts=self.model_max_attempts,
+            model_retry_sleep_s=self.model_retry_sleep_s,
+            model_retry_max_sleep_s=self.model_retry_max_sleep_s,
             log_action=self.log_action,
         )
         new_state = state.model_copy(
