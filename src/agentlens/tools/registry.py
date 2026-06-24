@@ -484,7 +484,7 @@ class OpenAIToolAdapter:
         for spec in specs:
             provider_name = _provider_tool_name(spec.name)
             self._provider_to_canonical[provider_name] = spec.name
-            parameters = _with_reasoning(spec.parameters)
+            parameters = _openai_compatible_schema(_with_reasoning(spec.parameters))
             tools.append(
                 {
                     "type": "function",
@@ -633,6 +633,21 @@ def _with_reasoning(parameters: dict[str, Any]) -> dict[str, Any]:
             "description": "Brief rationale for this tool call, if useful.",
         },
     )
+    return updated
+
+
+def _openai_compatible_schema(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Render the registry schema into OpenAI's supported function subset.
+
+    AgentLens keeps richer canonical schemas where useful. OpenAI function
+    parameters reject top-level combinators such as oneOf, so provider adapters
+    strip those API-incompatible hints while preserving the actual properties.
+    Runtime tool gating and action validation still enforce executable actions.
+    """
+
+    updated = json.loads(json.dumps(parameters))
+    for key in ("oneOf", "anyOf", "allOf", "not", "const"):
+        updated.pop(key, None)
     return updated
 
 
