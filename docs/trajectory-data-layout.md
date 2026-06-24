@@ -23,7 +23,7 @@ agentlens_results/domsteer_datavoyager_toolcall_matrix/
 ```text
 agentlens_results/<batch_id>/
   batch_config.yaml              # frozen config snapshot used for this batch
-  run_plan.json                  # dry-run expansion for this batch
+  run_plan.dry_run.json          # optional resolved dry-run expansion
   raw/
     trajectories/
       <run_id>_seed<seed>_trial<trial>/
@@ -96,14 +96,19 @@ cp configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
   agentlens_results/domsteer_datavoyager_toolcall_matrix/batch_config.yaml
 ```
 
-Dry-run the matrix:
+Optionally dry-run the matrix. This is a debugging/audit artifact, not the
+source of truth:
 
 ```bash
 .venv/bin/agentlens run \
   agentlens_results/domsteer_datavoyager_toolcall_matrix/batch_config.yaml \
   --dry-run \
-  --output agentlens_results/domsteer_datavoyager_toolcall_matrix/run_plan.json
+  --output agentlens_results/domsteer_datavoyager_toolcall_matrix/run_plan.dry_run.json
 ```
+
+`run_plan.dry_run.json` is the runner's resolved view of the batch after
+references, defaults, seeds, trials, and filters are expanded. It can be
+deleted and regenerated from `batch_config.yaml`.
 
 Smoke-run one trajectory first:
 
@@ -158,3 +163,6 @@ using a mixed root can hide which collection pass a cell came from.
 Treat `configs/experiments/*.yaml` as editable templates. Treat
 `agentlens_results/<batch_id>/batch_config.yaml` as the frozen provenance record
 for that batch.
+
+Treat `run_plan.dry_run.json` as optional. It is useful when debugging exactly
+what the runner intended to execute, but it is secondary to `batch_config.yaml`.

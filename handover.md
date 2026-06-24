@@ -243,6 +243,7 @@ What changed:
   `agentlens_results/domsteer_datavoyager_toolcall_matrix/raw`.
 - Added `docs/trajectory-data-layout.md` to make the batch layout explicit:
   - `batch_config.yaml` for the frozen config snapshot;
+  - `run_plan.dry_run.json` as an optional resolved dry-run expansion;
   - `raw/` for trajectories, screenshots, traces, videos, and run summaries;
   - `dashboard/` for reusable matrix dashboards;
   - `analysis/` for method comparison and evaluation outputs.
