@@ -4,6 +4,10 @@ This is the planning registry for runnable tasks and candidate tasks. Keep
 `handover.md` for milestones and replacement decisions; keep this file for task
 scope, readiness, images, and evaluators.
 
+Detailed trajectory-collection planning lives in
+`docs/trajectory-collection-tasks.md`, organized by benchmark, task type,
+application, and harness mode.
+
 ## Status Labels
 
 - `runnable`: config exists and can be executed now.
@@ -17,6 +21,7 @@ scope, readiness, images, and evaluators.
 | --- | --- | --- | --- | --- | --- | --- |
 | `datavoyager_most_fuel_efficient` | Domsteer/DataVoyager | Visual analytics, data analysis | `browser_only`, `full_sandbox`, `no_gui_tool_only` | `runnable` | `contains`, expected `Mazda GLC` | Included in current matrix runs. |
 | `datavoyager_europe_100hp_4cyl_count` | Domsteer/DataVoyager | Visual analytics, data analysis | `browser_only`, `full_sandbox`, `no_gui_tool_only` | `runnable` | `number_exact`, expected `10` | Included in current matrix runs. |
+| `the_agent_company_io_capture_smoke` | TheAgentCompany-style smoke | Workplace data analysis, browser + code + file I/O | `full_sandbox` | `runnable` as TAC-shaped smoke | `exact`, expected `revenue total 60` | In `capture_first_domsteer_agentcompany.yaml`; not full TAC benchmark integration. |
 | `datavoyager_horsepower_range_by_origin` | Domsteer/DataVoyager | Visual analytics, data analysis | Browser/sandbox harnesses | `registry-only` | `exact`, expected `USA` | Add to matrix when expanding from 2 to 4 tasks. |
 | `datavoyager_8_cylinder_origin` | Domsteer/DataVoyager | Visual analytics, data analysis | Browser/sandbox harnesses | `registry-only` | `exact`, expected `USA` | Reworded from broad characteristics to exact verifiable answer. |
 | `workflowgym_unity_scene_smoke` | Workflow-GYM-style local POC | Visual-spatial GUI workflow | `desktop_react` | `runnable` as harness smoke, `blocked` for real Unity completion | `manual_pending` | Generic desktop image lacks Unity. Use this to test desktop capture/actions/intervention only. |

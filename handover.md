@@ -4,8 +4,14 @@ This file tracks big implementation milestones and replacement-sensitive
 decisions. Update it whenever a major harness, task source, evaluator, image,
 or analysis pipeline is replaced.
 
-Task planning lives in `docs/task-registry.md`. Update that registry whenever
-adding, replacing, retiring, or reprioritizing runnable or candidate tasks.
+Task planning lives in:
+
+- `docs/trajectory-collection-tasks.md` for benchmark/type/application/harness
+  planning for trajectory collection.
+- `docs/task-registry.md` for compact implementation status.
+
+Update those files whenever adding, replacing, retiring, or reprioritizing
+runnable or candidate tasks.
 
 ## 2026-06-20: Desktop POC And Post-Hoc Evaluation
 
@@ -170,3 +176,20 @@ Note:
   `.venv/bin/pytest tests/test_desktop_actions.py` exited with code `-1`
   without stdout/stderr in this desktop session. Keep the focused test file; it
   should run in CI or a normal shell environment.
+
+## 2026-06-24: Trajectory Collection Task Catalog
+
+What changed:
+
+- Added `docs/trajectory-collection-tasks.md` as the detailed catalog for
+  trajectory-collection tasks.
+- Organized tasks by:
+  - benchmark;
+  - task type, such as visual analytics, workplace data analysis, desktop data
+    analysis, or visual-spatial GUI workflow;
+  - application, such as DataVoyager, TheAgentCompany-style browser/code/files,
+    Weka, Blender, QGIS, KNIME, FreeCAD, and Unity;
+  - harness compatibility, including `browser_only`, `full_sandbox`,
+    `desktop_gui_only`, `desktop_no_gui_tool_only`, and `no_gui_tool_only`.
+- Updated `docs/task-registry.md` to point to the new catalog and to include
+  `the_agent_company_io_capture_smoke` as a runnable TAC-shaped smoke task.
