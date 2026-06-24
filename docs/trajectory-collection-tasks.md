@@ -5,7 +5,8 @@ tasks by benchmark, task type, and application, and records which harness modes
 are appropriate.
 
 Use `docs/task-registry.md` for compact implementation status. Use
-`handover.md` for milestones and replacement-sensitive decisions.
+`docs/trajectory-data-layout.md` for raw/processed data storage conventions.
+Use `handover.md` for milestones and replacement-sensitive decisions.
 
 ## Harness Modes
 
@@ -77,7 +78,8 @@ the application makes it meaningful:
 ## Immediate Collection Plan
 
 1. Collect DOMSteer/DataVoyager trajectories for the two ready tasks across
-   `browser_only`, `full_sandbox`, and `no_gui_tool_only`.
+   `browser_only`, `full_sandbox`, and `no_gui_tool_only` using
+   `configs/experiments/domsteer_datavoyager_matrix_v2_toolcall.yaml`.
 2. Keep `the_agent_company_io_capture_smoke` in the collection set as the
    workplace code/file I/O smoke task.
 3. Rerun Weka and Blender smoke after the `desktop.launch_app` update, locally

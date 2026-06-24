@@ -232,3 +232,23 @@ Note:
   desktop session, so focused tests were verified directly. Re-run pytest in a
   normal shell or CI before treating this as fully CI-validated.
 - Claude smoke runs require `ANTHROPIC_API_KEY` in the local/server environment.
+
+## 2026-06-24: Clean DataVoyager V2 Collection Layout
+
+What changed:
+
+- Added `configs/experiments/domsteer_datavoyager_matrix_v2_toolcall.yaml`.
+- Kept the old `domsteer_datavoyager_matrix.yaml` intact for provenance.
+- The v2 config writes raw acting outputs to:
+  `agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw`.
+- Added `docs/trajectory-data-layout.md` to make the batch layout explicit:
+  - `raw/` for trajectories, screenshots, traces, videos, and run summaries;
+  - `dashboard/` for reusable matrix dashboards;
+  - `analysis/` for method comparison and evaluation outputs.
+- Updated task docs to point new DataVoyager collection at the v2 config.
+
+Recommended next step:
+
+- Run one v2 smoke trajectory first, render the dashboard from only the v2
+  `raw/` root, inspect screenshots/final answer, then run the full 18-run
+  matrix.

@@ -8,6 +8,8 @@ Detailed trajectory-collection planning lives in
 `docs/trajectory-collection-tasks.md`, organized by benchmark, task type,
 application, and harness mode.
 
+Raw/processed storage conventions live in `docs/trajectory-data-layout.md`.
+
 ## Status Labels
 
 - `runnable`: config exists and can be executed now.
