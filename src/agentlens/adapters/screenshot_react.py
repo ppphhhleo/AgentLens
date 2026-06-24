@@ -106,7 +106,7 @@ class ScreenshotReactAdapter:
                             task=task,
                             output_dir=run.output_dir,
                             raw_output_dir=run.output_dir / "screenshot_react_raw",
-                            max_steps=run.max_steps or (1 if is_mock else 12),
+                            max_steps=run.max_steps or (1 if is_mock else 100),
                             user_harness=user_harness,
                             judge_model=judge_model,
                             tags=run.tags,

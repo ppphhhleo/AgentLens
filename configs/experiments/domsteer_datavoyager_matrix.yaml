@@ -212,7 +212,6 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, browser_only, gpt54_mini]
 
@@ -223,7 +222,6 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt54_mini]
 
@@ -234,7 +232,6 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt54_mini]
 
@@ -245,7 +242,6 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, browser_only, gpt4o_mini]
 
@@ -256,7 +252,6 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt4o_mini]
 
@@ -267,7 +262,6 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt4o_mini]
 
@@ -278,7 +272,6 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, browser_only, gpt5_mini]
 
@@ -289,7 +282,6 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt5_mini]
 
@@ -300,7 +292,6 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt5_mini]
 
@@ -311,7 +302,6 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, browser_only, gpt54_mini]
 
@@ -322,7 +312,6 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt54_mini]
 
@@ -333,7 +322,6 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt54_mini]
 
@@ -344,7 +332,6 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, browser_only, gpt4o_mini]
 
@@ -355,7 +342,6 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt4o_mini]
 
@@ -366,7 +352,6 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt4o_mini]
 
@@ -377,7 +362,6 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, browser_only, gpt5_mini]
 
@@ -388,7 +372,6 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt5_mini]
 
@@ -399,6 +382,5 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    max_steps: 15
     output_dir: agentlens_results/domsteer_datavoyager_matrix
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt5_mini]

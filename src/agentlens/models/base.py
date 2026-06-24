@@ -79,6 +79,11 @@ def build_model(config: ModelConfig, toolset=None) -> ChatModel:
 
         return OpenAIToolCallModel(config, toolset=toolset)
 
+    if config.provider == "anthropic" and interaction_backend == "tool_call":
+        from agentlens.models.anthropic_tool_call import AnthropicToolCallModel
+
+        return AnthropicToolCallModel(config, toolset=toolset)
+
     if config.provider == "openai":
         from agentlens.models.openai_vision import OpenAIVisionModel
 
@@ -86,5 +91,6 @@ def build_model(config: ModelConfig, toolset=None) -> ChatModel:
 
     raise ValueError(
         f"unsupported model provider '{config.provider}' for real screenshot ReAct loop "
-        "(expected 'openai'); use provider='local' name='mock_screenshot_react' for mock runs"
+        "(expected 'openai' or 'anthropic' with interaction_backend='tool_call'); "
+        "use provider='local' name='mock_screenshot_react' for mock runs"
     )

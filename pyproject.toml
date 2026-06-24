@@ -6,6 +6,7 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
     "agent-sandbox>=0.0.30",
     "agentlab>=0.4.2",
+    "anthropic>=0.60",
     "browsergym>=0.14.3",
     "openai>=1.50",
     "pandas>=2.2",

@@ -193,3 +193,42 @@ What changed:
     `desktop_gui_only`, `desktop_no_gui_tool_only`, and `no_gui_tool_only`.
 - Updated `docs/task-registry.md` to point to the new catalog and to include
   `the_agent_company_io_capture_smoke` as a runnable TAC-shaped smoke task.
+
+## 2026-06-24: Claude Tool-Call Backend and Step-Cap Cleanup
+
+What changed:
+
+- Added `AnthropicToolCallModel` for Claude Messages API tool use.
+- Added an Anthropic provider adapter in the shared tool registry, so OpenAI
+  and Claude both consume the same AgentLens tool specs and emit the same
+  canonical trajectory records:
+  - canonical tool name, such as `browser.click`;
+  - raw provider tool name, such as `browser__click`;
+  - tool arguments;
+  - provider response metadata and token counts when available.
+- Declared the `anthropic` SDK dependency in `pyproject.toml`.
+- Added `configs/experiments/domsteer_claude_toolcall_smoke.yaml` as a
+  one-run DataVoyager Claude smoke config. This proves Claude tool calling
+  without expanding the full OpenAI DataVoyager matrix.
+- Removed explicit `max_steps: 15` entries from
+  `configs/experiments/domsteer_datavoyager_matrix.yaml`.
+- Raised the `screenshot_react` real-run fallback guard from 12 to 100 steps.
+  This is an emergency runaway cap, not a task-design cap.
+- Updated OpenAI and Anthropic tool-call prompts so the model sees only the
+  current step number, not "steps remaining" pressure. This avoids forcing
+  premature `final_answer` when the agent has not finished.
+
+Validated:
+
+- `agentlens validate-config configs/experiments/domsteer_datavoyager_matrix.yaml`
+- `agentlens validate-config configs/experiments/domsteer_claude_toolcall_smoke.yaml`
+- `ruff check src/agentlens tests`
+- Direct Python assertions for `tests/test_anthropic_tool_adapter.py`
+- Direct import check for `agentlens.models.anthropic_tool_call`
+
+Note:
+
+- Local `pytest` still exits with code `-1` and no stdout/stderr in this
+  desktop session, so focused tests were verified directly. Re-run pytest in a
+  normal shell or CI before treating this as fully CI-validated.
+- Claude smoke runs require `ANTHROPIC_API_KEY` in the local/server environment.
