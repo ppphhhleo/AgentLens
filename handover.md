@@ -242,6 +242,7 @@ What changed:
 - The tool-call config writes raw acting outputs to:
   `agentlens_results/domsteer_datavoyager_toolcall_matrix/raw`.
 - Added `docs/trajectory-data-layout.md` to make the batch layout explicit:
+  - `batch_config.yaml` for the frozen config snapshot;
   - `raw/` for trajectories, screenshots, traces, videos, and run summaries;
   - `dashboard/` for reusable matrix dashboards;
   - `analysis/` for method comparison and evaluation outputs.
@@ -249,6 +250,6 @@ What changed:
 
 Recommended next step:
 
-- Run one smoke trajectory first, render the dashboard from only the v2
+- Run one smoke trajectory first, render the dashboard from only the tool-call
   `raw/` root, inspect screenshots/final answer, then run the full 18-run
   matrix.

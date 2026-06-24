@@ -22,6 +22,8 @@ agentlens_results/domsteer_datavoyager_toolcall_matrix/
 
 ```text
 agentlens_results/<batch_id>/
+  batch_config.yaml              # frozen config snapshot used for this batch
+  run_plan.json                  # dry-run expansion for this batch
   raw/
     trajectories/
       <run_id>_seed<seed>_trial<trial>/
@@ -52,6 +54,11 @@ agentlens_results/<batch_id>/
         method_comparison.html
     evaluations/
       ...
+
+  smoke/
+    batch_config.yaml            # same frozen config unless smoke has a variant
+    raw/                         # smoke trajectories kept out of production raw/
+    dashboard.html
 ```
 
 ## Current Collection Config
@@ -82,11 +89,18 @@ agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
 
 ## Recommended Collection Flow
 
+Freeze the config into the batch folder:
+
+```bash
+cp configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  agentlens_results/domsteer_datavoyager_toolcall_matrix/batch_config.yaml
+```
+
 Dry-run the matrix:
 
 ```bash
 .venv/bin/agentlens run \
-  configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  agentlens_results/domsteer_datavoyager_toolcall_matrix/batch_config.yaml \
   --dry-run \
   --output agentlens_results/domsteer_datavoyager_toolcall_matrix/run_plan.json
 ```
@@ -95,7 +109,7 @@ Smoke-run one trajectory first:
 
 ```bash
 .venv/bin/agentlens run \
-  configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  agentlens_results/domsteer_datavoyager_toolcall_matrix/batch_config.yaml \
   --execute \
   --max-runs 1 \
   --log-actions
@@ -105,7 +119,7 @@ Render the dashboard against only the tool-call raw root:
 
 ```bash
 .venv/bin/agentlens matrix-dashboard \
-  configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  agentlens_results/domsteer_datavoyager_toolcall_matrix/batch_config.yaml \
   --trajectory-root agentlens_results/domsteer_datavoyager_toolcall_matrix/raw \
   --output agentlens_results/domsteer_datavoyager_toolcall_matrix/dashboard/dashboard.html \
   --report-root agentlens_results/domsteer_datavoyager_toolcall_matrix/analysis/method_comparison
@@ -115,7 +129,7 @@ Run the full matrix after the smoke looks sane:
 
 ```bash
 .venv/bin/agentlens run \
-  configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  agentlens_results/domsteer_datavoyager_toolcall_matrix/batch_config.yaml \
   --execute \
   --log-actions
 ```
@@ -125,7 +139,7 @@ to spend analysis-model calls:
 
 ```bash
 .venv/bin/agentlens matrix-dashboard \
-  configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  agentlens_results/domsteer_datavoyager_toolcall_matrix/batch_config.yaml \
   --trajectory-root agentlens_results/domsteer_datavoyager_toolcall_matrix/raw \
   --output agentlens_results/domsteer_datavoyager_toolcall_matrix/dashboard/dashboard.html \
   --report-root agentlens_results/domsteer_datavoyager_toolcall_matrix/analysis/method_comparison \
@@ -140,3 +154,7 @@ to spend analysis-model calls:
 Do not point a dashboard for a new batch at a parent folder that also contains
 older runs. The dashboard intentionally picks the latest trajectory by `run_id`;
 using a mixed root can hide which collection pass a cell came from.
+
+Treat `configs/experiments/*.yaml` as editable templates. Treat
+`agentlens_results/<batch_id>/batch_config.yaml` as the frozen provenance record
+for that batch.
