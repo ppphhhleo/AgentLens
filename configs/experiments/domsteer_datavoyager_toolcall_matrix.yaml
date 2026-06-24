@@ -1,7 +1,7 @@
 schema_version: "0.1"
-id: domsteer_datavoyager_matrix_v2_toolcall
+id: domsteer_datavoyager_toolcall_matrix
 description: >
-  Clean v2 DataVoyager trajectory collection using tool-call agents.
+  Clean DataVoyager trajectory collection using tool-call agents.
   Stores raw trajectories separately from dashboards and post-hoc analyses.
 
 models:
@@ -212,7 +212,7 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, browser_only, gpt54_mini]
 
   - id: dv_most_fuel__gpt54mini__sandbox
@@ -222,7 +222,7 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt54_mini]
 
   - id: dv_most_fuel__gpt54mini__nogui
@@ -232,7 +232,7 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt54_mini]
 
   - id: dv_most_fuel__gpt4omini__browser
@@ -242,7 +242,7 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, browser_only, gpt4o_mini]
 
   - id: dv_most_fuel__gpt4omini__sandbox
@@ -252,7 +252,7 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt4o_mini]
 
   - id: dv_most_fuel__gpt4omini__nogui
@@ -262,7 +262,7 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt4o_mini]
 
   - id: dv_most_fuel__gpt5mini__browser
@@ -272,7 +272,7 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, browser_only, gpt5_mini]
 
   - id: dv_most_fuel__gpt5mini__sandbox
@@ -282,7 +282,7 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt5_mini]
 
   - id: dv_most_fuel__gpt5mini__nogui
@@ -292,7 +292,7 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt5_mini]
 
   - id: dv_europe_count__gpt54mini__browser
@@ -302,7 +302,7 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, browser_only, gpt54_mini]
 
   - id: dv_europe_count__gpt54mini__sandbox
@@ -312,7 +312,7 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt54_mini]
 
   - id: dv_europe_count__gpt54mini__nogui
@@ -322,7 +322,7 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt54_mini]
 
   - id: dv_europe_count__gpt4omini__browser
@@ -332,7 +332,7 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, browser_only, gpt4o_mini]
 
   - id: dv_europe_count__gpt4omini__sandbox
@@ -342,7 +342,7 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt4o_mini]
 
   - id: dv_europe_count__gpt4omini__nogui
@@ -352,7 +352,7 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt4o_mini]
 
   - id: dv_europe_count__gpt5mini__browser
@@ -362,7 +362,7 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, browser_only, gpt5_mini]
 
   - id: dv_europe_count__gpt5mini__sandbox
@@ -372,7 +372,7 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, full_sandbox, gpt5_mini]
 
   - id: dv_europe_count__gpt5mini__nogui
@@ -382,5 +382,5 @@ runs:
     task: datavoyager_europe_100hp_4cyl_count
     seeds: [0]
     trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
     tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt5_mini]

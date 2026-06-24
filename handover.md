@@ -233,22 +233,22 @@ Note:
   normal shell or CI before treating this as fully CI-validated.
 - Claude smoke runs require `ANTHROPIC_API_KEY` in the local/server environment.
 
-## 2026-06-24: Clean DataVoyager V2 Collection Layout
+## 2026-06-24: Clean DataVoyager Tool-Call Collection Layout
 
 What changed:
 
-- Added `configs/experiments/domsteer_datavoyager_matrix_v2_toolcall.yaml`.
+- Added `configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml`.
 - Kept the old `domsteer_datavoyager_matrix.yaml` intact for provenance.
-- The v2 config writes raw acting outputs to:
-  `agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw`.
+- The tool-call config writes raw acting outputs to:
+  `agentlens_results/domsteer_datavoyager_toolcall_matrix/raw`.
 - Added `docs/trajectory-data-layout.md` to make the batch layout explicit:
   - `raw/` for trajectories, screenshots, traces, videos, and run summaries;
   - `dashboard/` for reusable matrix dashboards;
   - `analysis/` for method comparison and evaluation outputs.
-- Updated task docs to point new DataVoyager collection at the v2 config.
+- Updated task docs to point new DataVoyager collection at the tool-call config.
 
 Recommended next step:
 
-- Run one v2 smoke trajectory first, render the dashboard from only the v2
+- Run one smoke trajectory first, render the dashboard from only the v2
   `raw/` root, inspect screenshots/final answer, then run the full 18-run
   matrix.

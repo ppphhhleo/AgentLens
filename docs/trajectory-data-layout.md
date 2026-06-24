@@ -15,7 +15,7 @@ agentlens_results/<batch_id>/
 For the current DataVoyager recollection:
 
 ```text
-agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/
+agentlens_results/domsteer_datavoyager_toolcall_matrix/
 ```
 
 ## Directory Contract
@@ -54,12 +54,12 @@ agentlens_results/<batch_id>/
       ...
 ```
 
-## Current V2 Collection Config
+## Current Collection Config
 
-The clean DataVoyager v2 config is:
+The clean DataVoyager tool-call config is:
 
 ```text
-configs/experiments/domsteer_datavoyager_matrix_v2_toolcall.yaml
+configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml
 ```
 
 It includes:
@@ -77,7 +77,7 @@ It includes:
 The config writes raw trajectories to:
 
 ```text
-agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw
+agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
 ```
 
 ## Recommended Collection Flow
@@ -86,36 +86,36 @@ Dry-run the matrix:
 
 ```bash
 .venv/bin/agentlens run \
-  configs/experiments/domsteer_datavoyager_matrix_v2_toolcall.yaml \
+  configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
   --dry-run \
-  --output agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/run_plan.json
+  --output agentlens_results/domsteer_datavoyager_toolcall_matrix/run_plan.json
 ```
 
 Smoke-run one trajectory first:
 
 ```bash
 .venv/bin/agentlens run \
-  configs/experiments/domsteer_datavoyager_matrix_v2_toolcall.yaml \
+  configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
   --execute \
   --max-runs 1 \
   --log-actions
 ```
 
-Render the dashboard against only the v2 raw root:
+Render the dashboard against only the tool-call raw root:
 
 ```bash
 .venv/bin/agentlens matrix-dashboard \
-  configs/experiments/domsteer_datavoyager_matrix_v2_toolcall.yaml \
-  --trajectory-root agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw \
-  --output agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/dashboard/dashboard.html \
-  --report-root agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/analysis/method_comparison
+  configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  --trajectory-root agentlens_results/domsteer_datavoyager_toolcall_matrix/raw \
+  --output agentlens_results/domsteer_datavoyager_toolcall_matrix/dashboard/dashboard.html \
+  --report-root agentlens_results/domsteer_datavoyager_toolcall_matrix/analysis/method_comparison
 ```
 
 Run the full matrix after the smoke looks sane:
 
 ```bash
 .venv/bin/agentlens run \
-  configs/experiments/domsteer_datavoyager_matrix_v2_toolcall.yaml \
+  configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
   --execute \
   --log-actions
 ```
@@ -125,10 +125,10 @@ to spend analysis-model calls:
 
 ```bash
 .venv/bin/agentlens matrix-dashboard \
-  configs/experiments/domsteer_datavoyager_matrix_v2_toolcall.yaml \
-  --trajectory-root agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/raw \
-  --output agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/dashboard/dashboard.html \
-  --report-root agentlens_results/domsteer_datavoyager_matrix_v2_toolcall/analysis/method_comparison \
+  configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  --trajectory-root agentlens_results/domsteer_datavoyager_toolcall_matrix/raw \
+  --output agentlens_results/domsteer_datavoyager_toolcall_matrix/dashboard/dashboard.html \
+  --report-root agentlens_results/domsteer_datavoyager_toolcall_matrix/analysis/method_comparison \
   --generate-reports \
   --annotation-mode llm \
   --llm-provider openai \
