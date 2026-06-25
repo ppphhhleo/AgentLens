@@ -44,14 +44,6 @@ tool_harnesses:
       settle_ms: 2000
       slow_mo_ms: 350
       viewport: {width: 1600, height: 900}
-      intervention:
-        enabled: true
-        repeated_action:
-          enabled: true
-          threshold: 5
-          mode: warn
-          signature: type
-          message: "You are repeating the same action. Pause, inspect the screen, and try a different strategy."
 
   - id: virtual_computer_full_capture
     runner: screenshot_react
@@ -89,14 +81,6 @@ tool_harnesses:
       settle_ms: 1000
       stealth: true
       viewport: {width: 1600, height: 900}
-      intervention:
-        enabled: true
-        repeated_action:
-          enabled: true
-          threshold: 5
-          mode: warn
-          signature: type
-          message: "You are repeating the same action. Pause, inspect the screen, and try a different strategy."
 
 memory_harnesses:
   - id: no_memory

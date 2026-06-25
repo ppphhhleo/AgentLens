@@ -39,14 +39,13 @@ tool_harnesses:
       settle_ms: 2000
       slow_mo_ms: 350
       viewport: {width: 1600, height: 900}
-      intervention:
-        enabled: true
-        repeated_action:
-          enabled: true
-          threshold: 5
-          mode: warn
-          signature: type
-          message: "You are repeating the same action. Pause, inspect the screen, and try a different strategy."
+      screenshot_source: browser_viewport
+      coordinate_frame: browser_viewport
+      parallel_tool_calls: true
+      max_actions_per_round: 5
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
 
 memory_harnesses:
   - id: no_memory

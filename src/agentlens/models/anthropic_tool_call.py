@@ -36,6 +36,8 @@ class AnthropicToolCallModel:
         self.max_output_tokens = config.max_output_tokens or 1024
         self.input_modes = list((config.extra or {}).get("input_modes", ["screenshot"]))
         self.addressing_modes = list((config.extra or {}).get("addressing_modes", ["coordinate"]))
+        self.parallel_tool_calls = bool((config.extra or {}).get("parallel_tool_calls", False))
+        self.max_actions_per_round = max(1, int((config.extra or {}).get("max_actions_per_round", 1)))
 
         from agentlens.harnesses.tool_gating import ToolSet
 
@@ -79,19 +81,22 @@ class AnthropicToolCallModel:
             max_tokens=self.max_output_tokens,
             temperature=self.temperature,
         )
-        decision = self.provider_adapter.parse_decision(response, model=self.model_name)
-        action = self.registry.to_action(decision)
+        decisions = self.provider_adapter.parse_decisions(response, model=self.model_name)
+        actions = [self.registry.to_action(decision) for decision in decisions]
+        primary = decisions[0]
         return ModelStep(
-            thought=decision.reasoning,
-            action=action,
-            raw_response=json.dumps(decision.to_record(), ensure_ascii=False),
-            prompt_tokens=decision.input_tokens,
-            completion_tokens=decision.output_tokens,
+            thought=primary.reasoning,
+            action=actions[0],
+            actions=actions,
+            raw_response=json.dumps([decision.to_record() for decision in decisions], ensure_ascii=False),
+            prompt_tokens=primary.input_tokens,
+            completion_tokens=primary.output_tokens,
             extra={
                 "model": getattr(response, "model", self.model_name),
-                "finish_reason": decision.finish_reason,
+                "finish_reason": primary.finish_reason,
                 "interaction_backend": "tool_call",
-                "provider_tool_call": decision.to_record(),
+                "provider_tool_call": primary.to_record(),
+                "provider_tool_calls": [decision.to_record() for decision in decisions],
             },
         )
 
@@ -104,15 +109,19 @@ class AnthropicToolCallModel:
     ) -> tuple[str, list[dict[str, Any]]]:
         history_lines = []
         for i, past in enumerate(history, start=1):
-            action_json = past.action.model_dump(
-                mode="json",
-                exclude_none=True,
-                exclude_defaults=True,
-            )
-            provider_call = (past.extra or {}).get("provider_tool_call") or {}
-            tool_name = provider_call.get("tool_name") or action_json.get("type")
+            action_parts = []
+            provider_calls = (past.extra or {}).get("provider_tool_calls") or []
+            for j, action in enumerate(past.action_list(), start=1):
+                action_json = action.model_dump(
+                    mode="json",
+                    exclude_none=True,
+                    exclude_defaults=True,
+                )
+                provider_call = provider_calls[j - 1] if j - 1 < len(provider_calls) else {}
+                tool_name = provider_call.get("tool_name") or action_json.get("type")
+                action_parts.append(f"{j}. tool={tool_name!r} args={action_json}")
             history_lines.append(
-                f"Step {i}: tool={tool_name!r} args={action_json} reasoning={past.thought!r}"
+                f"Round {i}: " + "; ".join(action_parts) + f" reasoning={past.thought!r}"
             )
         history_block = "\n".join(history_lines) if history_lines else "(none)"
 
@@ -166,6 +175,7 @@ class AnthropicToolCallModel:
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
             goal=goal,
             context_description=self._context_description(),
+            action_policy=self._action_policy(),
         )
         content: list[dict[str, Any]] = [{"type": "text", "text": user_text}]
         if observation.screenshot_path is not None and "screenshot" in self.input_modes:
@@ -181,6 +191,16 @@ class AnthropicToolCallModel:
         if "axtree" in modes:
             return "You receive an interactive-element tree and tool outputs. No screenshot is provided."
         return "You receive textual context and tool outputs. No screenshot is provided."
+
+    def _action_policy(self) -> str:
+        if self.parallel_tool_calls and self.max_actions_per_round > 1:
+            return (
+                f"You may call up to {self.max_actions_per_round} tools in one step "
+                "when they are a short, safe sequence that does not require inspecting "
+                "intermediate results. Use one tool call when the next action depends on "
+                "what changes on screen."
+            )
+        return "Use exactly one tool call per step."
 
     @staticmethod
     def _image_block(path: Path) -> dict[str, Any]:

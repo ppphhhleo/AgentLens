@@ -48,6 +48,7 @@ def _held_modifiers(page, keys: list[str] | None):
 # Settle delay after each action so the page can finish layout/animation
 # before the next screenshot. Smaller = smoother live experience.
 DEFAULT_POST_ACTION_SETTLE_MS = 0
+DEFAULT_HOVER_SETTLE_MS = 600
 
 OVERLAY_INIT_JS = """
 (() => {
@@ -262,6 +263,7 @@ def execute_action(page, action: ComputerAction) -> str | None:
                     show_marker(page, action.x, action.y, "#5ac8fa")
                     with _held_modifiers(page, action.keys):
                         page.mouse.move(action.x, action.y)
+                page.wait_for_timeout(DEFAULT_HOVER_SETTLE_MS)
             case "keypress":
                 for key in action.keys:
                     page.keyboard.press(_normalize_key(key))
@@ -319,6 +321,8 @@ def capture_screenshot_event(
             "viewport": page.viewport_size,
             "goal": goal,
             "kind": name_suffix.lstrip("_") or "post_action",
+            "screenshot_source": "browser_viewport",
+            "coordinate_frame": "browser_viewport",
         },
         artifact_paths=[screenshot_path],
     )

@@ -3,7 +3,7 @@ id: workflow_desktop_apps_poc
 description: >
   Desktop-app smoke tasks for Weka data-analysis and Blender visual-spatial GUI
   workflows. Outcome validation is intentionally manual/mock for now; the goal
-  is to verify capture, action execution, intervention, and post-hoc analysis.
+  is to verify capture, action execution, and post-hoc analysis.
 
 models:
   - id: cheap_smoke
@@ -37,14 +37,10 @@ tool_harnesses:
       sandbox_security_opt: [seccomp=unconfined]
       sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads, /workspace]
       keep_sandbox_open_seconds: 0
-      intervention:
-        enabled: true
-        repeated_action:
-          enabled: true
-          threshold: 5
-          mode: warn
-          signature: type
-          message: "You are repeating the same desktop action. Pause, inspect the screenshot, and try a different strategy."
+      screenshot_source: virtual_desktop
+      coordinate_frame: desktop_screen
+      parallel_tool_calls: true
+      max_actions_per_round: 5
 
 memory_harnesses:
   - id: no_memory
@@ -99,7 +95,7 @@ runs:
     task: workflowgym_weka_iris_smoke
     seeds: [0]
     trials: 1
-    max_steps: 8
+    max_steps: 8  # smoke only; use 400 for Workflow-GYM-style collection
     output_dir: agentlens_results/workflow_desktop_apps_poc
     tags: [workflow_gym, weka, desktop_poc, cheap_smoke]
 
@@ -110,6 +106,6 @@ runs:
     task: workflowgym_blender_cube_smoke
     seeds: [0]
     trials: 1
-    max_steps: 8
+    max_steps: 8  # smoke only; use 400 for Workflow-GYM-style collection
     output_dir: agentlens_results/workflow_desktop_apps_poc
     tags: [workflow_gym, blender, desktop_poc, cheap_smoke]

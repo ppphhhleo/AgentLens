@@ -14,10 +14,15 @@ class ModelStep:
 
     thought: str
     action: ComputerAction
+    actions: list[ComputerAction] | None = None
     raw_response: str = ""
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     extra: dict[str, Any] = field(default_factory=dict)
+
+    def action_list(self) -> list[ComputerAction]:
+        """Return all actions requested in this model round."""
+        return list(self.actions or [self.action])
 
 
 @dataclass

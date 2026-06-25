@@ -77,6 +77,7 @@ class ScreenshotReactAgent:
         model_max_attempts: int = 3,
         model_retry_sleep_s: float = 1.0,
         model_retry_max_sleep_s: float = 45.0,
+        max_actions_per_round: int = 1,
         log_action: Callable[[str], None] | None = None,
     ) -> None:
         self.model_config = model_config
@@ -90,6 +91,7 @@ class ScreenshotReactAgent:
         self.model_max_attempts = model_max_attempts
         self.model_retry_sleep_s = model_retry_sleep_s
         self.model_retry_max_sleep_s = model_retry_max_sleep_s
+        self.max_actions_per_round = max(1, int(max_actions_per_round))
         self.log_action = log_action
 
     def get_init_state(self, *, observation: AgentObservation) -> AgentState:
@@ -125,6 +127,7 @@ class ScreenshotReactAgent:
             model_max_attempts=self.model_max_attempts,
             model_retry_sleep_s=self.model_retry_sleep_s,
             model_retry_max_sleep_s=self.model_retry_max_sleep_s,
+            max_actions_per_round=self.max_actions_per_round,
             log_action=self.log_action,
         )
         new_state = state.model_copy(

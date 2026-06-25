@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
+from agentlens.actions import ComputerAction
+from agentlens.models.base import ModelStep
 from agentlens.tools.registry import OpenAIToolAdapter, default_tool_registry
 
 
@@ -33,3 +37,46 @@ def test_openai_tool_payload_keeps_configured_target_modes() -> None:
     assert "bid" in properties
     assert "selector" in properties
     assert "mark" not in properties
+
+
+def test_openai_adapter_parses_multiple_tool_calls() -> None:
+    registry = default_tool_registry()
+    adapter = OpenAIToolAdapter(registry)
+    adapter.tool_payloads([registry.get("browser.click"), registry.get("browser.wait")])
+
+    response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                finish_reason="tool_calls",
+                message=SimpleNamespace(
+                    content="",
+                    tool_calls=[
+                        SimpleNamespace(
+                            function=SimpleNamespace(
+                                name="browser__click",
+                                arguments='{"x": 10, "y": 20, "reasoning": "click target"}',
+                            )
+                        ),
+                        SimpleNamespace(
+                            function=SimpleNamespace(
+                                name="browser__wait",
+                                arguments='{"ms": 500, "reasoning": "wait for UI"}',
+                            )
+                        ),
+                    ],
+                ),
+            )
+        ],
+        usage=SimpleNamespace(prompt_tokens=11, completion_tokens=7),
+    )
+
+    decisions = adapter.parse_decisions(response, model="test-model")
+
+    assert [decision.tool_name for decision in decisions] == ["browser.click", "browser.wait"]
+    assert decisions[0].tool_args["x"] == 10
+    assert decisions[1].tool_args["ms"] == 500
+
+
+def test_model_step_action_list_defaults_to_primary_action() -> None:
+    action = ComputerAction(type="wait", ms=100)
+    assert ModelStep(thought="", action=action).action_list() == [action]

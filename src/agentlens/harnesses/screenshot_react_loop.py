@@ -99,6 +99,7 @@ def run_screenshot_react_loop(
     model_max_attempts: int = 3,
     model_retry_sleep_s: float = 1.0,
     model_retry_max_sleep_s: float = 45.0,
+    max_actions_per_round: int = 1,
     log_action: Callable[[str], None] | None = None,
 ) -> tuple[str | None, list[TrajectoryEvent]]:
     """Mode-aware ReAct loop.
@@ -218,8 +219,24 @@ def run_screenshot_react_loop(
             break
 
         history.append(model_step)
-        action = model_step.action
-        _log(log_action, f"[{run_id} step={step_index}] {format_action(action)}")
+        round_actions = model_step.action_list()
+        if max_actions_per_round < 1:
+            max_actions_per_round = 1
+        if len(round_actions) > max_actions_per_round:
+            events.append(
+                TrajectoryEvent(
+                    event_type=TrajectoryEventType.GATING_VIOLATION,
+                    step_index=step_index,
+                    data={
+                        "message": (
+                            f"model requested {len(round_actions)} actions in one round; "
+                            f"executing first {max_actions_per_round}"
+                        ),
+                        "round_index": step_index,
+                    },
+                )
+            )
+            round_actions = round_actions[:max_actions_per_round]
 
         events.append(
             TrajectoryEvent(
@@ -227,209 +244,246 @@ def run_screenshot_react_loop(
                 step_index=step_index,
                 data={
                     "thought": model_step.thought,
-                    "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
-                    "tool_name": tool_name_for(action),
+                    "action": model_step.action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
+                    "actions": [
+                        action.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
+                        for action in round_actions
+                    ],
+                    "tool_name": tool_name_for(model_step.action),
+                    "tool_names": [tool_name_for(action) for action in round_actions],
+                    "round_index": step_index,
+                    "actions_in_round": len(round_actions),
                     "raw_response": model_step.raw_response,
                     "prompt_tokens": model_step.prompt_tokens,
                     "completion_tokens": model_step.completion_tokens,
                     "model_meta": model_step.extra,
                     "provider_tool_call": (model_step.extra or {}).get("provider_tool_call"),
+                    "provider_tool_calls": (model_step.extra or {}).get("provider_tool_calls"),
                     "mock": False,
                 },
             )
         )
 
-        decision = intervention.observe(action)
-        if decision.triggered:
+        stop_round = False
+        for subaction_index, action in enumerate(round_actions, start=1):
             _log(
                 log_action,
-                f"[{run_id} step={step_index}] intervention: "
-                f"{decision.kind} mode={decision.mode}",
+                f"[{run_id} step={step_index}.{subaction_index}] {format_action(action)}",
             )
-            show_hint(page, decision.message)
-            pending_tool_output = _merge_tool_outputs(
-                pending_tool_output,
-                f"[intervention:{decision.kind}]\n{decision.message}",
-            )
-            events.append(
-                TrajectoryEvent(
-                    event_type=TrajectoryEventType.USER_INTERVENTION,
-                    step_index=step_index,
-                    data={
-                        "source": "intervention_monitor",
-                        "kind": decision.kind,
-                        "mode": decision.mode,
-                        "message": decision.message,
-                        "details": decision.details,
-                    },
+            common = {
+                "round_index": step_index,
+                "subaction_index": subaction_index,
+                "actions_in_round": len(round_actions),
+            }
+
+            decision = intervention.observe(action)
+            if decision.triggered:
+                _log(
+                    log_action,
+                    f"[{run_id} step={step_index}.{subaction_index}] intervention: "
+                    f"{decision.kind} mode={decision.mode}",
                 )
-            )
-
-        # Gate the action against the harness's tool allow-list.
-        allowed, gating_msg = toolset.gate_action(action)
-        if not allowed:
-            _log(log_action, f"[{run_id} step={step_index}] gating: {gating_msg}")
-            events.append(
-                TrajectoryEvent(
-                    event_type=TrajectoryEventType.GATING_VIOLATION,
-                    step_index=step_index,
-                    data={
-                        "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
-                        "tool_name": tool_name_for(action),
-                        "message": gating_msg,
-                    },
+                show_hint(page, decision.message)
+                pending_tool_output = _merge_tool_outputs(
+                    pending_tool_output,
+                    f"[intervention:{decision.kind}]\n{decision.message}",
                 )
-            )
-            # Skip execution but keep looping; next step the model gets a
-            # fresh screenshot (unchanged) and can pick something allowed.
-            continue
-
-        if action.type == "final_answer":
-            answer = action.answer
-            break
-
-        # Handle tool actions that don't touch the page (no Playwright call,
-        # no screenshot capture). Result is queued for the next observation.
-        if action.type == "web_search":
-            from agentlens.tools.openai_search import (
-                format_for_observation,
-                openai_web_search,
-            )
-            search_result = openai_web_search(action.query or "")
-            pending_tool_output = format_for_observation(search_result)
-            _log(
-                log_action,
-                f"[{run_id} step={step_index}] web_search -> "
-                f"{len(search_result.text)} chars, {len(search_result.sources)} sources"
-                + (f" (error: {search_result.error})" if search_result.error else ""),
-            )
-            events.append(
-                TrajectoryEvent(
-                    event_type=TrajectoryEventType.TOOL_CALL,
-                    step_index=step_index,
-                    data={
-                        "tool_name": "web.openai_search",
-                        "query": action.query,
-                        "text": search_result.text,
-                        "sources": search_result.sources,
-                        "model": search_result.model,
-                        "input_tokens": search_result.input_tokens,
-                        "output_tokens": search_result.output_tokens,
-                        "error": search_result.error,
-                    },
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.USER_INTERVENTION,
+                        step_index=step_index,
+                        data={
+                            **common,
+                            "source": "intervention_monitor",
+                            "kind": decision.kind,
+                            "mode": decision.mode,
+                            "message": decision.message,
+                            "details": decision.details,
+                        },
+                    )
                 )
-            )
-            continue
 
-        if action.type == "mcp_tool":
-            from agentlens.tools.mcp import format_for_observation, run_mcp_tool
-
-            mcp_result = run_mcp_tool(action, page=page)
-            pending_tool_output = format_for_observation(mcp_result)
-            _log(
-                log_action,
-                f"[{run_id} step={step_index}] {action.mcp_tool} -> "
-                f"{'ok' if mcp_result.ok else 'err'}"
-                + (f" err={mcp_result.error[:80]!r}" if mcp_result.error else ""),
-            )
-            events.append(
-                TrajectoryEvent(
-                    event_type=TrajectoryEventType.TOOL_CALL,
-                    step_index=step_index,
-                    data={
-                        "tool_name": tool_name_for(action),
-                        "action": action.model_dump(
-                            mode="json",
-                            exclude_none=True,
-                            exclude_defaults=True,
-                        ),
-                        "ok": mcp_result.ok,
-                        "output": mcp_result.output,
-                        "error": mcp_result.error,
-                        "extra": mcp_result.extra,
-                    },
+            allowed, gating_msg = toolset.gate_action(action)
+            if not allowed:
+                _log(log_action, f"[{run_id} step={step_index}.{subaction_index}] gating: {gating_msg}")
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.GATING_VIOLATION,
+                        step_index=step_index,
+                        data={
+                            **common,
+                            "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
+                            "tool_name": tool_name_for(action),
+                            "message": gating_msg,
+                        },
+                    )
                 )
-            )
-            screenshot_event = capture_screenshot_event(
-                page=page,
-                screenshot_dir=screenshot_dir,
-                step_index=step_index,
-                goal=goal,
-            )
-            events.append(screenshot_event)
-            last_screenshot_path = screenshot_event.artifact_paths[0]
-            _log(log_action, f"[{run_id} step={step_index}] screenshot -> {last_screenshot_path}")
-            continue
+                continue
 
-        # Sandbox-only multi-tool actions. Require an AIOSandboxSession.
-        if action.type in {"run_python", "shell", "read_file", "write_file"}:
-            if sandbox is None:
-                err_msg = (
-                    f"action {action.type!r} requires a sandbox session "
-                    f"(set tool_harness.extra.browser_source=aio_sandbox)"
+            if action.type == "final_answer":
+                answer = action.answer
+                stop_round = True
+                break
+
+            if action.type == "web_search":
+                from agentlens.tools.openai_search import (
+                    format_for_observation,
+                    openai_web_search,
                 )
-                pending_tool_output = f"[{action.type} unavailable: {err_msg}]"
-                _log(log_action, f"[{run_id} step={step_index}] {action.type}: {err_msg}")
+
+                search_result = openai_web_search(action.query or "")
+                pending_tool_output = format_for_observation(search_result)
+                _log(
+                    log_action,
+                    f"[{run_id} step={step_index}.{subaction_index}] web_search -> "
+                    f"{len(search_result.text)} chars, {len(search_result.sources)} sources"
+                    + (f" (error: {search_result.error})" if search_result.error else ""),
+                )
                 events.append(
                     TrajectoryEvent(
                         event_type=TrajectoryEventType.TOOL_CALL,
                         step_index=step_index,
                         data={
-                            "tool_name": tool_name_for(action),
-                            "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
-                            "error": err_msg,
+                            **common,
+                            "tool_name": "web.openai_search",
+                            "query": action.query,
+                            "text": search_result.text,
+                            "sources": search_result.sources,
+                            "model": search_result.model,
+                            "input_tokens": search_result.input_tokens,
+                            "output_tokens": search_result.output_tokens,
+                            "error": search_result.error,
                         },
                     )
                 )
-                continue
-            manifest_before = _snapshot_sandbox_files(sandbox)
-            result = _run_sandbox_action(sandbox, action)
-            manifest_after = _snapshot_sandbox_files(sandbox)
-            artifact_diff = _diff_file_manifests(manifest_before, manifest_after)
-            pending_tool_output = _format_sandbox_result(action, result)
-            _log(
-                log_action,
-                f"[{run_id} step={step_index}] {action.type} -> "
-                f"{'ok' if result.ok else 'err'} ({len(result.output)} chars)"
-                + (f" err={result.error[:80]!r}" if result.error else ""),
-            )
+                stop_round = True
+                break
+
+            if action.type == "mcp_tool":
+                from agentlens.tools.mcp import format_for_observation, run_mcp_tool
+
+                mcp_result = run_mcp_tool(action, page=page)
+                pending_tool_output = format_for_observation(mcp_result)
+                _log(
+                    log_action,
+                    f"[{run_id} step={step_index}.{subaction_index}] {action.mcp_tool} -> "
+                    f"{'ok' if mcp_result.ok else 'err'}"
+                    + (f" err={mcp_result.error[:80]!r}" if mcp_result.error else ""),
+                )
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.TOOL_CALL,
+                        step_index=step_index,
+                        data={
+                            **common,
+                            "tool_name": tool_name_for(action),
+                            "action": action.model_dump(
+                                mode="json",
+                                exclude_none=True,
+                                exclude_defaults=True,
+                            ),
+                            "ok": mcp_result.ok,
+                            "output": mcp_result.output,
+                            "error": mcp_result.error,
+                            "extra": mcp_result.extra,
+                        },
+                    )
+                )
+                screenshot_event = capture_screenshot_event(
+                    page=page,
+                    screenshot_dir=screenshot_dir,
+                    step_index=step_index,
+                    goal=goal,
+                    name_suffix=_subaction_suffix(len(round_actions), subaction_index),
+                )
+                events.append(screenshot_event)
+                last_screenshot_path = screenshot_event.artifact_paths[0]
+                _log(log_action, f"[{run_id} step={step_index}.{subaction_index}] screenshot -> {last_screenshot_path}")
+                stop_round = True
+                break
+
+            if action.type in {"run_python", "shell", "read_file", "write_file"}:
+                if sandbox is None:
+                    err_msg = (
+                        f"action {action.type!r} requires a sandbox session "
+                        f"(set tool_harness.extra.browser_source=aio_sandbox)"
+                    )
+                    pending_tool_output = f"[{action.type} unavailable: {err_msg}]"
+                    _log(log_action, f"[{run_id} step={step_index}.{subaction_index}] {action.type}: {err_msg}")
+                    events.append(
+                        TrajectoryEvent(
+                            event_type=TrajectoryEventType.TOOL_CALL,
+                            step_index=step_index,
+                            data={
+                                **common,
+                                "tool_name": tool_name_for(action),
+                                "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
+                                "error": err_msg,
+                            },
+                        )
+                    )
+                    stop_round = True
+                    break
+                manifest_before = _snapshot_sandbox_files(sandbox)
+                result = _run_sandbox_action(sandbox, action)
+                manifest_after = _snapshot_sandbox_files(sandbox)
+                artifact_diff = _diff_file_manifests(manifest_before, manifest_after)
+                pending_tool_output = _format_sandbox_result(action, result)
+                _log(
+                    log_action,
+                    f"[{run_id} step={step_index}.{subaction_index}] {action.type} -> "
+                    f"{'ok' if result.ok else 'err'} ({len(result.output)} chars)"
+                    + (f" err={result.error[:80]!r}" if result.error else ""),
+                )
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.TOOL_CALL,
+                        step_index=step_index,
+                        data={
+                            **common,
+                            "tool_name": tool_name_for(action),
+                            "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
+                            "ok": result.ok,
+                            "output": result.output,
+                            "error": result.error,
+                            "extra": result.extra,
+                            "artifact_diff": artifact_diff,
+                        },
+                    )
+                )
+                stop_round = True
+                break
+
+            action_error = execute_action(page, action)
+            if action_error:
+                _log(log_action, f"[{run_id} step={step_index}.{subaction_index}] error: {action_error}")
             events.append(
                 TrajectoryEvent(
-                    event_type=TrajectoryEventType.TOOL_CALL,
+                    event_type=TrajectoryEventType.BROWSER_ACTION,
                     step_index=step_index,
                     data={
-                        "tool_name": tool_name_for(action),
+                        **common,
                         "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
-                        "ok": result.ok,
-                        "output": result.output,
-                        "error": result.error,
-                        "extra": result.extra,
-                        "artifact_diff": artifact_diff,
+                        "error": action_error,
                     },
                 )
             )
-            continue
 
-        action_error = execute_action(page, action)
-        if action_error:
-            _log(log_action, f"[{run_id} step={step_index}] error: {action_error}")
-        events.append(
-            TrajectoryEvent(
-                event_type=TrajectoryEventType.BROWSER_ACTION,
+            screenshot_event = capture_screenshot_event(
+                page=page,
+                screenshot_dir=screenshot_dir,
                 step_index=step_index,
-                data={
-                    "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
-                    "error": action_error,
-                },
+                goal=goal,
+                name_suffix=_subaction_suffix(len(round_actions), subaction_index),
             )
-        )
+            events.append(screenshot_event)
+            last_screenshot_path = screenshot_event.artifact_paths[0]
+            _log(log_action, f"[{run_id} step={step_index}.{subaction_index}] screenshot -> {last_screenshot_path}")
 
-        screenshot_event = capture_screenshot_event(
-            page=page, screenshot_dir=screenshot_dir, step_index=step_index, goal=goal
-        )
-        events.append(screenshot_event)
-        last_screenshot_path = screenshot_event.artifact_paths[0]
-        _log(log_action, f"[{run_id} step={step_index}] screenshot -> {last_screenshot_path}")
+        if answer is not None:
+            break
+        if stop_round:
+            continue
 
     return answer, events
 
@@ -437,6 +491,12 @@ def run_screenshot_react_loop(
 def _log(log_action: Callable[[str], None] | None, message: str) -> None:
     if log_action is not None:
         log_action(message)
+
+
+def _subaction_suffix(actions_in_round: int, subaction_index: int) -> str:
+    if actions_in_round <= 1:
+        return ""
+    return f"a{subaction_index:02d}"
 
 
 def _run_sandbox_action(sandbox, action):

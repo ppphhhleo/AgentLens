@@ -355,6 +355,12 @@ class ScreenshotReactAdapter:
                                 **(plan.model.extra or {}),
                                 "input_modes": input_modes,
                                 "addressing_modes": addr_modes,
+                                "parallel_tool_calls": bool(
+                                    plan.tool_harness.extra.get("parallel_tool_calls", False)
+                                ),
+                                "max_actions_per_round": int(
+                                    plan.tool_harness.extra.get("max_actions_per_round", 1)
+                                ),
                             }
                         },
                         deep=True,
@@ -375,6 +381,9 @@ class ScreenshotReactAdapter:
                         ),
                         model_retry_max_sleep_s=float(
                             plan.tool_harness.extra.get("model_retry_max_sleep_s", 60.0)
+                        ),
+                        max_actions_per_round=int(
+                            plan.tool_harness.extra.get("max_actions_per_round", 1)
                         ),
                         log_action=log_action,
                     )
@@ -558,6 +567,11 @@ class ScreenshotReactAdapter:
                 extra={
                     "browser_actions": self._count_browser_actions(events),
                     "io_tool_calls": self._count_tool_calls(events),
+                    "max_actions_per_round": int(
+                        plan.tool_harness.extra.get("max_actions_per_round", 1)
+                    ),
+                    "screenshot_source": _screenshot_source(plan.tool_harness),
+                    "coordinate_frame": _coordinate_frame(plan.tool_harness),
                 },
             ),
             artifact_dir=artifact_dir,
@@ -656,11 +670,11 @@ class ScreenshotReactAdapter:
         # AIO Sandbox sessions when memory_harness.scope > IN_TASK.
 
         is_mock = _is_mock_model(model)
-        if not is_mock and model.provider != "openai":
+        if not is_mock and model.provider not in {"openai", "anthropic"}:
             raise ValueError(
                 f"run '{run_id}' uses model '{model.id}' with provider '{model.provider}'; "
                 "screenshot_react supports provider='local' name='mock_screenshot_react' "
-                "(mock) or provider='openai' (real)"
+                "(mock), provider='openai', or provider='anthropic' (real)"
             )
         if not is_mock and not model.vision:
             raise ValueError(
@@ -674,3 +688,15 @@ class ScreenshotReactAdapter:
 
 def _is_mock_model(model: ModelConfig) -> bool:
     return model.provider == "local" and model.name == MOCK_MODEL_NAME
+
+
+def _screenshot_source(tool_harness: ToolHarnessConfig) -> str:
+    if tool_harness.extra.get("screenshot_source"):
+        return str(tool_harness.extra["screenshot_source"])
+    return "browser_viewport"
+
+
+def _coordinate_frame(tool_harness: ToolHarnessConfig) -> str:
+    if tool_harness.extra.get("coordinate_frame"):
+        return str(tool_harness.extra["coordinate_frame"])
+    return "browser_viewport"

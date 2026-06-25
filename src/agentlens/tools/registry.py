@@ -75,6 +75,10 @@ class ProviderToolAdapter(Protocol):
         """Parse a provider response into a provider-neutral tool decision."""
         ...
 
+    def parse_decisions(self, response: Any, *, model: str) -> list[ToolCallDecision]:
+        """Parse all provider tool decisions in one model response."""
+        ...
+
 
 class ToolRegistry:
     def __init__(self, specs: list[ToolSpec]) -> None:
@@ -504,6 +508,9 @@ class OpenAIToolAdapter:
         return tools
 
     def parse_decision(self, response: Any, *, model: str) -> ToolCallDecision:
+        return self.parse_decisions(response, model=model)[0]
+
+    def parse_decisions(self, response: Any, *, model: str) -> list[ToolCallDecision]:
         choice = response.choices[0]
         message = choice.message
         tool_calls = list(getattr(message, "tool_calls", None) or [])
@@ -511,45 +518,51 @@ class OpenAIToolAdapter:
         if not tool_calls:
             content = (getattr(message, "content", None) or "").strip()
             if content and "task.final_answer" in set(self._provider_to_canonical.values()):
-                return ToolCallDecision(
+                return [
+                    ToolCallDecision(
+                        provider=self.provider,
+                        model=model,
+                        tool_name="task.final_answer",
+                        tool_args={"answer": content},
+                        reasoning=content,
+                        raw_provider_tool_name=None,
+                        raw_response=_safe_model_dump(response),
+                        finish_reason=getattr(choice, "finish_reason", None),
+                        input_tokens=getattr(usage, "prompt_tokens", None),
+                        output_tokens=getattr(usage, "completion_tokens", None),
+                    )
+                ]
+            raise ValueError("model did not return a tool call")
+
+        decisions: list[ToolCallDecision] = []
+        for call in tool_calls:
+            function = call.function
+            provider_name = function.name
+            canonical_name = self._provider_to_canonical.get(provider_name)
+            if canonical_name is None:
+                raise ValueError(f"unknown provider tool call: {provider_name}")
+            try:
+                args = json.loads(function.arguments or "{}")
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"tool call arguments were not valid JSON: {exc}; raw={function.arguments!r}"
+                ) from exc
+            reasoning = str(args.get("reasoning") or (getattr(message, "content", None) or "") or "")
+            decisions.append(
+                ToolCallDecision(
                     provider=self.provider,
                     model=model,
-                    tool_name="task.final_answer",
-                    tool_args={"answer": content},
-                    reasoning=content,
-                    raw_provider_tool_name=None,
+                    tool_name=canonical_name,
+                    tool_args=args,
+                    reasoning=reasoning,
+                    raw_provider_tool_name=provider_name,
                     raw_response=_safe_model_dump(response),
                     finish_reason=getattr(choice, "finish_reason", None),
                     input_tokens=getattr(usage, "prompt_tokens", None),
                     output_tokens=getattr(usage, "completion_tokens", None),
                 )
-            raise ValueError("model did not return a tool call")
-
-        call = tool_calls[0]
-        function = call.function
-        provider_name = function.name
-        canonical_name = self._provider_to_canonical.get(provider_name)
-        if canonical_name is None:
-            raise ValueError(f"unknown provider tool call: {provider_name}")
-        try:
-            args = json.loads(function.arguments or "{}")
-        except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"tool call arguments were not valid JSON: {exc}; raw={function.arguments!r}"
-            ) from exc
-        reasoning = str(args.get("reasoning") or (getattr(message, "content", None) or "") or "")
-        return ToolCallDecision(
-            provider=self.provider,
-            model=model,
-            tool_name=canonical_name,
-            tool_args=args,
-            reasoning=reasoning,
-            raw_provider_tool_name=provider_name,
-            raw_response=_safe_model_dump(response),
-            finish_reason=getattr(choice, "finish_reason", None),
-            input_tokens=getattr(usage, "prompt_tokens", None),
-            output_tokens=getattr(usage, "completion_tokens", None),
-        )
+            )
+        return decisions
 
 
 class AnthropicToolAdapter:
@@ -580,6 +593,9 @@ class AnthropicToolAdapter:
         return tools
 
     def parse_decision(self, response: Any, *, model: str) -> ToolCallDecision:
+        return self.parse_decisions(response, model=model)[0]
+
+    def parse_decisions(self, response: Any, *, model: str) -> list[ToolCallDecision]:
         content_blocks = list(getattr(response, "content", None) or [])
         usage = getattr(response, "usage", None)
         text_parts = [
@@ -588,46 +604,52 @@ class AnthropicToolAdapter:
             if getattr(block, "type", None) == "text" and getattr(block, "text", None)
         ]
         text = "\n".join(part for part in text_parts if part).strip()
-        tool_block = next(
-            (block for block in content_blocks if getattr(block, "type", None) == "tool_use"),
-            None,
-        )
-        if tool_block is None:
+        tool_blocks = [
+            block for block in content_blocks if getattr(block, "type", None) == "tool_use"
+        ]
+        if not tool_blocks:
             if text and "task.final_answer" in set(self._provider_to_canonical.values()):
-                return ToolCallDecision(
+                return [
+                    ToolCallDecision(
+                        provider=self.provider,
+                        model=model,
+                        tool_name="task.final_answer",
+                        tool_args={"answer": text},
+                        reasoning=text,
+                        raw_provider_tool_name=None,
+                        raw_response=_safe_model_dump(response),
+                        finish_reason=getattr(response, "stop_reason", None),
+                        input_tokens=getattr(usage, "input_tokens", None),
+                        output_tokens=getattr(usage, "output_tokens", None),
+                    )
+                ]
+            raise ValueError("model did not return a tool_use block")
+
+        decisions: list[ToolCallDecision] = []
+        for tool_block in tool_blocks:
+            provider_name = str(getattr(tool_block, "name", ""))
+            canonical_name = self._provider_to_canonical.get(provider_name)
+            if canonical_name is None:
+                raise ValueError(f"unknown provider tool call: {provider_name}")
+            raw_input = getattr(tool_block, "input", None) or {}
+            if not isinstance(raw_input, dict):
+                raise ValueError(f"tool_use input was not an object: {raw_input!r}")
+            reasoning = str(raw_input.get("reasoning") or text or "")
+            decisions.append(
+                ToolCallDecision(
                     provider=self.provider,
                     model=model,
-                    tool_name="task.final_answer",
-                    tool_args={"answer": text},
-                    reasoning=text,
-                    raw_provider_tool_name=None,
+                    tool_name=canonical_name,
+                    tool_args=dict(raw_input),
+                    reasoning=reasoning,
+                    raw_provider_tool_name=provider_name,
                     raw_response=_safe_model_dump(response),
                     finish_reason=getattr(response, "stop_reason", None),
                     input_tokens=getattr(usage, "input_tokens", None),
                     output_tokens=getattr(usage, "output_tokens", None),
                 )
-            raise ValueError("model did not return a tool_use block")
-
-        provider_name = str(getattr(tool_block, "name", ""))
-        canonical_name = self._provider_to_canonical.get(provider_name)
-        if canonical_name is None:
-            raise ValueError(f"unknown provider tool call: {provider_name}")
-        raw_input = getattr(tool_block, "input", None) or {}
-        if not isinstance(raw_input, dict):
-            raise ValueError(f"tool_use input was not an object: {raw_input!r}")
-        reasoning = str(raw_input.get("reasoning") or text or "")
-        return ToolCallDecision(
-            provider=self.provider,
-            model=model,
-            tool_name=canonical_name,
-            tool_args=dict(raw_input),
-            reasoning=reasoning,
-            raw_provider_tool_name=provider_name,
-            raw_response=_safe_model_dump(response),
-            finish_reason=getattr(response, "stop_reason", None),
-            input_tokens=getattr(usage, "input_tokens", None),
-            output_tokens=getattr(usage, "output_tokens", None),
-        )
+            )
+        return decisions
 
 
 def _provider_tool_name(name: str) -> str:

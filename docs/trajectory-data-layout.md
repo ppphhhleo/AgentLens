@@ -81,6 +81,33 @@ It includes:
   - `no_gui_tool_only`
 - 18 run specs total
 
+## Acting Protocol Metadata
+
+New trajectory batches should keep these layers separate:
+
+- `model.provider` / `model.extra.interaction_backend`: how AgentLens talks to
+  the model, e.g. OpenAI tool calls or Anthropic tool calls.
+- `tool_harness.tier`: what resources are exposed, e.g. `browser_only`,
+  `full_sandbox`, or desktop GUI.
+- `tool_harness.extra.screenshot_source`: what the screenshot represents,
+  e.g. `browser_viewport` or `virtual_desktop`.
+- `tool_harness.extra.coordinate_frame`: how action coordinates should be
+  interpreted, e.g. `browser_viewport` or `desktop_screen`.
+
+One interaction round is:
+
+```text
+observation screenshot/context -> model response -> one or more subactions
+```
+
+The run-level `max_steps` limits model rounds. `max_actions_per_round` limits
+primitive subactions inside one model response. Trajectory events now record
+`round_index`, `subaction_index`, and `actions_in_round` when applicable.
+
+Intervention monitors are opt-in. Standard collection configs should omit
+`tool_harness.extra.intervention`; use a dedicated intervention config when a
+run is meant to test warnings or human/agent intervention.
+
 The config writes raw trajectories to:
 
 ```text

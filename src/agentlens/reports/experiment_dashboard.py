@@ -414,6 +414,7 @@ def _initial_prompt_preview(model: Any, harness: Any) -> str:
         return TOOL_CALL_PROMPT_TEMPLATE.format(
             goal="[task goal inserted at runtime]",
             context_description=_context_description(input_modes),
+            action_policy=_action_policy_preview(harness),
         )
     return LEGACY_JSON_PROMPT_TEMPLATE.format(
         goal="[task goal inserted at runtime]",
@@ -431,6 +432,20 @@ def _context_description(input_modes: list[str]) -> str:
     if "axtree" in modes:
         return "You see an interactive-element tree and any tool output per step. No screenshot is provided to you."
     return "You see textual context and any tool output per step. No screenshot is provided to you."
+
+
+def _action_policy_preview(harness: Any) -> str:
+    extra = getattr(harness, "extra", {}) or {}
+    parallel = bool(extra.get("parallel_tool_calls", False))
+    max_actions = max(1, int(extra.get("max_actions_per_round", 1)))
+    if parallel and max_actions > 1:
+        return (
+            f"You may call up to {max_actions} tools in one step when they are "
+            "a short, safe sequence that does not require inspecting intermediate "
+            "results. Use one tool call when the next action depends on what "
+            "changes on screen."
+        )
+    return "Use exactly one tool call per step."
 
 
 def _link(label: str, path: Path, output_path: Path) -> str:

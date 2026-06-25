@@ -92,6 +92,141 @@ Important smoke finding:
 
 ## Current Practical Commands
 
+Run these from `/Users/pan00342/Documents/Projects/AgentLens`.
+
+Validate YAML and compile touched runtime files:
+
+```bash
+.venv/bin/python - <<'PY'
+from pathlib import Path
+import yaml
+for path in sorted(Path("configs/experiments").glob("*.yaml")):
+    yaml.safe_load(path.read_text())
+print("yaml ok")
+PY
+
+.venv/bin/python -m py_compile \
+  src/agentlens/models/base.py \
+  src/agentlens/models/openai_tool_call.py \
+  src/agentlens/models/anthropic_tool_call.py \
+  src/agentlens/tools/registry.py \
+  src/agentlens/harnesses/browser_actions.py \
+  src/agentlens/harnesses/desktop_actions.py \
+  src/agentlens/harnesses/screenshot_react_loop.py \
+  src/agentlens/harnesses/desktop_react_loop.py \
+  src/agentlens/adapters/screenshot_react.py \
+  src/agentlens/adapters/desktop_react.py \
+  src/agentlens/reports/experiment_dashboard.py \
+  src/agentlens/reports/trajectory_viewer.py
+```
+
+Run lint on touched Python files:
+
+```bash
+.venv/bin/python -m ruff check \
+  src/agentlens/models/base.py \
+  src/agentlens/models/openai_tool_call.py \
+  src/agentlens/models/anthropic_tool_call.py \
+  src/agentlens/tools/registry.py \
+  src/agentlens/harnesses/browser_actions.py \
+  src/agentlens/harnesses/desktop_actions.py \
+  src/agentlens/harnesses/screenshot_react_loop.py \
+  src/agentlens/harnesses/desktop_react_loop.py \
+  src/agentlens/adapters/screenshot_react.py \
+  src/agentlens/adapters/desktop_react.py \
+  src/agentlens/reports/experiment_dashboard.py \
+  src/agentlens/reports/trajectory_viewer.py \
+  tests/test_openai_tool_adapter.py
+```
+
+Focused OpenAI adapter tests. Prefer pytest in a normal shell/CI:
+
+```bash
+.venv/bin/python -m pytest tests/test_openai_tool_adapter.py -q
+```
+
+If local desktop pytest exits with code `-1` and no output, use this direct
+fallback:
+
+```bash
+.venv/bin/python - <<'PY'
+from tests.test_openai_tool_adapter import (
+    test_model_step_action_list_defaults_to_primary_action,
+    test_openai_adapter_parses_multiple_tool_calls,
+    test_openai_tool_payload_keeps_configured_target_modes,
+    test_openai_tool_payload_strips_top_level_combinators,
+)
+for fn in [
+    test_openai_tool_payload_strips_top_level_combinators,
+    test_openai_tool_payload_keeps_configured_target_modes,
+    test_openai_adapter_parses_multiple_tool_calls,
+    test_model_step_action_list_defaults_to_primary_action,
+]:
+    fn()
+    print(fn.__name__, "ok")
+PY
+```
+
+Verify intervention is only enabled in the explicit intervention smoke config:
+
+```bash
+.venv/bin/python - <<'PY'
+from pathlib import Path
+import yaml
+for p in sorted(Path("configs/experiments").glob("*.yaml")):
+    data = yaml.safe_load(p.read_text()) or {}
+    enabled = []
+    for h in data.get("tool_harnesses") or []:
+        inter = ((h.get("extra") or {}).get("intervention") or {})
+        rep = inter.get("repeated_action") or {}
+        if inter.get("enabled") or rep.get("enabled"):
+            enabled.append(h.get("id"))
+    if enabled:
+        print(p, enabled)
+PY
+```
+
+Expected output:
+
+```text
+configs/experiments/intervention_repeated_action_smoke.yaml ['browser_capture_with_intervention']
+```
+
+Dry-run the current target configs:
+
+```bash
+.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  --run-id dv_most_fuel__gpt54mini__browser --dry-run
+
+.venv/bin/agentlens run configs/experiments/domsteer_claude_toolcall_smoke.yaml \
+  --dry-run
+
+.venv/bin/agentlens run configs/experiments/workflow_desktop_apps_poc.yaml \
+  --dry-run
+```
+
+Remove generated dry-run noise after checking:
+
+```bash
+rm -f agentlens_results/run_plan.json
+```
+
+Run a fresh GPT smoke trajectory with intervention off:
+
+```bash
+.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  --run-id dv_most_fuel__gpt54mini__browser \
+  --execute \
+  --log-actions
+```
+
+Regenerate a compact trajectory viewer for one trajectory:
+
+```bash
+.venv/bin/agentlens trajectory-viewer \
+  agentlens_results/domsteer_datavoyager_toolcall_matrix/smoke/raw/<snapshot>/trajectories/<run_id>/trajectory.json
+```
+
 Prepare desktop POC locally or on AWS:
 
 ```bash
@@ -275,3 +410,68 @@ Note:
 - Set-of-marks stays disabled. If richer browser grounding is needed later,
   prefer an existing package or browser-agent/MCP implementation instead of
   hand-rolling a new marking method.
+
+## 2026-06-25: Provider Backend vs Harness Tier Protocol
+
+What changed:
+
+- Kept model-specific backends separate from harness tiers:
+  - OpenAI and Anthropic tool-call wrappers parse provider-native tool calls;
+  - `ToolSet` still gates actual execution by harness allow-list.
+- Added opt-in multi-action rounds:
+  - model response can contain multiple tool calls;
+  - loops execute up to `tool_harness.extra.max_actions_per_round`;
+  - events record `round_index`, `subaction_index`, and `actions_in_round`.
+- Browser and desktop screenshots now record coordinate metadata:
+  - browser path: `screenshot_source=browser_viewport`,
+    `coordinate_frame=browser_viewport`;
+  - desktop path: `screenshot_source=virtual_desktop`,
+    `coordinate_frame=desktop_screen`.
+- DataVoyager tool-call config now declares:
+  - `parallel_tool_calls: true`;
+  - `max_actions_per_round: 5` for browser/full-sandbox;
+  - `max_actions_per_round: 3` for no-GUI tool-only.
+- Standard collection configs omit intervention monitors by default. Keep
+  intervention opt-in through a dedicated config unless explicitly requested.
+- Browser `move`/hover actions now wait briefly before screenshot capture so
+  delayed tooltips have a chance to render.
+
+Current status:
+
+- Agent structure patch is implemented locally but not committed.
+- Provider-neutral multi-tool parsing is wired for OpenAI and Anthropic.
+- Browser and desktop ReAct loops can execute multiple subactions per model
+  round, bounded by `max_actions_per_round`.
+- Standard collection configs do not enable intervention. The only enabled
+  intervention config should be `intervention_repeated_action_smoke.yaml`.
+- Browser hover/move waits briefly before screenshot capture to make tooltip
+  observations more reliable.
+- The per-trajectory HTML viewer is compact by default: one card per model
+  round, with raw round events collapsed.
+
+Validation already run:
+
+- `.venv/bin/python -m py_compile ...` passed on touched runtime files.
+- The focused OpenAI multi-tool adapter tests pass when invoked directly.
+- `.venv/bin/python -m ruff check ...` passed on touched Python files.
+- YAML parse passed for all `configs/experiments/*.yaml`.
+- Dry-runs resolve:
+  - `dv_most_fuel__gpt54mini__browser`
+  - `domsteer_claude_toolcall_smoke`
+  - `workflow_desktop_apps_poc`
+
+Known validation caveat:
+
+- In the Codex desktop shell, `.venv/bin/python -m pytest
+  tests/test_openai_tool_adapter.py -q` exited with code `-1` and no output.
+  The same test functions pass by direct invocation. Re-run pytest in a normal
+  shell or CI before final landing.
+
+Pending:
+
+- Run a fresh smoke trajectory with intervention off before large batch
+  collection.
+- Inspect the new smoke viewer for hover behavior and final-answer quality.
+- Commit and push after the fresh smoke looks acceptable.
+- Consider switching Workflow-GYM-style tasks to `desktop_react` full virtual
+  desktop screenshots with `max_steps: 400` and three seeds/trials.

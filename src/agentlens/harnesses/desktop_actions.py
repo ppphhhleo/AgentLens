@@ -18,11 +18,14 @@ def capture_desktop_screenshot_event(
     screenshot_dir: Path,
     step_index: int,
     goal: str | None,
+    *,
+    name_suffix: str = "",
 ) -> TrajectoryEvent:
     """Capture the virtual desktop from inside the sandbox container."""
     screenshot_dir.mkdir(parents=True, exist_ok=True)
-    host_path = screenshot_dir / f"step_{step_index:03d}.png"
-    remote_path = f"/tmp/agentlens_desktop_step_{step_index:03d}.png"
+    suffix = f"_{name_suffix.lstrip('_')}" if name_suffix else ""
+    host_path = screenshot_dir / f"step_{step_index:03d}{suffix}.png"
+    remote_path = f"/tmp/agentlens_desktop_step_{step_index:03d}{suffix}.png"
     result = sandbox.shell(_screenshot_command(remote_path), timeout_sec=15)
     if result.ok and _docker_cp_from_container(sandbox, remote_path, host_path):
         artifact_paths = [host_path]
@@ -36,6 +39,8 @@ def capture_desktop_screenshot_event(
         data={
             "goal": goal,
             "kind": "desktop",
+            "screenshot_source": "virtual_desktop",
+            "coordinate_frame": "desktop_screen",
             "remote_path": remote_path,
             "error": error,
         },

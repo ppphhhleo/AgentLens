@@ -27,6 +27,7 @@ def run_desktop_react_loop(
     intervention_config: dict | None = None,
     model_max_attempts: int = 3,
     model_retry_sleep_s: float = 1.0,
+    max_actions_per_round: int = 1,
     log_action: Callable[[str], None] | None = None,
 ) -> tuple[str | None, list[TrajectoryEvent]]:
     events: list[TrajectoryEvent] = []
@@ -81,84 +82,128 @@ def run_desktop_react_loop(
             break
 
         history.append(model_step)
-        action = model_step.action
-        _log(log_action, f"[{run_id} step={step_index}] {format_desktop_action(action)}")
+        round_actions = model_step.action_list()
+        if max_actions_per_round < 1:
+            max_actions_per_round = 1
+        if len(round_actions) > max_actions_per_round:
+            events.append(
+                TrajectoryEvent(
+                    event_type=TrajectoryEventType.GATING_VIOLATION,
+                    step_index=step_index,
+                    data={
+                        "message": (
+                            f"model requested {len(round_actions)} actions in one round; "
+                            f"executing first {max_actions_per_round}"
+                        ),
+                        "round_index": step_index,
+                    },
+                )
+            )
+            round_actions = round_actions[:max_actions_per_round]
         events.append(
             TrajectoryEvent(
                 event_type=TrajectoryEventType.MODEL_MESSAGE,
                 step_index=step_index,
                 data={
                     "thought": model_step.thought,
-                    "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
-                    "tool_name": tool_name_for(action),
+                    "action": model_step.action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
+                    "actions": [
+                        action.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
+                        for action in round_actions
+                    ],
+                    "tool_name": tool_name_for(model_step.action),
+                    "tool_names": [tool_name_for(action) for action in round_actions],
+                    "round_index": step_index,
+                    "actions_in_round": len(round_actions),
                     "raw_response": model_step.raw_response,
                     "prompt_tokens": model_step.prompt_tokens,
                     "completion_tokens": model_step.completion_tokens,
                     "model_meta": model_step.extra,
                     "provider_tool_call": (model_step.extra or {}).get("provider_tool_call"),
+                    "provider_tool_calls": (model_step.extra or {}).get("provider_tool_calls"),
                     "mock": False,
                 },
             )
         )
 
-        decision = intervention.observe(action)
-        if decision.triggered:
-            pending_tool_output = f"[intervention:{decision.kind}]\n{decision.message}"
-            events.append(
-                TrajectoryEvent(
-                    event_type=TrajectoryEventType.USER_INTERVENTION,
-                    step_index=step_index,
-                    data={
-                        "source": "intervention_monitor",
-                        "kind": decision.kind,
-                        "mode": decision.mode,
-                        "message": decision.message,
-                        "details": decision.details,
-                    },
-                )
-            )
+        for subaction_index, action in enumerate(round_actions, start=1):
+            _log(log_action, f"[{run_id} step={step_index}.{subaction_index}] {format_desktop_action(action)}")
+            common = {
+                "round_index": step_index,
+                "subaction_index": subaction_index,
+                "actions_in_round": len(round_actions),
+            }
 
-        allowed, gating_msg = toolset.gate_action(action)
-        if not allowed:
-            pending_tool_output = f"[gating violation]\n{gating_msg}"
+            decision = intervention.observe(action)
+            if decision.triggered:
+                pending_tool_output = f"[intervention:{decision.kind}]\n{decision.message}"
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.USER_INTERVENTION,
+                        step_index=step_index,
+                        data={
+                            **common,
+                            "source": "intervention_monitor",
+                            "kind": decision.kind,
+                            "mode": decision.mode,
+                            "message": decision.message,
+                            "details": decision.details,
+                        },
+                    )
+                )
+
+            allowed, gating_msg = toolset.gate_action(action)
+            if not allowed:
+                pending_tool_output = f"[gating violation]\n{gating_msg}"
+                events.append(
+                    TrajectoryEvent(
+                        event_type=TrajectoryEventType.GATING_VIOLATION,
+                        step_index=step_index,
+                        data={
+                            **common,
+                            "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
+                            "tool_name": tool_name_for(action),
+                            "message": gating_msg,
+                        },
+                    )
+                )
+                continue
+
+            if action.type == "final_answer":
+                answer = action.answer
+                break
+
+            output, error = execute_desktop_action(sandbox, action)
+            pending_tool_output = _format_tool_output(action.type, output, error)
             events.append(
                 TrajectoryEvent(
-                    event_type=TrajectoryEventType.GATING_VIOLATION,
+                    event_type=TrajectoryEventType.TOOL_CALL,
                     step_index=step_index,
                     data={
-                        "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
+                        **common,
                         "tool_name": tool_name_for(action),
-                        "message": gating_msg,
+                        "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
+                        "ok": not bool(error),
+                        "output": output,
+                        "error": error,
+                        "extra": {"executor": "desktop_sandbox"},
                     },
                 )
             )
-            continue
-
-        if action.type == "final_answer":
-            answer = action.answer
-            break
-
-        output, error = execute_desktop_action(sandbox, action)
-        pending_tool_output = _format_tool_output(action.type, output, error)
-        events.append(
-            TrajectoryEvent(
-                event_type=TrajectoryEventType.TOOL_CALL,
-                step_index=step_index,
-                data={
-                    "tool_name": tool_name_for(action),
-                    "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
-                    "ok": not bool(error),
-                    "output": output,
-                    "error": error,
-                    "extra": {"executor": "desktop_sandbox"},
-                },
+            screenshot = capture_desktop_screenshot_event(
+                sandbox,
+                screenshot_dir,
+                step_index,
+                goal,
+                name_suffix=_subaction_suffix(len(round_actions), subaction_index),
             )
-        )
-        screenshot = capture_desktop_screenshot_event(sandbox, screenshot_dir, step_index, goal)
-        events.append(screenshot)
-        if screenshot.artifact_paths:
-            last_screenshot = screenshot.artifact_paths[0]
-        _log(log_action, f"[{run_id} step={step_index}] desktop screenshot -> {last_screenshot or 'failed'}")
+            events.append(screenshot)
+            if screenshot.artifact_paths:
+                last_screenshot = screenshot.artifact_paths[0]
+            _log(log_action, f"[{run_id} step={step_index}.{subaction_index}] desktop screenshot -> {last_screenshot or 'failed'}")
+
+        if answer is not None:
+            break
 
     return answer, events
 
@@ -170,6 +215,12 @@ def _format_tool_output(action_type: str, output: str, error: str, max_chars: in
     if len(text) > max_chars:
         text = text[:max_chars] + "...[truncated]"
     return f"[{action_type} result]\n{text or '(no output)'}"
+
+
+def _subaction_suffix(actions_in_round: int, subaction_index: int) -> str:
+    if actions_in_round <= 1:
+        return ""
+    return f"a{subaction_index:02d}"
 
 
 def _log(log_action: Callable[[str], None] | None, message: str) -> None:

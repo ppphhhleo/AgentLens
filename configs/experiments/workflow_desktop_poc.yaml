@@ -36,14 +36,10 @@ tool_harnesses:
       sandbox_security_opt: [seccomp=unconfined]
       sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads, /workspace]
       keep_sandbox_open_seconds: 0
-      intervention:
-        enabled: true
-        repeated_action:
-          enabled: true
-          threshold: 5
-          mode: warn
-          signature: type
-          message: "You are repeating the same desktop action. Pause, inspect the screenshot, and try a different strategy."
+      screenshot_source: virtual_desktop
+      coordinate_frame: desktop_screen
+      parallel_tool_calls: true
+      max_actions_per_round: 5
 
 memory_harnesses:
   - id: no_memory
@@ -80,6 +76,6 @@ runs:
     task: workflowgym_unity_scene_smoke
     seeds: [0]
     trials: 1
-    max_steps: 8
+    max_steps: 8  # smoke only; use 400 for Workflow-GYM-style collection
     output_dir: agentlens_results/workflow_desktop_poc
     tags: [workflow_gym, unity, desktop_poc, cheap_smoke]

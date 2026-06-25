@@ -131,7 +131,19 @@ class DesktopReactAdapter:
                 launch = sandbox.shell(str(launch_cmd), timeout_sec=10)
                 self._log(log_action, f"[{plan.run_id}] desktop_start_cmd ok={launch.ok} err={launch.error[:120]!r}")
             toolset = ToolSet.from_harness(plan.tool_harness)
-            model = build_model(plan.model, toolset=toolset)
+            model_config = plan.model.model_copy(
+                update={
+                    "extra": {
+                        **(plan.model.extra or {}),
+                        "input_modes": list(harness_extra.get("input_modes", ["screenshot"])),
+                        "addressing_modes": list(harness_extra.get("addressing_modes", ["coordinate"])),
+                        "parallel_tool_calls": bool(harness_extra.get("parallel_tool_calls", False)),
+                        "max_actions_per_round": int(harness_extra.get("max_actions_per_round", 1)),
+                    }
+                },
+                deep=True,
+            )
+            model = build_model(model_config, toolset=toolset)
             answer, events = run_desktop_react_loop(
                 sandbox=sandbox,
                 model=model,
@@ -141,6 +153,9 @@ class DesktopReactAdapter:
                 run_id=f"{plan.run_id}.t{plan.trial}",
                 toolset=toolset,
                 intervention_config=harness_extra.get("intervention"),
+                model_max_attempts=int(harness_extra.get("model_max_attempts", 3)),
+                model_retry_sleep_s=float(harness_extra.get("model_retry_sleep_s", 1.0)),
+                max_actions_per_round=int(harness_extra.get("max_actions_per_round", 1)),
                 log_action=log_action,
             )
 
@@ -192,7 +207,16 @@ class DesktopReactAdapter:
                 tokens_input=self._sum_tokens(events, "prompt_tokens"),
                 tokens_output=self._sum_tokens(events, "completion_tokens"),
                 tool_calls=self._count_action_events(events),
-                extra={"desktop_actions": self._count_tool_calls(events)},
+                extra={
+                    "desktop_actions": self._count_tool_calls(events),
+                    "max_actions_per_round": int(harness_extra.get("max_actions_per_round", 1)),
+                    "screenshot_source": str(
+                        harness_extra.get("screenshot_source", "virtual_desktop")
+                    ),
+                    "coordinate_frame": str(
+                        harness_extra.get("coordinate_frame", "desktop_screen")
+                    ),
+                },
             ),
             artifact_dir=artifact_dir,
         )
@@ -228,8 +252,8 @@ class DesktopReactAdapter:
             raise ValueError(f"run '{run_id}' expected runner desktop_react")
         if tool_harness.tier != ToolHarnessTier.FULL_SANDBOX:
             raise ValueError("desktop_react requires tier='full_sandbox'")
-        if model.provider != "openai":
-            raise ValueError("desktop_react currently supports OpenAI models")
+        if model.provider not in {"openai", "anthropic"}:
+            raise ValueError("desktop_react currently supports OpenAI or Anthropic models")
         if not model.vision:
             raise ValueError("desktop_react requires a vision-capable model")
 

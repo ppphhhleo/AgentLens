@@ -320,9 +320,10 @@ def _render_page(
 def _render_trajectory(traj: dict[str, Any], *, idx: int, output_path: Path) -> str:
     events = traj.get("events") or []
     action_by_step = _action_by_step(events)
-    event_cards = "\n".join(
-        _render_event(event, output_path=output_path, action_by_step=action_by_step)
-        for event in events
+    event_cards = _render_compact_timeline(
+        events,
+        output_path=output_path,
+        action_by_step=action_by_step,
     )
     metrics = traj.get("metrics") or {}
     task = traj.get("task") or {}
@@ -366,6 +367,167 @@ def _render_trajectory(traj: dict[str, Any], *, idx: int, output_path: Path) -> 
   {_render_goal(goal)}
   <div class="timeline">{event_cards}</div>
 </section>"""
+
+
+def _render_compact_timeline(
+    events: list[dict[str, Any]],
+    *,
+    output_path: Path,
+    action_by_step: dict[int, dict[str, Any]],
+) -> str:
+    by_step: dict[int, list[dict[str, Any]]] = {}
+    tail_events: list[dict[str, Any]] = []
+    for event in events:
+        step = event.get("step_index")
+        if isinstance(step, int):
+            by_step.setdefault(step, []).append(event)
+        elif event.get("event_type") in {"validation_event", "gating_violation"}:
+            tail_events.append(event)
+
+    cards: list[str] = []
+    for step in sorted(by_step):
+        step_events = by_step[step]
+        model_event = next(
+            (event for event in step_events if event.get("event_type") == "model_message"),
+            None,
+        )
+        if model_event is None:
+            continue
+        cards.append(
+            _render_round_card(
+                model_event,
+                step_events=step_events,
+                output_path=output_path,
+                marker_action=action_by_step.get(step),
+            )
+        )
+
+    for event in tail_events:
+        cards.append(
+            _render_event(event, output_path=output_path, action_by_step=action_by_step)
+        )
+    return "\n".join(cards)
+
+
+def _render_round_card(
+    model_event: dict[str, Any],
+    *,
+    step_events: list[dict[str, Any]],
+    output_path: Path,
+    marker_action: dict[str, Any] | None,
+) -> str:
+    data = model_event.get("data") or {}
+    step = model_event.get("step_index")
+    screenshots = [
+        event for event in step_events if event.get("event_type") == "screenshot"
+    ]
+    browser_events = [
+        event for event in step_events if event.get("event_type") == "browser_action"
+    ]
+    tool_events = [event for event in step_events if event.get("event_type") == "tool_call"]
+    intervention_events = [
+        event for event in step_events if event.get("event_type") == "user_intervention"
+    ]
+    screenshot_event = screenshots[-1] if screenshots else model_event
+    action_summary = _round_action_summary(data)
+    tool_names = data.get("tool_names") or ([data.get("tool_name")] if data.get("tool_name") else [])
+    tool_badges = "".join(_badge(name) for name in tool_names if name)
+    if intervention_events:
+        tool_badges += _badge(f"{len(intervention_events)} warning(s)")
+
+    event_id = _event_anchor(model_event)
+    return f"""<article class="event interesting" id="{escape(event_id)}">
+  <div>
+    <div class="event-head">
+      <span class="event-type">round {escape(_short(step))}</span>
+      <span class="badge">{escape(action_summary)}</span>
+      {tool_badges}
+      <span class="timestamp">{escape(str(model_event.get("timestamp", "")))}</span>
+    </div>
+    {_render_screenshot(screenshot_event, output_path=output_path, marker_action=marker_action)}
+  </div>
+  <div class="details">{_render_round_details(model_event, browser_events, tool_events, intervention_events)}</div>
+</article>"""
+
+
+def _render_round_details(
+    model_event: dict[str, Any],
+    browser_events: list[dict[str, Any]],
+    tool_events: list[dict[str, Any]],
+    intervention_events: list[dict[str, Any]],
+) -> str:
+    data = model_event.get("data") or {}
+    pieces: list[str] = []
+    thought = data.get("thought") or data.get("reasoning")
+    if thought:
+        pieces.append(f"<strong>Reasoning</strong><div class=\"thought\">{escape(str(thought))}</div>")
+
+    actions = data.get("actions") or ([data.get("action")] if data.get("action") else [])
+    if actions:
+        pieces.append(
+            "<strong>Actions</strong>"
+            f"<pre>{escape(chr(10).join(_format_action_line(action) for action in actions if action))}</pre>"
+        )
+
+    errors = [
+        (event.get("data") or {}).get("error")
+        for event in browser_events + tool_events
+        if (event.get("data") or {}).get("error")
+    ]
+    if errors:
+        pieces.append(f"<strong>Error</strong><pre>{escape(chr(10).join(map(str, errors)))}</pre>")
+
+    if intervention_events:
+        messages = [
+            (event.get("data") or {}).get("message")
+            for event in intervention_events
+            if (event.get("data") or {}).get("message")
+        ]
+        pieces.append(
+            "<strong>Warnings</strong>"
+            f"<pre>{escape(chr(10).join(messages) or str(len(intervention_events)))}</pre>"
+        )
+
+    raw_bundle = {
+        "model_event": model_event,
+        "browser_events": browser_events,
+        "tool_events": tool_events,
+        "intervention_events": intervention_events,
+    }
+    pieces.append(
+        f"<details><summary>Raw round events</summary><pre>{escape(_json(raw_bundle))}</pre></details>"
+    )
+    return "\n".join(pieces)
+
+
+def _round_action_summary(data: dict[str, Any]) -> str:
+    actions = data.get("actions") or ([data.get("action")] if data.get("action") else [])
+    labels = [str(action.get("type")) for action in actions if isinstance(action, dict)]
+    if not labels:
+        return "model"
+    if len(labels) <= 3:
+        return " + ".join(labels)
+    return " + ".join(labels[:3]) + f" + {len(labels) - 3} more"
+
+
+def _format_action_line(action: dict[str, Any]) -> str:
+    action_type = action.get("type")
+    if action_type == "final_answer":
+        return f"final_answer: {action.get('answer')}"
+    fields = [str(action_type)]
+    if action.get("x") is not None and action.get("y") is not None:
+        fields.append(f"x={action.get('x')} y={action.get('y')}")
+    if action.get("scroll_y"):
+        fields.append(f"scroll_y={action.get('scroll_y')}")
+    if action.get("text"):
+        fields.append(f"text={_short(action.get('text'), 60)}")
+    if action.get("cmd"):
+        fields.append(f"cmd={_short(action.get('cmd'), 80)}")
+    if action.get("query"):
+        fields.append(f"query={_short(action.get('query'), 80)}")
+    if action.get("answer"):
+        fields.append(f"answer={_short(action.get('answer'), 80)}")
+    return " | ".join(fields)
 
 
 def _render_event(
