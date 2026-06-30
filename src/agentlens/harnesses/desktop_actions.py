@@ -59,6 +59,9 @@ def execute_desktop_action(sandbox, action: ComputerAction) -> tuple[str, str]:
     if action.type == "desktop_launch_app":
         result = _launch_desktop_app(sandbox, action.app or "")
         return result.output, result.error
+    if action.type == "desktop_pyautogui":
+        result = sandbox.shell(_pyautogui_command(action.code or ""), timeout_sec=100)
+        return result.output, result.error
     if action.type == "desktop_shell":
         cmd = action.cmd or ""
         safe_cmd = _detached_gui_command(cmd)
@@ -126,6 +129,8 @@ def format_desktop_action(action: ComputerAction) -> str:
         return f"desktop_keypress keys={action.keys}"
     if action.type == "desktop_launch_app":
         return f"desktop_launch_app app={action.app!r}"
+    if action.type == "desktop_pyautogui":
+        return f"desktop_pyautogui code={_short_code(action.code or '')!r}"
     if action.type == "desktop_shell":
         return f"desktop_shell cmd={action.cmd!r}"
     if action.type == "desktop_wait":
@@ -153,6 +158,19 @@ def _screenshot_command(remote_path: str) -> str:
         "exit 127; "
         "fi"
     )
+
+
+def _pyautogui_command(code: str) -> str:
+    lines = [line.strip() for line in code.strip().splitlines() if line.strip()]
+    body = "; ".join(lines)
+    preamble = "import pyautogui; import pyperclip; import time; pyautogui.FAILSAFE = False"
+    quoted = shlex.quote(preamble + "; " + body)
+    return f"runuser -u gem -- env HOME=/home/gem DISPLAY=${{DISPLAY:-:99.0}} python3 -c {quoted}"
+
+
+def _short_code(code: str, limit: int = 120) -> str:
+    text = " ".join(line.strip() for line in code.strip().splitlines() if line.strip())
+    return text if len(text) <= limit else text[: limit - 3] + "..."
 
 
 def _docker_cp_from_container(sandbox, remote_path: str, host_path: Path) -> bool:

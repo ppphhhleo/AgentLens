@@ -86,34 +86,87 @@ What changed:
 
 Status:
 
-- Only `datavoyager_most_fuel_efficient` is currently an active runnable YAML.
-- T2 and T3 are ready to convert into task YAMLs.
+- T1-T3 are runnable task YAMLs and included in the current 30-run smoke batch.
 - T4 and TensorFlow Playground tasks need rubrics or state/screenshot
   evaluators before batch collection.
+
+## 2026-07-01: DOMSteer T1-T3 GPT-5.4 / Claude Smoke
+
+What changed:
+
+- Added runnable task YAMLs for the remaining answer-verifiable DOMSteer
+  DataVoyager tasks:
+  - `tasks/domsteer/datavoyager_origin_horsepower_range/task.yaml`
+  - `tasks/domsteer/datavoyager_europe_hp_gt_100_four_cyl/task.yaml`
+- Added the current 30-run smoke batch:
+  - `configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml`
+- The batch covers:
+  - 3 tasks: T1, T2, T3.
+  - 2 model families: GPT-5.4 and Claude Sonnet 4.6.
+  - GPT-5.4 tool-call variants: browser, full sandbox, no-GUI, desktop GUI.
+  - GPT-5.4 native OpenAI computer-use variant: desktop GUI.
+  - GPT-5.4 gui-vs-cli ChatGPTAgent variant: desktop GUI through pyautogui.
+  - Claude tool-call variants: browser, full sandbox, no-GUI, desktop GUI.
+
+Expected answers:
+
+| Task | Expected Answer | Validator |
+| --- | --- | --- |
+| `datavoyager_most_fuel_efficient` | `Mazda GLC` | `contains` |
+| `datavoyager_origin_horsepower_range` | `USA` | `contains` |
+| `datavoyager_europe_hp_gt_100_four_cyl` | `10` | `number_exact` |
+
+Commands:
+
+```bash
+uv run --no-sync python -m agentlens.cli validate-config \
+  configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml
+
+uv run --no-sync python -m agentlens.cli run \
+  configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml \
+  --dry-run \
+  --max-runs 30 \
+  --output /tmp/agentlens_domsteer_t1_t3_smoke_plan.json
+```
+
+Execute when API keys and Docker/AIO sandbox are ready:
+
+```bash
+uv run --no-sync python -m agentlens.cli run \
+  configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml \
+  --execute \
+  --log-actions
+```
+
+Required API keys:
+
+- `OPENAI_API_KEY` for GPT-5.4 and OpenAI computer-use runs.
+- `ANTHROPIC_API_KEY` for Claude Sonnet 4.6 runs.
 
 ## Current Active Smoke
 
 Active config:
 
 ```bash
-configs/batches/gpt54_datavoyager_smoke.yaml
+configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml
 ```
 
-Task file:
+Task files:
 
 ```bash
 tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml
+tasks/domsteer/datavoyager_origin_horsepower_range/task.yaml
+tasks/domsteer/datavoyager_europe_hp_gt_100_four_cyl/task.yaml
 ```
 
-Run IDs:
+Run shape:
 
-| Run ID | Harness | Model | Task |
-| --- | --- | --- | --- |
-| `dv_most_fuel__gpt54__browser` | `browser_only` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
-| `dv_most_fuel__gpt54__sandbox` | `full_sandbox` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
-| `dv_most_fuel__gpt54__nogui` | `no_gui_tool_only` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
-| `dv_most_fuel__gpt54__desktop_toolcall_gui` | `desktop_gui_toolcall` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
-| `dv_most_fuel__gpt54__desktop_openai_computer` | `desktop_gui_openai_computer` | `gpt-5.4` via OpenAI native computer tool | `datavoyager_most_fuel_efficient` |
+| Model/Backend | Harnesses | Tasks | Runs |
+| --- | --- | --- | ---: |
+| GPT-5.4 tool-call | browser, full sandbox, no-GUI, desktop GUI | T1-T3 | 12 |
+| GPT-5.4 OpenAI computer-use | desktop GUI | T1-T3 | 3 |
+| GPT-5.4 gui-vs-cli ChatGPTAgent | desktop GUI via pyautogui | T1-T3 | 3 |
+| Claude Sonnet 4.6 tool-call | browser, full sandbox, no-GUI, desktop GUI | T1-T3 | 12 |
 
 Desktop GUI comparison:
 
@@ -124,13 +177,20 @@ Desktop GUI comparison:
   computer calls are preserved in trajectory metadata and mapped into
   AgentLens desktop actions for execution, intervention compatibility, and
   post-hoc analysis.
-- Both desktop runs open the task `start_url` inside the virtual desktop browser
-  via `desktop_start_cmd_template`.
+- `desktop_gui_gui_vs_cli_chatgpt` imports the local ignored
+  `third_party/gui-vs-cli/agents/chatgpt_agent.py` reference agent. It uses
+  that agent's `previous_response_id` chain and native computer tool, then
+  executes the returned pyautogui snippets as `desktop.pyautogui` actions so
+  we can compare against the paper's agent structure directly.
+- All desktop GUI runs open the task `start_url` inside the virtual desktop
+  browser via `desktop_start_cmd_template`.
 
-Expected answer:
+Expected answers:
 
 ```text
-Mazda GLC
+T1: Mazda GLC
+T2: USA
+T3: 10
 ```
 
 ## Commands
@@ -138,25 +198,25 @@ Mazda GLC
 Validate:
 
 ```bash
-.venv/bin/agentlens validate-config configs/batches/gpt54_datavoyager_smoke.yaml
+.venv/bin/agentlens validate-config configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml
 ```
 
 Dry-run:
 
 ```bash
-.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml --dry-run
+.venv/bin/agentlens run configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml --dry-run --max-runs 30
 ```
 
 If `.venv/bin/agentlens` is unavailable, use:
 
 ```bash
-uv run --no-sync python -m agentlens.cli run configs/batches/gpt54_datavoyager_smoke.yaml --dry-run
+uv run --no-sync python -m agentlens.cli run configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml --dry-run --max-runs 30
 ```
 
 Execute:
 
 ```bash
-.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml \
+.venv/bin/agentlens run configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml \
   --execute \
   --log-actions
 ```
@@ -224,3 +284,65 @@ Trajectories:
   small dedicated batch YAMLs when those are active again.
 - Keep Wang-style aggregation and Act-onomy-style behavioral analysis as
   post-hoc methods over raw trajectories.
+
+## 2026-07-01: gui-vs-cli ChatGPTAgent DOMSteer T1-T3 Smoke
+
+What changed:
+
+- Added `interaction_backend: gui_vs_cli_chatgpt`, which imports the ignored
+  local reference agent at `third_party/gui-vs-cli/agents/chatgpt_agent.py`.
+- Added a `desktop.pyautogui` action type and executor so the reference agent's
+  native computer-use outputs can remain as pyautogui snippets in the recorded
+  trajectory.
+- Fixed desktop startup for URL-based desktop tasks:
+  - `desktop_react` now honors `settle_ms` after launch.
+  - URL tasks force the browser address bar to `task.start_url` before the
+    first screenshot.
+- Fixed pyautogui execution in the AIO sandbox:
+  - sandbox display is `:99.0`, not `:0`.
+  - pyautogui must run as the desktop user `gem`, not root.
+
+Smoke results:
+
+| Task | Run ID | Score | Notes |
+| --- | --- | ---: | --- |
+| T1 | `dv_t1__gpt54__gui_vs_cli_chatgpt` | 1.0 | Answered `Mazda GLC`; used visual field dragging first, then DevTools/fetch. |
+| T2 | `dv_t2__gpt54__gui_vs_cli_chatgpt` | 1.0 | Answered `USA`; used DevTools/fetch. |
+| T3 | `dv_t3__gpt54__gui_vs_cli_chatgpt` | 1.0 | Answered `10`; used address-bar JavaScript/fetch. |
+
+Result paths:
+
+```text
+runs/domsteer_t1_t3_gpt54_claude_smoke/raw/2026-06-30_18-09-48/trajectories/dv_t1__gpt54__gui_vs_cli_chatgpt_seed0_trial1/trajectory.json
+runs/domsteer_t1_t3_gpt54_claude_smoke/raw/2026-06-30_18-13-28/trajectories/dv_t2__gpt54__gui_vs_cli_chatgpt_seed0_trial1/trajectory.json
+runs/domsteer_t1_t3_gpt54_claude_smoke/raw/2026-06-30_18-15-57/trajectories/dv_t3__gpt54__gui_vs_cli_chatgpt_seed0_trial1/trajectory.json
+```
+
+Published example:
+
+```text
+examples/results/domsteer_t1_t3_gui_vs_cli_chatgpt_smoke/
+```
+
+Interpretation:
+
+- The paper-style ChatGPTAgent path is now enabled and runnable on DOMSteer
+  T1-T3.
+- It does not behave like a strict visual-analytics GUI-only agent: because the
+  paper structure only constrains behavior through prompt and native computer
+  actions, the model can still open DevTools or run JavaScript through the GUI.
+- This is useful for comparison against `desktop_gui_toolcall`, where AgentLens
+  controls the tool tier explicitly.
+
+OpenAI computer-use note:
+
+- The OpenAI Responses API `{"type": "computer"}` exposes native computer-use
+  actions such as click, double-click, scroll, type, wait, keypress, drag, move,
+  and screenshot. It does not expose a fine-grained provider-side tier like
+  "allow clicks but disallow DevTools".
+- AgentLens currently maps native computer-use or gui-vs-cli pyautogui outputs
+  into internal desktop actions so execution, logging, intervention, and
+  trajectory analysis share one interface.
+- A cleaner future variant is to execute provider-native computer actions
+  directly, preserve the raw provider actions in the trajectory, and generate
+  normalized action views only for post-hoc analysis.

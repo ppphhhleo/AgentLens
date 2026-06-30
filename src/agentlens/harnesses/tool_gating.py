@@ -56,6 +56,7 @@ TOOL_NAME_BY_ACTION_TYPE: dict[str, str] = {
     "desktop_type": "desktop.type",
     "desktop_keypress": "desktop.keypress",
     "desktop_launch_app": "desktop.launch_app",
+    "desktop_pyautogui": "desktop.pyautogui",
     "desktop_shell": "desktop.shell",
     "desktop_wait": "desktop.wait",
 }
@@ -94,6 +95,7 @@ _ACTION_SCHEMA_FRAGMENTS: dict[str, str] = {
     "desktop_type":       '- {{"type": "desktop_type", "text": "..."}}',
     "desktop_keypress":   '- {{"type": "desktop_keypress", "keys": ["Enter"]}}',
     "desktop_launch_app": '- {{"type": "desktop_launch_app", "app": "blender"}}  (launches a GUI app detached from the shell tool)',
+    "desktop_pyautogui":  '- {{"type": "desktop_pyautogui", "code": "pyautogui.click(100, 200)"}}  (executes pyautogui code in the desktop sandbox)',
     "desktop_shell":      '- {{"type": "desktop_shell", "cmd": "..."}}  (runs a shell command in the desktop sandbox; output in NEXT observation)',
     "desktop_wait":       '- {{"type": "desktop_wait", "ms": 1000}}',
     "final_answer":  '- {{"type": "final_answer", "answer": "..."}}',

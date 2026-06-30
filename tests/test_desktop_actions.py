@@ -27,3 +27,11 @@ def test_desktop_native_gui_actions_format() -> None:
 
     assert format_desktop_action(drag) == "desktop_drag path=[(10.0, 20.0), (50.0, 60.0)]"
     assert format_desktop_action(scroll) == "desktop_scroll x=100.0 y=200.0 scroll_x=0 scroll_y=300.0"
+
+
+def test_desktop_pyautogui_action_formats() -> None:
+    action = ComputerAction(type="desktop_pyautogui", code="import pyautogui\npyautogui.click(10, 20)")
+
+    assert format_desktop_action(action) == (
+        "desktop_pyautogui code='import pyautogui pyautogui.click(10, 20)'"
+    )

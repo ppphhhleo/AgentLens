@@ -38,16 +38,17 @@ image, analysis pipeline, or batch/result layout.
 ## Current Batch
 
 ```bash
-configs/batches/gpt54_datavoyager_smoke.yaml
+configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml
 ```
 
-Run IDs:
+Run shape:
 
-- `dv_most_fuel__gpt54__browser`
-- `dv_most_fuel__gpt54__sandbox`
-- `dv_most_fuel__gpt54__nogui`
-- `dv_most_fuel__gpt54__desktop_toolcall_gui`
-- `dv_most_fuel__gpt54__desktop_openai_computer`
+- 3 DOMSteer DataVoyager tasks: T1, T2, T3.
+- GPT-5.4 tool-call across browser, full sandbox, no-GUI, desktop GUI.
+- GPT-5.4 OpenAI native computer-use on desktop GUI.
+- GPT-5.4 gui-vs-cli ChatGPTAgent on desktop GUI via pyautogui snippets.
+- Claude Sonnet 4.6 tool-call across browser, full sandbox, no-GUI, desktop GUI.
+- Total: 30 run specs.
 
 The two desktop GUI runs are intentionally different:
 
@@ -55,13 +56,16 @@ The two desktop GUI runs are intentionally different:
   GUI tools registered.
 - `desktop_openai_computer`: paper-faithful OpenAI Responses API computer-use
   GUI, with `{"type": "computer"}` and a clean GUI-only prompt.
+- `desktop_gui_gui_vs_cli_chatgpt`: reference gui-vs-cli ChatGPTAgent
+  structure, with OpenAI native computer tool output converted by their adapter
+  into pyautogui snippets and recorded as `desktop.pyautogui`.
 
 ## Validation Commands
 
 ```bash
-.venv/bin/agentlens validate-config configs/batches/gpt54_datavoyager_smoke.yaml
+.venv/bin/agentlens validate-config configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml
 
-.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml --dry-run
+.venv/bin/agentlens run configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml --dry-run --max-runs 30
 
 .venv/bin/python -m ruff check src/agentlens tests
 ```
@@ -75,7 +79,7 @@ Focused tests:
 ## Smoke Run
 
 ```bash
-.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml \
+.venv/bin/agentlens run configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml \
   --execute \
   --log-actions
 ```

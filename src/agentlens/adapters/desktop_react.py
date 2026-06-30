@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shlex
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Callable, Literal
@@ -131,6 +132,17 @@ class DesktopReactAdapter:
             if launch_cmd:
                 launch = sandbox.shell(str(launch_cmd), timeout_sec=10)
                 self._log(log_action, f"[{plan.run_id}] desktop_start_cmd ok={launch.ok} err={launch.error[:120]!r}")
+                settle_ms = int(harness_extra.get("settle_ms", 0) or 0)
+                if settle_ms > 0:
+                    time.sleep(settle_ms / 1000)
+                if plan.task.start_url and bool(harness_extra.get("force_start_url", True)):
+                    nav = sandbox.shell(_force_start_url_command(plan.task.start_url), timeout_sec=10)
+                    self._log(
+                        log_action,
+                        f"[{plan.run_id}] desktop_force_start_url ok={nav.ok} err={nav.error[:120]!r}",
+                    )
+                    if settle_ms > 0:
+                        time.sleep(settle_ms / 1000)
             toolset = ToolSet.from_harness(plan.tool_harness)
             model_config = plan.model.model_copy(
                 update={
@@ -297,3 +309,12 @@ def _desktop_start_command(plan: DesktopReactRunPlan) -> str | None:
     if template and plan.task.start_url:
         return str(template).format(start_url=shlex.quote(plan.task.start_url))
     return None
+
+
+def _force_start_url_command(start_url: str) -> str:
+    quoted_url = shlex.quote(start_url)
+    return (
+        "xdotool key --clearmodifiers ctrl+l && "
+        f"xdotool type --clearmodifiers -- {quoted_url} && "
+        "xdotool key --clearmodifiers Return"
+    )

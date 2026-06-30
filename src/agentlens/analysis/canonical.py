@@ -37,6 +37,7 @@ ACTION_PHASES = {
     "desktop_type": "gui_manipulate",
     "desktop_keypress": "gui_manipulate",
     "desktop_launch_app": "programmatic_work",
+    "desktop_pyautogui": "gui_manipulate",
     "desktop_shell": "programmatic_work",
 }
 
@@ -187,6 +188,11 @@ def action_to_text(action: dict[str, Any]) -> str:
         return f"desktop_keypress: {action.get('keys') or []}"
     if action_type == "desktop_launch_app":
         return f"desktop_launch_app: {action.get('app') or ''}".strip()
+    if action_type == "desktop_pyautogui":
+        code = " ".join(str(action.get("code") or "").split())
+        if len(code) > 160:
+            code = code[:157] + "..."
+        return f"desktop_pyautogui: {code}".strip()
     if action_type == "desktop_shell":
         return f"desktop_shell: {action.get('cmd') or ''}".strip()
     if action_type in {"desktop_screenshot", "desktop_wait"}:

@@ -426,6 +426,16 @@ def default_tool_registry() -> ToolRegistry:
                 ),
             ),
             ToolSpec(
+                name="desktop.pyautogui",
+                action_type="desktop_pyautogui",
+                executor_family="desktop",
+                description="Execute pyautogui code in the virtual desktop. Use only for paper-faithful GUI agent adapters.",
+                parameters=_object_schema(
+                    {"code": {"type": "string", "description": "Python pyautogui code body to execute."}},
+                    required=["code"],
+                ),
+            ),
+            ToolSpec(
                 name="desktop.shell",
                 action_type="desktop_shell",
                 executor_family="desktop",

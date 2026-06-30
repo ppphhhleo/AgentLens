@@ -34,6 +34,7 @@ ComputerActionType = Literal[
     "desktop_type",
     "desktop_keypress",
     "desktop_launch_app",
+    "desktop_pyautogui",
     "desktop_shell",
     "desktop_wait",
     "final_answer",
@@ -143,6 +144,8 @@ class ComputerAction(BaseModel):
             raise ValueError("action 'desktop_keypress' requires keys")
         if self.type == "desktop_launch_app" and not self.app:
             raise ValueError("action 'desktop_launch_app' requires app")
+        if self.type == "desktop_pyautogui" and not self.code:
+            raise ValueError("action 'desktop_pyautogui' requires code")
         if self.type == "keypress" and not self.keys:
             raise ValueError("action 'keypress' requires keys")
         if self.type == "drag" and len(self.path) < 2:

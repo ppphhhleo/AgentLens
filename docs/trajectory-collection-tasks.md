@@ -7,13 +7,15 @@ matrices live under `configs/batches/`.
 Current active batch:
 
 ```text
-configs/batches/gpt54_datavoyager_smoke.yaml
+configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml
 ```
 
-Current active task:
+Current active tasks:
 
 ```text
 tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml
+tasks/domsteer/datavoyager_origin_horsepower_range/task.yaml
+tasks/domsteer/datavoyager_europe_hp_gt_100_four_cyl/task.yaml
 ```
 
 Task catalogs:
@@ -37,9 +39,9 @@ tasks/gui_vs_cli/tasks.jsonl
 
 | Benchmark | Type | Application | Task ID | Current Status | Evaluator |
 | --- | --- | --- | --- | --- | --- |
-| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_most_fuel_efficient` | Active GPT-5.4 smoke task across three harnesses. | `final_answer`, contains `Mazda GLC` |
-| DOMSteer | Visual analytics / data analysis | DataVoyager | `domsteer_t2_datavoyager_origin_horsepower_range` | Cataloged; ready to convert to task YAML. | `final_answer`, contains `USA` |
-| DOMSteer | Visual analytics / data analysis | DataVoyager | `domsteer_t3_datavoyager_europe_hp_gt_100_four_cyl` | Cataloged; ready to convert to task YAML. | `final_answer`, exact number `10` |
+| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_most_fuel_efficient` | In 30-run GPT-5.4/Claude smoke batch. | `final_answer`, contains `Mazda GLC` |
+| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_origin_horsepower_range` | In 30-run GPT-5.4/Claude smoke batch. | `final_answer`, contains `USA` |
+| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_europe_hp_gt_100_four_cyl` | In 30-run GPT-5.4/Claude smoke batch. | `final_answer`, exact number `10` |
 | TheAgentCompany-style | Workplace analytics / browser + code + files | Browser/files/Python | TAC-shaped local smoke | Not active in current config; next integration target. | Task-specific artifact or answer check |
 | GUI-vs-CLI | Desktop applications | 18 apps | `tasks/gui_vs_cli/tasks.jsonl` | Full 440-task metadata list imported; not active in current config. | Original verifier commands preserved, bridge pending |
 | Workflow-GYM-style | Desktop data analysis | Weka | Weka Iris smoke | Not active in current config. | Mock/manual until artifact evaluator exists |
@@ -102,8 +104,6 @@ Applications covered:
 
 | Benchmark | Type | Application | Candidate Task | Harness Fit | Missing |
 | --- | --- | --- | --- | --- | --- |
-| DOMSteer | Visual analytics | DataVoyager | Horsepower range by origin | `browser_only`, `full_sandbox`, `no_gui_tool_only` | Re-add after current smoke matrix is stable. |
-| DOMSteer | Visual analytics | DataVoyager | European cars with horsepower > 100 and four cylinders | `browser_only`, `full_sandbox`, `no_gui_tool_only` | Convert catalog record to task YAML. |
 | DOMSteer | Visual analytics | DataVoyager | 8-cylinder car characteristics | `browser_only`, `full_sandbox`, `no_gui_tool_only` | Needs interpretation rubric. |
 | DOMSteer | Interactive ML | TensorFlow Playground | Discretize, misclassification, regression/classification design tasks | `browser_only`, `full_sandbox`; no-GUI is weak unless DOM/state tools are added. | Reproducible initial state and rubric/state evaluator. |
 | TheAgentCompany | Occupational workplace analytics | Browser + docs + shell/code | Real benchmark task | Mostly `full_sandbox`; no-GUI ablations where artifacts are accessible. | Real task adapter, data mount, evaluator. |

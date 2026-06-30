@@ -68,6 +68,7 @@ ACTION_TITLE = {
     "desktop_type": "Enter information",
     "desktop_keypress": "Use keyboard shortcut",
     "desktop_launch_app": "Launch desktop app",
+    "desktop_pyautogui": "Interact with the desktop app",
     "desktop_shell": "Launch or inspect desktop app",
 }
 
@@ -98,6 +99,7 @@ def semantic_intent(text: str, action_type: str | None = None) -> str:
         "desktop_scroll",
         "desktop_move",
         "desktop_drag",
+        "desktop_pyautogui",
     }:
         return "interact_with_interface"
     return "general_task_work"
@@ -164,6 +166,7 @@ def action_target_signature(action_type: str | None, action_text: str) -> str:
         "shell",
         "desktop_launch_app",
         "desktop_shell",
+        "desktop_pyautogui",
         "web_search",
         "final_answer",
         "goto",
