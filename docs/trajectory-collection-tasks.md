@@ -10,6 +10,12 @@ Current active batch:
 configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml
 ```
 
+Agent structures and tool-tier definitions:
+
+```text
+docs/agent-structures-and-tool-tiers.md
+```
+
 Current active tasks:
 
 ```text

@@ -30,6 +30,7 @@ image, analysis pipeline, or batch/result layout.
 - `runs/`: local generated outputs; gitignored.
 - `examples/results/`: curated result bundles that are intentionally tracked.
 - `docs/trajectory-collection-tasks.md`: task catalog and candidates.
+- `docs/agent-structures-and-tool-tiers.md`: model backend and tool-tier map.
 - `docs/acting-evaluating-pipeline.md`: evaluator and post-analysis plan.
 - `environments/README.md`: Docker/E2B backend notes.
 - `third_party/gui-vs-cli/`: ignored local reference clone of

@@ -4,6 +4,7 @@ This file tracks current status, replacement-sensitive decisions, and exact
 commands. Longer-term planning lives in:
 
 - `docs/trajectory-collection-tasks.md`
+- `docs/agent-structures-and-tool-tiers.md`
 - `docs/acting-evaluating-pipeline.md`
 
 ## 2026-06-30: Repo Structure Cleanup
@@ -346,3 +347,28 @@ OpenAI computer-use note:
 - A cleaner future variant is to execute provider-native computer actions
   directly, preserve the raw provider actions in the trajectory, and generate
   normalized action views only for post-hoc analysis.
+
+## 2026-07-01: Agent Structure And Tool-Tier Cleanup
+
+What changed:
+
+- Added the agent/tier map:
+  - `docs/agent-structures-and-tool-tiers.md`
+  - `src/agentlens/models/README.md`
+  - `src/agentlens/actors/README.md`
+- Marked `src/agentlens/models/openai_vision.py` as the legacy
+  screenshot-to-JSON-action backend.
+- Removed generated `__pycache__` directories from local source, tests, and the
+  ignored `third_party/gui-vs-cli` clone.
+
+Current interpretation:
+
+- Strict pure GUI should use the AgentLens tool-call backend with only GUI
+  tools registered and runtime-gated.
+- OpenAI native `{"type": "computer"}` and the gui-vs-cli ChatGPTAgent path
+  are useful comparison baselines, but they are not strict visual-only
+  controls because the model can still navigate visible GUI routes into
+  DevTools or address-bar JavaScript.
+- GUI-vs-CLI full workflow tasks are cataloged in
+  `tasks/gui_vs_cli/tasks.jsonl`, but full execution still needs the compatible
+  desktop image, seed-file bridge, app launcher bridge, and verifier bridge.
