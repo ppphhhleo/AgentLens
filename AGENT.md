@@ -31,6 +31,7 @@ image, analysis pipeline, or batch/result layout.
 - `examples/results/`: curated result bundles that are intentionally tracked.
 - `docs/trajectory-collection-tasks.md`: task catalog and candidates.
 - `docs/acting-evaluating-pipeline.md`: evaluator and post-analysis plan.
+- `environments/README.md`: Docker/E2B backend notes.
 
 ## Current Batch
 
@@ -106,5 +107,7 @@ examples/results/<example_name>/
 - Use `rg` for search.
 - Use `apply_patch` for manual file edits.
 - Do not commit generated `runs/` output.
+- Do not add metadata-only candidate tasks to active batch YAMLs until their
+  image/assets/evaluator are available.
 - Browser coordinates are browser viewport coordinates.
 - Desktop coordinates are virtual desktop screen coordinates.

@@ -150,6 +150,7 @@ class TaskConfig(BaseModel):
         "the_agent_company",
         "cocoabench",
         "workflow_gym",
+        "gui_vs_cli",
         "custom",
     ]
     task_id: str

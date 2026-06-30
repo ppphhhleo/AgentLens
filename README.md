@@ -44,6 +44,20 @@ Run the batch:
 Generated outputs go under `runs/`. Curated examples that are useful for
 inspection or paper discussion live under `examples/results/`.
 
+## Desktop Benchmark Candidates
+
+Desktop task metadata that is not yet in an active batch can live under
+`tasks/` without polluting runnable configs. For example, GUI-vs-CLI task
+metadata is stored under:
+
+```text
+tasks/gui_vs_cli/
+```
+
+Those tasks preserve original task text, seed-file requirements, and verifier
+commands, but should not be run until the matching desktop image/assets and
+verifier bridge are available.
+
 ## Curated Example
 
 The current published example is:

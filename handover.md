@@ -28,6 +28,33 @@ Policy:
 - `examples/results/` is for small, intentionally published examples.
 - Do not enable intervention during standard collection unless explicitly asked.
 
+## 2026-06-30: GUI-vs-CLI Task Metadata
+
+What changed:
+
+- Added `gui_vs_cli` as a recognized `TaskConfig.benchmark`.
+- Added one candidate task file:
+  - `tasks/gui_vs_cli/libreoffice_calc/calc_budget_multi_sheet/task.yaml`
+- Added environment backend notes:
+  - `environments/README.md`
+
+Status:
+
+- This task is metadata-only for now. It preserves the original natural-language
+  task, required seed file, and verifier commands from the public GUI-vs-CLI
+  dataset.
+- It is not in an active batch yet.
+- It needs a compatible desktop image, seed assets, and a verifier bridge before
+  it can produce executable trajectories.
+
+Decision:
+
+- Do not vendor or couple to the whole E2B stack yet.
+- Borrow the backend abstraction idea instead: screenshot, command execution,
+  file read/write, stream URL, and kill.
+- Keep intervention and simulated-user actors above the environment backend so
+  they work the same over Docker, AWS Docker, E2B, or future providers.
+
 ## Current Active Smoke
 
 Active config:
