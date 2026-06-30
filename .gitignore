@@ -37,3 +37,6 @@ htmlcov/
 /traces/
 /videos/
 /screenshots/
+
+# Downloaded external datasets
+/data/external/
