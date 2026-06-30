@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>domsteer_datavoyager_toolcall_matrix Dashboard</title>
+  <style>
+    :root {
+      --bg: #f7f7f4;
+      --panel: #fff;
+      --ink: #222622;
+      --muted: #6d746d;
+      --line: #d8ded6;
+      --ok: #2f7b4f;
+      --fail: #a64032;
+      --missing: #8a8f89;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.45 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      padding: 18px 22px 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247,247,244,.94);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      backdrop-filter: blur(10px);
+    }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .small { color: var(--muted); font-size: 12px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: #fbfbf8;
+      font-size: 12px;
+    }
+    main { padding: 16px; }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+    table {
+      width: 100%;
+      min-width: 1100px;
+      border-collapse: collapse;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 9px;
+      vertical-align: top;
+      text-align: left;
+    }
+    tr:last-child th, tr:last-child td { border-bottom: 0; }
+    th:last-child, td:last-child { border-right: 0; }
+    thead th {
+      background: #eeeeeb;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    thead th span { color: var(--muted); font-weight: 500; }
+    .row-col {
+      width: 260px;
+      background: #fbfbf8;
+      position: sticky;
+      left: 0;
+      z-index: 2;
+    }
+    .row-col span {
+      display: block;
+      color: var(--muted);
+      font-weight: 400;
+      margin-top: 4px;
+    }
+    details {
+      margin-top: 7px;
+      font-weight: 400;
+    }
+    summary {
+      cursor: pointer;
+      color: #235c73;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .tool-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 5px;
+    }
+    .tool-pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 6px;
+      background: #f3f5f1;
+      color: #333833;
+      font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    pre.prompt-preview {
+      margin: 6px 0 0;
+      max-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #f0f2ed;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #2f352f;
+    }
+    .cell-status {
+      display: inline-block;
+      border-radius: 999px;
+      color: white;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .ok { background: var(--ok); }
+    .fail { background: var(--fail); }
+    .missing { background: var(--missing); }
+    .cell-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+    .answer {
+      margin-top: 5px;
+      padding-top: 5px;
+      border-top: 1px dashed var(--line);
+      color: #343934;
+      overflow-wrap: anywhere;
+    }
+    .answer span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+    a { color: #235c73; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-size: 11px; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>domsteer_datavoyager_toolcall_matrix</h1>
+    <div class="small">Reusable matrix dashboard for generated trajectories and per-trajectory method reports.</div>
+    <div class="chips">
+      <span class="chip">conditions: 18</span>
+      <span class="chip">completed: 0/18</span>
+      <span class="chip">successes: 0</span>
+      <span class="chip">analysis: llm / openai / gpt-5.4-mini</span>
+    </div>
+    <div class="small">trajectory root: <code>/Users/pan00342/Documents/Projects/AgentLens/agentlens_results/domsteer_datavoyager_toolcall_matrix/raw</code></div>
+    <div class="small">report root: <code>/Users/pan00342/Documents/Projects/AgentLens/agentlens_results/domsteer_datavoyager_toolcall_matrix/analysis/method_comparison</code></div>
+  </header>
+  <main>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th class="row-col">Model / Harness</th><th>Most fuel-efficient car<br><span>datavoyager.most_fuel_efficient</span></th><th>Europe &lt;100hp + 4 cylinders<br><span>datavoyager.europe_100hp_4cyl_count</span></th><th>datavoyager_horsepower_range_by_origin<br><span>datavoyager.horsepower_range_by_origin</span></th><th>datavoyager_8_cylinder_origin<br><span>datavoyager.8_cylinder_origin</span></th></tr>
+        </thead>
+        <tbody><tr>
+              <th class="row-col">
+                
+      <strong>gpt-5.4-mini / browser_only</strong>
+      <span>browser_only; 14 tools</span>
+      <details>
+        <summary>tools (14)</summary>
+        <div class="tool-list"><span class="tool-pill">browser.screenshot</span><span class="tool-pill">browser.click</span><span class="tool-pill">browser.double_click</span><span class="tool-pill">browser.type</span><span class="tool-pill">browser.scroll</span><span class="tool-pill">browser.wait</span><span class="tool-pill">browser.move</span><span class="tool-pill">browser.keypress</span><span class="tool-pill">browser.drag</span><span class="tool-pill">browser.goto</span><span class="tool-pill">browser.back</span><span class="tool-pill">browser.forward</span><span class="tool-pill">browser.reload</span><span class="tool-pill">task.final_answer</span></div>
+      </details>
+      <details>
+        <summary>initial prompt</summary>
+        <pre class="prompt-preview">You are an autonomous agent operating inside a browser or sandboxed computer environment.
+The application is already open and loaded. Complete the task using the available tools.
+
+Task:
+[task goal inserted at runtime]
+
+You see one screenshot per step.
+
+Use exactly one tool call per step. When you know the answer, call final_answer.
+For final_answer, return only the exact answer requested: no explanation, no prefix, no markdown.
+</pre>
+      </details>
+    
+              </th>
+              <td><span class="cell-status missing">missing</span><div class="small"><code>dv_most_fuel__gpt54mini__browser</code></div></td><td><span class="cell-status missing">missing</span><div class="small"><code>dv_europe_count__gpt54mini__browser</code></div></td><td><span class="cell-status missing">not planned</span></td><td><span class="cell-status missing">not planned</span></td>
+            </tr><tr>
+              <th class="row-col">
+                
+      <strong>gpt-5.4-mini / full_sandbox</strong>
+      <span>full_sandbox; 19 tools</span>
+      <details>
+        <summary>tools (19)</summary>
+        <div class="tool-list"><span class="tool-pill">browser.screenshot</span><span class="tool-pill">browser.click</span><span class="tool-pill">browser.double_click</span><span class="tool-pill">browser.type</span><span class="tool-pill">browser.scroll</span><span class="tool-pill">browser.wait</span><span class="tool-pill">browser.move</span><span class="tool-pill">browser.keypress</span><span class="tool-pill">browser.drag</span><span class="tool-pill">browser.goto</span><span class="tool-pill">browser.back</span><span class="tool-pill">browser.forward</span><span class="tool-pill">browser.reload</span><span class="tool-pill">web.openai_search</span><span class="tool-pill">code.run_python</span><span class="tool-pill">code.shell</span><span class="tool-pill">files.read</span><span class="tool-pill">files.write</span><span class="tool-pill">task.final_answer</span></div>
+      </details>
+      <details>
+        <summary>initial prompt</summary>
+        <pre class="prompt-preview">You are an autonomous agent operating inside a browser or sandboxed computer environment.
+The application is already open and loaded. Complete the task using the available tools.
+
+Task:
+[task goal inserted at runtime]
+
+You see one screenshot per step.
+
+Use exactly one tool call per step. When you know the answer, call final_answer.
+For final_answer, return only the exact answer requested: no explanation, no prefix, no markdown.
+</pre>
+      </details>
+    
+              </th>
+              <td><span class="cell-status missing">missing</span><div class="small"><code>dv_most_fuel__gpt54mini__sandbox</code></div></td><td><span class="cell-status missing">missing</span><div class="small"><code>dv_europe_count__gpt54mini__sandbox</code></div></td><td><span class="cell-status missing">not planned</span></td><td><span class="cell-status missing">not planned</span></td>
+            </tr><tr>
+              <th class="row-col">
+                
+      <strong>gpt-5.4-mini / no_gui_tool_only</strong>
+      <span>full_sandbox; 6 tools</span>
+      <details>
+        <summary>tools (6)</summary>
+        <div class="tool-list"><span class="tool-pill">web.openai_search</span><span class="tool-pill">code.run_python</span><span class="tool-pill">code.shell</span><span class="tool-pill">files.read</span><span class="tool-pill">files.write</span><span class="tool-pill">task.final_answer</span></div>
+      </details>
+      <details>
+        <summary>initial prompt</summary>
+        <pre class="prompt-preview">You are an autonomous agent operating inside a browser or sandboxed computer environment.
+The application is already open and loaded. Complete the task using the available tools.
+
+Task:
+[task goal inserted at runtime]
+
+You see an interactive-element tree and any tool output per step. No screenshot is provided to you.
+
+Use exactly one tool call per step. When you know the answer, call final_answer.
+For final_answer, return only the exact answer requested: no explanation, no prefix, no markdown.
+</pre>
+      </details>
+    
+              </th>
+              <td><span class="cell-status missing">missing</span><div class="small"><code>dv_most_fuel__gpt54mini__nogui</code></div></td><td><span class="cell-status missing">missing</span><div class="small"><code>dv_europe_count__gpt54mini__nogui</code></div></td><td><span class="cell-status missing">not planned</span></td><td><span class="cell-status missing">not planned</span></td>
+            </tr><tr>
+              <th class="row-col">
+                
+      <strong>gpt-4o-mini / browser_only</strong>
+      <span>browser_only; 14 tools</span>
+      <details>
+        <summary>tools (14)</summary>
+        <div class="tool-list"><span class="tool-pill">browser.screenshot</span><span class="tool-pill">browser.click</span><span class="tool-pill">browser.double_click</span><span class="tool-pill">browser.type</span><span class="tool-pill">browser.scroll</span><span class="tool-pill">browser.wait</span><span class="tool-pill">browser.move</span><span class="tool-pill">browser.keypress</span><span class="tool-pill">browser.drag</span><span class="tool-pill">browser.goto</span><span class="tool-pill">browser.back</span><span class="tool-pill">browser.forward</span><span class="tool-pill">browser.reload</span><span class="tool-pill">task.final_answer</span></div>
+      </details>
+      <details>
+        <summary>initial prompt</summary>
+        <pre class="prompt-preview">You are an autonomous agent operating inside a browser or sandboxed computer environment.
+The application is already open and loaded. Complete the task using the available tools.
+
+Task:
+[task goal inserted at runtime]
+
+You see one screenshot per step.
+
+Use exactly one tool call per step. When you know the answer, call final_answer.
+For final_answer, return only the exact answer requested: no explanation, no prefix, no markdown.
+</pre>
+      </details>
+    
+              </th>
+              <td><span class="cell-status missing">missing</span><div class="small"><code>dv_most_fuel__gpt4omini__browser</code></div></td><td><span class="cell-status missing">missing</span><div class="small"><code>dv_europe_count__gpt4omini__browser</code></div></td><td><span class="cell-status missing">not planned</span></td><td><span class="cell-status missing">not planned</span></td>
+            </tr><tr>
+              <th class="row-col">
+                
+      <strong>gpt-4o-mini / full_sandbox</strong>
+      <span>full_sandbox; 19 tools</span>
+      <details>
+        <summary>tools (19)</summary>
+        <div class="tool-list"><span class="tool-pill">browser.screenshot</span><span class="tool-pill">browser.click</span><span class="tool-pill">browser.double_click</span><span class="tool-pill">browser.type</span><span class="tool-pill">browser.scroll</span><span class="tool-pill">browser.wait</span><span class="tool-pill">browser.move</span><span class="tool-pill">browser.keypress</span><span class="tool-pill">browser.drag</span><span class="tool-pill">browser.goto</span><span class="tool-pill">browser.back</span><span class="tool-pill">browser.forward</span><span class="tool-pill">browser.reload</span><span class="tool-pill">web.openai_search</span><span class="tool-pill">code.run_python</span><span class="tool-pill">code.shell</span><span class="tool-pill">files.read</span><span class="tool-pill">files.write</span><span class="tool-pill">task.final_answer</span></div>
+      </details>
+      <details>
+        <summary>initial prompt</summary>
+        <pre class="prompt-preview">You are an autonomous agent operating inside a browser or sandboxed computer environment.
+The application is already open and loaded. Complete the task using the available tools.
+
+Task:
+[task goal inserted at runtime]
+
+You see one screenshot per step.
+
+Use exactly one tool call per step. When you know the answer, call final_answer.
+For final_answer, return only the exact answer requested: no explanation, no prefix, no markdown.
+</pre>
+      </details>
+    
+              </th>
+              <td><span class="cell-status missing">missing</span><div class="small"><code>dv_most_fuel__gpt4omini__sandbox</code></div></td><td><span class="cell-status missing">missing</span><div class="small"><code>dv_europe_count__gpt4omini__sandbox</code></div></td><td><span class="cell-status missing">not planned</span></td><td><span class="cell-status missing">not planned</span></td>
+            </tr><tr>
+              <th class="row-col">
+                
+      <strong>gpt-4o-mini / no_gui_tool_only</strong>
+      <span>full_sandbox; 6 tools</span>
+      <details>
+        <summary>tools (6)</summary>
+        <div class="tool-list"><span class="tool-pill">web.openai_search</span><span class="tool-pill">code.run_python</span><span class="tool-pill">code.shell</span><span class="tool-pill">files.read</span><span class="tool-pill">files.write</span><span class="tool-pill">task.final_answer</span></div>
+      </details>
+      <details>
+        <summary>initial prompt</summary>
+        <pre class="prompt-preview">You are an autonomous agent operating inside a browser or sandboxed computer environment.
+The application is already open and loaded. Complete the task using the available tools.
+
+Task:
+[task goal inserted at runtime]
+
+You see an interactive-element tree and any tool output per step. No screenshot is provided to you.
+
+Use exactly one tool call per step. When you know the answer, call final_answer.
+For final_answer, return only the exact answer requested: no explanation, no prefix, no markdown.
+</pre>
+      </details>
+    
+              </th>
+              <td><span class="cell-status missing">missing</span><div class="small"><code>dv_most_fuel__gpt4omini__nogui</code></div></td><td><span class="cell-status missing">missing</span><div class="small"><code>dv_europe_count__gpt4omini__nogui</code></div></td><td><span class="cell-status missing">not planned</span></td><td><span class="cell-status missing">not planned</span></td>
+            </tr><tr>
+              <th class="row-col">
+                
+      <strong>gpt-5-mini / browser_only</strong>
+      <span>browser_only; 14 tools</span>
+      <details>
+        <summary>tools (14)</summary>
+        <div class="tool-list"><span class="tool-pill">browser.screenshot</span><span class="tool-pill">browser.click</span><span class="tool-pill">browser.double_click</span><span class="tool-pill">browser.type</span><span class="tool-pill">browser.scroll</span><span class="tool-pill">browser.wait</span><span class="tool-pill">browser.move</span><span class="tool-pill">browser.keypress</span><span class="tool-pill">browser.drag</span><span class="tool-pill">browser.goto</span><span class="tool-pill">browser.back</span><span class="tool-pill">browser.forward</span><span class="tool-pill">browser.reload</span><span class="tool-pill">task.final_answer</span></div>
+      </details>
+      <details>
+        <summary>initial prompt</summary>
+        <pre class="prompt-preview">You are an autonomous agent operating inside a browser or sandboxed computer environment.
+The application is already open and loaded. Complete the task using the available tools.
+
+Task:
+[task goal inserted at runtime]
+
+You see one screenshot per step.
+
+Use exactly one tool call per step. When you know the answer, call final_answer.
+For final_answer, return only the exact answer requested: no explanation, no prefix, no markdown.
+</pre>
+      </details>
+    
+              </th>
+              <td><span class="cell-status missing">missing</span><div class="small"><code>dv_most_fuel__gpt5mini__browser</code></div></td><td><span class="cell-status missing">missing</span><div class="small"><code>dv_europe_count__gpt5mini__browser</code></div></td><td><span class="cell-status missing">not planned</span></td><td><span class="cell-status missing">not planned</span></td>
+            </tr><tr>
+              <th class="row-col">
+                
+      <strong>gpt-5-mini / full_sandbox</strong>
+      <span>full_sandbox; 19 tools</span>
+      <details>
+        <summary>tools (19)</summary>
+        <div class="tool-list"><span class="tool-pill">browser.screenshot</span><span class="tool-pill">browser.click</span><span class="tool-pill">browser.double_click</span><span class="tool-pill">browser.type</span><span class="tool-pill">browser.scroll</span><span class="tool-pill">browser.wait</span><span class="tool-pill">browser.move</span><span class="tool-pill">browser.keypress</span><span class="tool-pill">browser.drag</span><span class="tool-pill">browser.goto</span><span class="tool-pill">browser.back</span><span class="tool-pill">browser.forward</span><span class="tool-pill">browser.reload</span><span class="tool-pill">web.openai_search</span><span class="tool-pill">code.run_python</span><span class="tool-pill">code.shell</span><span class="tool-pill">files.read</span><span class="tool-pill">files.write</span><span class="tool-pill">task.final_answer</span></div>
+      </details>
+      <details>
+        <summary>initial prompt</summary>
+        <pre class="prompt-preview">You are an autonomous agent operating inside a browser or sandboxed computer environment.
+The application is already open and loaded. Complete the task using the available tools.
+
+Task:
+[task goal inserted at runtime]
+
+You see one screenshot per step.
+
+Use exactly one tool call per step. When you know the answer, call final_answer.
+For final_answer, return only the exact answer requested: no explanation, no prefix, no markdown.
+</pre>
+      </details>
+    
+              </th>
+              <td><span class="cell-status missing">missing</span><div class="small"><code>dv_most_fuel__gpt5mini__sandbox</code></div></td><td><span class="cell-status missing">missing</span><div class="small"><code>dv_europe_count__gpt5mini__sandbox</code></div></td><td><span class="cell-status missing">not planned</span></td><td><span class="cell-status missing">not planned</span></td>
+            </tr><tr>
+              <th class="row-col">
+                
+      <strong>gpt-5-mini / no_gui_tool_only</strong>
+      <span>full_sandbox; 6 tools</span>
+      <details>
+        <summary>tools (6)</summary>
+        <div class="tool-list"><span class="tool-pill">web.openai_search</span><span class="tool-pill">code.run_python</span><span class="tool-pill">code.shell</span><span class="tool-pill">files.read</span><span class="tool-pill">files.write</span><span class="tool-pill">task.final_answer</span></div>
+      </details>
+      <details>
+        <summary>initial prompt</summary>
+        <pre class="prompt-preview">You are an autonomous agent operating inside a browser or sandboxed computer environment.
+The application is already open and loaded. Complete the task using the available tools.
+
+Task:
+[task goal inserted at runtime]
+
+You see an interactive-element tree and any tool output per step. No screenshot is provided to you.
+
+Use exactly one tool call per step. When you know the answer, call final_answer.
+For final_answer, return only the exact answer requested: no explanation, no prefix, no markdown.
+</pre>
+      </details>
+    
+              </th>
+              <td><span class="cell-status missing">missing</span><div class="small"><code>dv_most_fuel__gpt5mini__nogui</code></div></td><td><span class="cell-status missing">missing</span><div class="small"><code>dv_europe_count__gpt5mini__nogui</code></div></td><td><span class="cell-status missing">not planned</span></td><td><span class="cell-status missing">not planned</span></td>
+            </tr></tbody>
+      </table>
+    </div>
+  </main>
+</body>
+</html>

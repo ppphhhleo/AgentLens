@@ -1,0 +1,115 @@
+[
+  {
+    "experiment_id": "domsteer_datavoyager_toolcall_matrix",
+    "run_id": "dv_most_fuel__gpt54mini__browser",
+    "adapter": "screenshot_react",
+    "seed": 0,
+    "trial": 1,
+    "model": {
+      "id": "gpt54_mini",
+      "provider": "openai",
+      "name": "gpt-5.4-mini",
+      "temperature": 0.0,
+      "vision": true,
+      "context_window": null,
+      "max_output_tokens": 1024,
+      "extra": {
+        "interaction_backend": "tool_call"
+      }
+    },
+    "tool_harness": {
+      "id": "browser_only",
+      "runner": "screenshot_react",
+      "tier": "browser_only",
+      "tools": [
+        "browser.screenshot",
+        "browser.click",
+        "browser.double_click",
+        "browser.type",
+        "browser.scroll",
+        "browser.wait",
+        "browser.move",
+        "browser.keypress",
+        "browser.drag",
+        "browser.goto",
+        "browser.back",
+        "browser.forward",
+        "browser.reload",
+        "task.final_answer"
+      ],
+      "prompt_version": "tool_call_v1",
+      "extra": {
+        "headless": true,
+        "settle_ms": 2000,
+        "slow_mo_ms": 350,
+        "viewport": {
+          "width": 1600,
+          "height": 900
+        },
+        "screenshot_source": "browser_viewport",
+        "coordinate_frame": "browser_viewport",
+        "parallel_tool_calls": true,
+        "max_actions_per_round": 5,
+        "model_max_attempts": 6,
+        "model_retry_sleep_s": 2.0,
+        "model_retry_max_sleep_s": 60.0,
+        "intervention": {
+          "enabled": true,
+          "repeated_action": {
+            "enabled": true,
+            "threshold": 5,
+            "mode": "warn",
+            "signature": "type",
+            "message": "You are repeating the same action. Pause, inspect the screen, and try a different strategy."
+          }
+        }
+      }
+    },
+    "memory_harness": {
+      "id": "no_memory",
+      "kind": "none",
+      "scope": "none",
+      "read_policy": null,
+      "write_policy": null,
+      "max_items": null,
+      "storage": null,
+      "extra": {}
+    },
+    "task": {
+      "id": "datavoyager_most_fuel_efficient",
+      "benchmark": "domsteer",
+      "task_id": "datavoyager.most_fuel_efficient",
+      "goal": "What is the most fuel-efficient car in the dataset?",
+      "start_url": "https://vega.github.io/voyager2/",
+      "capability_required": [
+        "browser_ui",
+        "visual_reasoning",
+        "data_analysis"
+      ],
+      "validator": "final_answer",
+      "expected_answer": "Mazda GLC",
+      "answer_validator": "contains",
+      "extra": {
+        "canonical_task": "datavoyager_most_fuel_efficient",
+        "task_family": "visual_analytics"
+      }
+    },
+    "output_dir": "agentlens_results/domsteer_datavoyager_toolcall_matrix/raw/2026-06-25_13-19-27",
+    "raw_output_dir": "agentlens_results/domsteer_datavoyager_toolcall_matrix/raw/2026-06-25_13-19-27/screenshot_react_raw",
+    "max_steps": 100,
+    "user_harness": null,
+    "judge_model": null,
+    "tags": [
+      "domsteer",
+      "datavoyager",
+      "matrix",
+      "browser_only",
+      "gpt54_mini"
+    ],
+    "status": "ready",
+    "notes": [
+      "Screenshot ReAct real run with provider=openai name=gpt-5.4-mini.",
+      "snapshot=2026-06-25_13-19-27"
+    ]
+  }
+]
