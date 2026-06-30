@@ -84,7 +84,16 @@ class OpenAIComputerUseModel:
             if parsed.message_text:
                 actions = [ComputerAction(type="final_answer", answer=parsed.message_text.strip())]
             else:
-                actions = [ComputerAction(type="desktop_wait", ms=1000)]
+                # In the built-in computer loop, the absence of a computer_call means
+                # the model is done. Continuing with previous_response_id plus a fresh
+                # image is rejected by the Responses API.
+                self.previous_response_id = None
+                actions = [
+                    ComputerAction(
+                        type="final_answer",
+                        answer=parsed.reasoning_text.strip() or "[NO_COMPUTER_ACTION]",
+                    )
+                ]
 
         usage = _get_field(response, "usage", {}) or {}
         raw_response = _model_dump(response)
@@ -122,14 +131,7 @@ class OpenAIComputerUseModel:
         return [
             {
                 "role": "user",
-                "content": [
-                    {"type": "input_text", "text": goal},
-                    {
-                        "type": "input_image",
-                        "image_url": image_url,
-                        "detail": "original",
-                    },
-                ],
+                "content": [{"type": "input_text", "text": goal}],
             }
         ]
 

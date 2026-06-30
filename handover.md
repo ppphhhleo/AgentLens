@@ -417,13 +417,38 @@ Selected smoke categories:
 | Zoom | `zoom_accessibility_bundle` | application preferences |
 | Zotero | `zotero_add_author_to_survey` | reference management |
 
-Current blocker:
+Current status:
 
-- Local Docker does not have `paraverse-agent-runtime:latest`.
-- A readiness smoke reached the gui-vs-cli Docker image check and failed with:
-  `No such image: paraverse-agent-runtime:latest`.
-- Existing AgentLens images only cover the AIO sandbox plus Weka/Blender POCs;
-  they do not contain the GUI-vs-CLI app stack.
+- AWS workspace: `/home/ubuntu/AgentLens-smoke` on
+  `ubuntu@ec2-34-218-248-219.us-west-2.compute.amazonaws.com`.
+- AWS image `paraverse-agent-runtime:latest` is built from the gui-vs-cli
+  Docker stack and patched with `websocket-client` for Chrome verifier checks.
+- Ready-check smoke passed for all 18 selected GUI-vs-CLI app categories:
+  `runs/gui_vs_cli_full_workflow_smoke_ready/2026-06-30_21-17-22/summary.json`.
+- OpenAI native computer-use smoke now runs end-to-end without the previous
+  Responses API continuation error. The Chrome task still failed behaviorally:
+  `runs/gui_vs_cli_full_workflow_smoke/2026-06-30_21-27-31/`.
+- Strict AgentLens GUI-only OpenAI smoke initially exposed a key-chord execution
+  bug (`ctrl+shift+b` treated as one key); this is fixed in
+  `scripts/gui_vs_cli_full_workflow_smoke.py`.
+- Further OpenAI smoke is currently blocked by API quota:
+  `insufficient_quota`.
+- Claude/Gemini smoke is pending actual `.env` variables:
+  `ANTHROPIC_API_KEY=...` and `GEMINI_API_KEY=...` or
+  `GOOGLE_AI_STUDIO_API_KEY=...`.
+
+Recent implementation fixes:
+
+- `src/agentlens/models/openai_computer_use.py`
+  - Sends the first built-in `computer` request as task text only.
+  - Sends screenshots only as `computer_call_output` on follow-up turns.
+  - Treats absence of a returned `computer_call` as terminal instead of sending
+    an invalid `previous_response_id` + fresh image request.
+- `scripts/gui_vs_cli_full_workflow_smoke.py`
+  - Splits key chords such as `ctrl+shift+b`, `ctrl-l`, and aliases
+    `return -> enter` before converting to pyautogui.
+- `pyproject.toml`
+  - Adds `websocket-client>=1.8` for reused GUI-vs-CLI verifier code.
 
 Build runtime image:
 
@@ -436,17 +461,30 @@ DOCKER_ENV_PLATFORM=linux/amd64 \
 Run readiness smoke:
 
 ```bash
-uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+python scripts/gui_vs_cli_full_workflow_smoke.py \
   configs/gui_vs_cli/full_workflow_smoke.yaml \
-  --ready-check-only \
-  --task chrome_download_httpbin_file
+  --ready-check-only
 ```
 
 Run one full smoke:
 
 ```bash
-uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+python scripts/gui_vs_cli_full_workflow_smoke.py \
   configs/gui_vs_cli/full_workflow_smoke.yaml \
-  --agent agentlens_gui_toolcall \
-  --task chrome_download_httpbin_file
+  --agent agentlens_gui_toolcall_gpt54 \
+  --task chrome_dom_inspection_wikipedia
+```
+
+AWS command pattern:
+
+```bash
+ssh -i /Users/pan00342/.ssh/agent-lens.pem \
+  ubuntu@ec2-34-218-248-219.us-west-2.compute.amazonaws.com
+
+cd /home/ubuntu/AgentLens-smoke
+set -a && . ./.env && set +a
+.venv/bin/python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/full_workflow_smoke.yaml \
+  --agent agentlens_gui_toolcall_gpt54 \
+  --task chrome_dom_inspection_wikipedia
 ```

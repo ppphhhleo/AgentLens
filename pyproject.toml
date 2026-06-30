@@ -16,6 +16,7 @@ dependencies = [
     "pyyaml>=6.0",
     "tf-playwright-stealth>=1.2",
     "typer>=0.12",
+    "websocket-client>=1.8",
 ]
 
 [project.optional-dependencies]

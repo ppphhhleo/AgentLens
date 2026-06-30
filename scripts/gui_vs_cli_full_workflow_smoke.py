@@ -349,7 +349,7 @@ def _desktop_action_to_pyautogui(action: Any) -> str:
     if action.type == "desktop_type":
         return f"pyperclip.copy({action.text or ''!r}); pyautogui.hotkey('ctrl', 'v')"
     if action.type == "desktop_keypress":
-        keys = [str(key).lower() for key in (action.keys or [])]
+        keys = _normalize_pyautogui_keys(action.keys or [])
         if len(keys) == 1:
             return f"pyautogui.press({keys[0]!r})"
         return f"pyautogui.hotkey({', '.join(repr(key) for key in keys)})"
@@ -364,6 +364,22 @@ def _desktop_action_to_pyautogui(action: Any) -> str:
         lines.append("pyautogui.mouseUp()")
         return "\n".join(lines)
     return ""
+
+
+def _normalize_pyautogui_keys(keys: list[Any]) -> list[str]:
+    normalized: list[str] = []
+    aliases = {
+        "control": "ctrl",
+        "return": "enter",
+        "esc": "escape",
+        "cmd": "command",
+    }
+    for key in keys:
+        for part in str(key).replace("-", "+").split("+"):
+            cleaned = part.strip().lower()
+            if cleaned:
+                normalized.append(aliases.get(cleaned, cleaned))
+    return normalized
 
 
 def _run_pyautogui(sandbox: Any, code: str) -> tuple[bool, str]:
