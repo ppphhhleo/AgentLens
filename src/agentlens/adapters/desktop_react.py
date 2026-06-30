@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shlex
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Callable, Literal
@@ -126,7 +127,7 @@ class DesktopReactAdapter:
             keep_open_seconds=int(harness_extra.get("keep_sandbox_open_seconds", 0)),
         )
         with sandbox_cm as sandbox:
-            launch_cmd = plan.task.extra.get("desktop_start_cmd") if plan.task.extra else None
+            launch_cmd = _desktop_start_command(plan)
             if launch_cmd:
                 launch = sandbox.shell(str(launch_cmd), timeout_sec=10)
                 self._log(log_action, f"[{plan.run_id}] desktop_start_cmd ok={launch.ok} err={launch.error[:120]!r}")
@@ -287,3 +288,12 @@ class DesktopReactAdapter:
     def _log(log_action: Callable[[str], None] | None, message: str) -> None:
         if log_action is not None:
             log_action(message)
+
+
+def _desktop_start_command(plan: DesktopReactRunPlan) -> str | None:
+    if plan.task.extra and plan.task.extra.get("desktop_start_cmd"):
+        return str(plan.task.extra["desktop_start_cmd"])
+    template = plan.tool_harness.extra.get("desktop_start_cmd_template")
+    if template and plan.task.start_url:
+        return str(template).format(start_url=shlex.quote(plan.task.start_url))
+    return None

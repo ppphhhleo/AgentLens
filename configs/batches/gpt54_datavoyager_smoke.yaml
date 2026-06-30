@@ -1,8 +1,9 @@
 schema_version: "0.1"
 id: gpt54_datavoyager_smoke
 description: >
-  GPT-5.4 DataVoyager smoke collection across three harness tiers:
-  browser-only GUI, full sandbox, and no-GUI tools.
+  GPT-5.4 DataVoyager smoke collection across browser-only GUI, full sandbox,
+  no-GUI tools, strict desktop GUI tool-calling, and paper-faithful native
+  OpenAI computer-use GUI.
 
 models:
   - id: gpt54
@@ -13,6 +14,18 @@ models:
     max_output_tokens: 1024
     extra:
       interaction_backend: tool_call
+
+  - id: gpt54_computer
+    provider: openai
+    name: gpt-5.4
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+    extra:
+      interaction_backend: openai_computer
+      reasoning_effort: medium
+      reasoning_summary: concise
+      computer_environment: linux
 
 tool_harnesses:
   - id: browser_only
@@ -123,6 +136,71 @@ tool_harnesses:
       model_retry_sleep_s: 2.0
       model_retry_max_sleep_s: 60.0
 
+  - id: desktop_gui_toolcall
+    runner: desktop_react
+    tier: full_sandbox
+    tools:
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+    prompt_version: tool_call_desktop_gui_v1
+    extra:
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads]
+      desktop_start_cmd_template: >-
+        nohup bash -lc "if command -v google-chrome >/dev/null 2>&1; then exec google-chrome --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium-browser >/dev/null 2>&1; then exec chromium-browser --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium >/dev/null 2>&1; then exec chromium --no-sandbox --disable-dev-shm-usage {start_url}; else exec xdg-open {start_url}; fi" >/tmp/agentlens_start_browser.log 2>&1 &
+      settle_ms: 1500
+      screenshot_source: virtual_desktop
+      coordinate_frame: desktop_screen
+      parallel_tool_calls: true
+      max_actions_per_round: 5
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
+
+  - id: desktop_gui_openai_computer
+    runner: desktop_react
+    tier: full_sandbox
+    tools:
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+    prompt_version: openai_computer_gui_paper_v1
+    extra:
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads]
+      desktop_start_cmd_template: >-
+        nohup bash -lc "if command -v google-chrome >/dev/null 2>&1; then exec google-chrome --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium-browser >/dev/null 2>&1; then exec chromium-browser --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium >/dev/null 2>&1; then exec chromium --no-sandbox --disable-dev-shm-usage {start_url}; else exec xdg-open {start_url}; fi" >/tmp/agentlens_start_browser.log 2>&1 &
+      settle_ms: 1500
+      screenshot_source: virtual_desktop
+      coordinate_frame: desktop_screen
+      max_actions_per_round: 5
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
+
 memory_harnesses:
   - id: no_memory
     kind: none
@@ -163,3 +241,25 @@ runs:
     trials: 1
     output_dir: runs/gpt54_datavoyager_smoke/raw
     tags: [domsteer, datavoyager, smoke, no_gui_tool_only, gpt54]
+
+  - id: dv_most_fuel__gpt54__desktop_toolcall_gui
+    model: gpt54
+    tool_harness: desktop_gui_toolcall
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    max_steps: 100
+    output_dir: runs/gpt54_datavoyager_smoke/raw
+    tags: [domsteer, datavoyager, smoke, desktop_gui_toolcall, gpt54]
+
+  - id: dv_most_fuel__gpt54__desktop_openai_computer
+    model: gpt54_computer
+    tool_harness: desktop_gui_openai_computer
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    max_steps: 100
+    output_dir: runs/gpt54_datavoyager_smoke/raw
+    tags: [domsteer, datavoyager, smoke, desktop_gui_openai_computer, gpt54]

@@ -78,6 +78,26 @@ def execute_desktop_action(sandbox, action: ComputerAction) -> tuple[str, str]:
         cmd = f"xdotool mousemove {float(action.x or 0):.0f} {float(action.y or 0):.0f} click {button}"
         result = sandbox.shell(cmd, timeout_sec=10)
         return result.output, _desktop_tool_error(result, "xdotool")
+    if action.type == "desktop_double_click":
+        button = {"left": 1, "middle": 2, "right": 3}.get(action.button, 1)
+        cmd = (
+            f"xdotool mousemove {float(action.x or 0):.0f} {float(action.y or 0):.0f} "
+            f"click --repeat 2 --delay 120 {button}"
+        )
+        result = sandbox.shell(cmd, timeout_sec=10)
+        return result.output, _desktop_tool_error(result, "xdotool")
+    if action.type == "desktop_move":
+        cmd = f"xdotool mousemove {float(action.x or 0):.0f} {float(action.y or 0):.0f}"
+        result = sandbox.shell(cmd, timeout_sec=10)
+        return result.output, _desktop_tool_error(result, "xdotool")
+    if action.type == "desktop_scroll":
+        cmd = _scroll_command(action)
+        result = sandbox.shell(cmd, timeout_sec=10)
+        return result.output, _desktop_tool_error(result, "xdotool")
+    if action.type == "desktop_drag":
+        cmd = _drag_command(action)
+        result = sandbox.shell(cmd, timeout_sec=20)
+        return result.output, _desktop_tool_error(result, "xdotool")
     if action.type == "desktop_type":
         cmd = f"xdotool type --clearmodifiers -- {shlex.quote(action.text or '')}"
         result = sandbox.shell(cmd, timeout_sec=20)
@@ -92,6 +112,14 @@ def execute_desktop_action(sandbox, action: ComputerAction) -> tuple[str, str]:
 def format_desktop_action(action: ComputerAction) -> str:
     if action.type == "desktop_click":
         return f"desktop_click x={action.x} y={action.y} button={action.button}"
+    if action.type == "desktop_double_click":
+        return f"desktop_double_click x={action.x} y={action.y} button={action.button}"
+    if action.type == "desktop_move":
+        return f"desktop_move x={action.x} y={action.y}"
+    if action.type == "desktop_scroll":
+        return f"desktop_scroll x={action.x} y={action.y} scroll_x={action.scroll_x} scroll_y={action.scroll_y}"
+    if action.type == "desktop_drag":
+        return f"desktop_drag path={[(p.x, p.y) for p in action.path]}"
     if action.type == "desktop_type":
         return f"desktop_type text={action.text!r}"
     if action.type == "desktop_keypress":
@@ -150,6 +178,34 @@ def _desktop_tool_error(result, tool_name: str) -> str:
     if "not found" in err or "command not found" in err:
         return f"{tool_name} is not installed in the desktop sandbox image"
     return err
+
+
+def _scroll_command(action: ComputerAction) -> str:
+    parts: list[str] = []
+    if action.x is not None and action.y is not None:
+        parts.append(f"mousemove {float(action.x):.0f} {float(action.y):.0f}")
+    parts.extend(_wheel_clicks(action.scroll_y, negative_button=4, positive_button=5))
+    parts.extend(_wheel_clicks(action.scroll_x, negative_button=6, positive_button=7))
+    if not parts or (len(parts) == 1 and parts[0].startswith("mousemove")):
+        parts.append("sleep 0.1")
+    return "xdotool " + " ".join(parts)
+
+
+def _wheel_clicks(delta: float, *, negative_button: int, positive_button: int) -> list[str]:
+    if not delta:
+        return []
+    button = positive_button if delta > 0 else negative_button
+    repeats = max(1, min(10, int(abs(delta) / 100) or 1))
+    return [f"click {button}" for _ in range(repeats)]
+
+
+def _drag_command(action: ComputerAction) -> str:
+    first = action.path[0]
+    parts = [f"mousemove {first.x:.0f} {first.y:.0f}", "mousedown 1"]
+    for point in action.path[1:]:
+        parts.append(f"mousemove {point.x:.0f} {point.y:.0f}")
+    parts.append("mouseup 1")
+    return "xdotool " + " ".join(parts)
 
 
 def _launch_desktop_app(sandbox, app: str):

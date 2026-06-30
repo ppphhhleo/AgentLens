@@ -61,6 +61,10 @@ ACTION_TITLE = {
     "desktop_screenshot": "Observe the desktop",
     "desktop_wait": "Wait for desktop state",
     "desktop_click": "Interact with the desktop app",
+    "desktop_double_click": "Interact with the desktop app",
+    "desktop_scroll": "Inspect more of the desktop app",
+    "desktop_move": "Inspect the desktop app",
+    "desktop_drag": "Arrange desktop interface elements",
     "desktop_type": "Enter information",
     "desktop_keypress": "Use keyboard shortcut",
     "desktop_launch_app": "Launch desktop app",
@@ -83,7 +87,18 @@ def semantic_intent(text: str, action_type: str | None = None) -> str:
         return "retrieve_information"
     if action_type in {"write_file", "type", "keypress", "desktop_type", "desktop_keypress"}:
         return "create_or_modify_artifact"
-    if action_type in {"click", "double_click", "drag", "scroll", "move", "desktop_click"}:
+    if action_type in {
+        "click",
+        "double_click",
+        "drag",
+        "scroll",
+        "move",
+        "desktop_click",
+        "desktop_double_click",
+        "desktop_scroll",
+        "desktop_move",
+        "desktop_drag",
+    }:
         return "interact_with_interface"
     return "general_task_work"
 
@@ -121,11 +136,18 @@ def should_split_semantically(
 def action_target_signature(action_type: str | None, action_text: str) -> str:
     if not action_type:
         return ""
-    if action_type == "drag":
+    if action_type in {"drag", "desktop_drag"}:
         points = re.findall(r"'x': ([0-9.]+), 'y': ([0-9.]+)", action_text)
         if points:
             return "drag:" + "->".join(f"{round(float(x))},{round(float(y))}" for x, y in points)
-    if action_type in {"click", "double_click", "move", "desktop_click"}:
+    if action_type in {
+        "click",
+        "double_click",
+        "move",
+        "desktop_click",
+        "desktop_double_click",
+        "desktop_move",
+    }:
         match = re.search(r"x=([^ ]+) y=([^ ]+)", action_text)
         if match:
             return f"{action_type}:{match.group(1)},{match.group(2)}"

@@ -56,6 +56,41 @@ Decision:
 - Keep intervention and simulated-user actors above the environment backend so
   they work the same over Docker, AWS Docker, E2B, or future providers.
 
+Local reference clone:
+
+- `third_party/gui-vs-cli/` contains a local ignored copy of
+  `rebeccaz4/gui-vs-cli` at commit `8fee696`.
+- It is for code reference only and is intentionally ignored by git.
+- If it needs to be refreshed:
+
+```bash
+rm -rf third_party/gui-vs-cli
+git clone --depth 1 --filter=blob:none https://github.com/rebeccaz4/gui-vs-cli.git third_party/gui-vs-cli
+```
+
+## 2026-06-30: DOMSteer Task Catalog
+
+What changed:
+
+- Added DOMSteer catalog docs:
+  - `tasks/domsteer/README.md`
+  - `tasks/domsteer/tasks.jsonl`
+- The catalog has exactly 8 records: the four DataVoyager and four TensorFlow
+  Playground experiment tasks from Section 8.1.
+- DataVoyager study tasks T1-T3 include deterministic expected answers:
+  - T1 most fuel-efficient car: `Mazda GLC`.
+  - T2 widest horsepower range by origin: `USA`.
+  - T3 European cars with horsepower > 100 and four cylinders: `10`.
+- Tasks T4-T8 keep `answer_validator: manual_pending` and
+  `verification.type: pending` because no exact answer is given in the paper.
+
+Status:
+
+- Only `datavoyager_most_fuel_efficient` is currently an active runnable YAML.
+- T2 and T3 are ready to convert into task YAMLs.
+- T4 and TensorFlow Playground tasks need rubrics or state/screenshot
+  evaluators before batch collection.
+
 ## Current Active Smoke
 
 Active config:
@@ -77,6 +112,20 @@ Run IDs:
 | `dv_most_fuel__gpt54__browser` | `browser_only` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
 | `dv_most_fuel__gpt54__sandbox` | `full_sandbox` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
 | `dv_most_fuel__gpt54__nogui` | `no_gui_tool_only` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
+| `dv_most_fuel__gpt54__desktop_toolcall_gui` | `desktop_gui_toolcall` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
+| `dv_most_fuel__gpt54__desktop_openai_computer` | `desktop_gui_openai_computer` | `gpt-5.4` via OpenAI native computer tool | `datavoyager_most_fuel_efficient` |
+
+Desktop GUI comparison:
+
+- `desktop_gui_toolcall` is the strict AgentLens GUI-only setup: the prompt and
+  registered tools expose only desktop GUI actions plus `final_answer`.
+- `desktop_gui_openai_computer` is the paper-faithful setup: clean GUI-only
+  operator prompt plus OpenAI Responses API `{"type": "computer"}`. Raw native
+  computer calls are preserved in trajectory metadata and mapped into
+  AgentLens desktop actions for execution, intervention compatibility, and
+  post-hoc analysis.
+- Both desktop runs open the task `start_url` inside the virtual desktop browser
+  via `desktop_start_cmd_template`.
 
 Expected answer:
 
@@ -96,6 +145,12 @@ Dry-run:
 
 ```bash
 .venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml --dry-run
+```
+
+If `.venv/bin/agentlens` is unavailable, use:
+
+```bash
+uv run --no-sync python -m agentlens.cli run configs/batches/gpt54_datavoyager_smoke.yaml --dry-run
 ```
 
 Execute:
@@ -161,8 +216,10 @@ Trajectories:
 
 ## Open Items
 
-- Add the next DataVoyager task only after the current three-harness smoke path
+- Add the next DataVoyager task only after the current five-run smoke matrix
   remains stable under the new layout.
+- GUI-vs-CLI tasks still need a runnable Docker image/asset mount and verifier
+  bridge before batch collection.
 - Reintroduce TheAgentCompany, Weka, Blender, Unity, or intervention configs as
   small dedicated batch YAMLs when those are active again.
 - Keep Wang-style aggregation and Act-onomy-style behavioral analysis as

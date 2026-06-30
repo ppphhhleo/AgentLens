@@ -208,6 +208,10 @@ def _codes_for_event(event: CanonicalEvent) -> list[tuple[str, str, str]]:
         "scroll",
         "move",
         "desktop_click",
+        "desktop_double_click",
+        "desktop_scroll",
+        "desktop_move",
+        "desktop_drag",
         "desktop_type",
         "desktop_keypress",
     }:
@@ -346,7 +350,7 @@ def _actonomy_phase(event: CanonicalEvent) -> str:
         if tool_name == "mcp.chrome.evaluate":
             return "verify"
         return "edit"
-    if event.action_type in {"read_file", "web_search", "scroll", "move"}:
+    if event.action_type in {"read_file", "web_search", "scroll", "move", "desktop_scroll", "desktop_move"}:
         return "localize"
     if event.action_type in {
         "click",
@@ -360,6 +364,8 @@ def _actonomy_phase(event: CanonicalEvent) -> str:
         "desktop_launch_app",
         "desktop_shell",
         "desktop_click",
+        "desktop_double_click",
+        "desktop_drag",
         "desktop_type",
         "desktop_keypress",
     }:

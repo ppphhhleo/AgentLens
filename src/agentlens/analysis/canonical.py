@@ -30,6 +30,10 @@ ACTION_PHASES = {
     "desktop_screenshot": "observe",
     "desktop_wait": "observe",
     "desktop_click": "gui_manipulate",
+    "desktop_double_click": "gui_manipulate",
+    "desktop_scroll": "inspect_or_orient",
+    "desktop_move": "observe",
+    "desktop_drag": "gui_manipulate",
     "desktop_type": "gui_manipulate",
     "desktop_keypress": "gui_manipulate",
     "desktop_launch_app": "programmatic_work",
@@ -171,8 +175,12 @@ def action_to_text(action: dict[str, Any]) -> str:
         tool_name = action.get("mcp_tool") or "mcp.unknown"
         args = action.get("mcp_args") or {}
         return f"{tool_name}: {json.dumps(args, ensure_ascii=False, sort_keys=True)}"
-    if action_type == "desktop_click":
-        return f"desktop_click: x={action.get('x')} y={action.get('y')}"
+    if action_type in {"desktop_click", "desktop_double_click", "desktop_move"}:
+        return f"{action_type}: x={action.get('x')} y={action.get('y')}"
+    if action_type == "desktop_drag":
+        return f"desktop_drag: {action.get('path') or []}"
+    if action_type == "desktop_scroll":
+        return f"desktop_scroll: dx={action.get('scroll_x')} dy={action.get('scroll_y')}"
     if action_type == "desktop_type":
         return f"desktop_type: {action.get('text') or ''}".strip()
     if action_type == "desktop_keypress":

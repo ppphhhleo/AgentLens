@@ -40,3 +40,4 @@ htmlcov/
 
 # Downloaded external datasets
 /data/external/
+/third_party/gui-vs-cli/

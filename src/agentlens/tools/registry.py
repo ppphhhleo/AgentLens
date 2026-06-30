@@ -331,6 +331,71 @@ def default_tool_registry() -> ToolRegistry:
                 ),
             ),
             ToolSpec(
+                name="desktop.double_click",
+                action_type="desktop_double_click",
+                executor_family="desktop",
+                description="Double-click a point on the virtual desktop screen.",
+                parameters=_object_schema(
+                    {
+                        "x": {"type": "number", "description": "Screen x coordinate."},
+                        "y": {"type": "number", "description": "Screen y coordinate."},
+                        "button": {"type": "string", "enum": ["left", "right", "middle"]},
+                    },
+                    required=["x", "y"],
+                ),
+            ),
+            ToolSpec(
+                name="desktop.scroll",
+                action_type="desktop_scroll",
+                executor_family="desktop",
+                description="Scroll at the current cursor position or a desktop screen coordinate.",
+                parameters=_object_schema(
+                    {
+                        "x": {"type": "number", "description": "Optional screen x coordinate."},
+                        "y": {"type": "number", "description": "Optional screen y coordinate."},
+                        "scroll_x": {"type": "number", "description": "Horizontal scroll delta."},
+                        "scroll_y": {"type": "number", "description": "Vertical scroll delta."},
+                    },
+                ),
+            ),
+            ToolSpec(
+                name="desktop.move",
+                action_type="desktop_move",
+                executor_family="desktop",
+                description="Move the mouse cursor to a point on the virtual desktop screen.",
+                parameters=_object_schema(
+                    {
+                        "x": {"type": "number", "description": "Screen x coordinate."},
+                        "y": {"type": "number", "description": "Screen y coordinate."},
+                    },
+                    required=["x", "y"],
+                ),
+            ),
+            ToolSpec(
+                name="desktop.drag",
+                action_type="desktop_drag",
+                executor_family="desktop",
+                description="Drag through a sequence of desktop screen coordinates.",
+                parameters=_object_schema(
+                    {
+                        "path": {
+                            "type": "array",
+                            "minItems": 2,
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "x": {"type": "number"},
+                                    "y": {"type": "number"},
+                                },
+                                "required": ["x", "y"],
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
+                    required=["path"],
+                ),
+            ),
+            ToolSpec(
                 name="desktop.type",
                 action_type="desktop_type",
                 executor_family="desktop",

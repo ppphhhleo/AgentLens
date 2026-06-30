@@ -32,6 +32,8 @@ image, analysis pipeline, or batch/result layout.
 - `docs/trajectory-collection-tasks.md`: task catalog and candidates.
 - `docs/acting-evaluating-pipeline.md`: evaluator and post-analysis plan.
 - `environments/README.md`: Docker/E2B backend notes.
+- `third_party/gui-vs-cli/`: ignored local reference clone of
+  `rebeccaz4/gui-vs-cli`; do not commit vendored files from this folder.
 
 ## Current Batch
 
@@ -44,6 +46,15 @@ Run IDs:
 - `dv_most_fuel__gpt54__browser`
 - `dv_most_fuel__gpt54__sandbox`
 - `dv_most_fuel__gpt54__nogui`
+- `dv_most_fuel__gpt54__desktop_toolcall_gui`
+- `dv_most_fuel__gpt54__desktop_openai_computer`
+
+The two desktop GUI runs are intentionally different:
+
+- `desktop_toolcall_gui`: strict AgentLens tool-call GUI, with explicit desktop
+  GUI tools registered.
+- `desktop_openai_computer`: paper-faithful OpenAI Responses API computer-use
+  GUI, with `{"type": "computer"}` and a clean GUI-only prompt.
 
 ## Validation Commands
 
