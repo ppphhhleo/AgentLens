@@ -95,7 +95,7 @@ def _ensure_gui_vs_cli_on_path() -> None:
 
 def _select(items: list[dict[str, Any]], ids: list[str] | None) -> list[dict[str, Any]]:
     if not ids:
-        return items
+        return [item for item in items if item.get("enabled", True)]
     wanted = set(ids)
     selected = [item for item in items if item.get("id") in wanted]
     missing = wanted - {item.get("id") for item in selected}
@@ -229,7 +229,10 @@ def _run_agent_loop(
     model = _build_agentlens_model(agent_ref)
     history: list[ModelStep] = []
     trajectory: list[dict[str, Any]] = []
-    goal = _task_prompt(task["task"], agent_ref.get("prompt_policy"))
+    if str(agent_ref.get("interaction_backend", "")).startswith("gui_vs_cli_"):
+        goal = task["task"]
+    else:
+        goal = _task_prompt(task["task"], agent_ref.get("prompt_policy"))
 
     for step_index in range(max_steps):
         screenshot = sandbox.screenshot()
@@ -279,6 +282,20 @@ def _build_agentlens_model(agent_ref: dict[str, Any]):
     from agentlens.harnesses.tool_gating import ToolSet
     from agentlens.models.base import build_model
     from agentlens.schemas import ModelConfig
+
+    if not agent_ref.get("enabled", True):
+        raise RuntimeError(
+            f"agent {agent_ref['id']!r} is disabled: {agent_ref.get('status', 'not ready')}"
+        )
+    if (
+        agent_ref.get("provider") == "gemini"
+        and agent_ref.get("interaction_backend") == "tool_call"
+    ):
+        raise RuntimeError(
+            "AgentLens strict GUI registered-tool Gemini is not implemented yet. "
+            "Use gui_vs_cli_gemini for the paper-style Gemini agent, or add a "
+            "Gemini provider tool-call adapter."
+        )
 
     config = ModelConfig(
         id=agent_ref["id"],

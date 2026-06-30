@@ -8,6 +8,7 @@ dependencies = [
     "agentlab>=0.4.2",
     "anthropic>=0.60",
     "browsergym>=0.14.3",
+    "google-genai>=1.0",
     "openai>=1.50",
     "pandas>=2.2",
     "pydantic>=2.7",

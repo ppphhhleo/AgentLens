@@ -383,8 +383,14 @@ What changed:
   - `scripts/gui_vs_cli_full_workflow_smoke.py`
 - The bridge reuses gui-vs-CLI's environment setup, app launcher, seed-file
   upload, and verifier code, then runs either:
-  - `agentlens_gui_toolcall`: AgentLens strict GUI-only tool-call agent.
+  - `openai_gpt_computer_use`: OpenAI native computer-use.
+  - `agentlens_gui_toolcall_gpt54`: AgentLens strict GUI-only registered tools.
+  - `agentlens_gui_toolcall_haiku`: AgentLens strict GUI-only registered tools.
+  - `agentlens_gui_toolcall_gemini`: listed but disabled until a Gemini
+    registered-tool provider adapter exists.
   - `gui_vs_cli_chatgpt`: the paper's ChatGPT native computer-use agent.
+  - `gui_vs_cli_claude`: the paper's Claude computer-use agent.
+  - `gui_vs_cli_gemini`: the paper's Gemini generic-desktop agent.
 - The gui-vs-cli ChatGPT adapter now wraps tasks in the paper runner's
   `GUI_SCREEN_ONLY_POLICY` by default.
 
@@ -392,11 +398,24 @@ Selected smoke categories:
 
 | App | Task | Category |
 | --- | --- | --- |
-| Chrome | `chrome_download_httpbin_file` | browser/download |
-| LibreOffice Calc | `calc_sales_summary_sheet` | spreadsheet analysis |
-| GIMP | `gimp_add_alpha_transparent` | image editing |
+| Audacity | `audacity_add_chapter_labels` | audio editing |
+| Chrome | `chrome_dom_inspection_wikipedia` | browser research |
+| CloudCompare | `cloudcompare_colorize_add_rgb` | point-cloud visualization |
+| draw.io | `drawio_aws_cloud_arch` | diagram editing |
 | FreeCAD | `freecad_add_sphere_to_doc` | spatial CAD |
-| Audacity | `audacity_export_flac_mono` | media export |
+| GIMP | `gimp_add_alpha_transparent` | image editing |
+| Godot 4 | `godot4_add_autoload_singleton` | game editor |
+| Krita | `krita_add_document_metadata` | digital art |
+| LibreOffice Calc | `calc_3d_quarterly_consolidation` | spreadsheet analysis |
+| LibreOffice Impress | `impress_add_entry_animations_to_bullets` | presentation editing |
+| LibreOffice Writer | `libreoffice_writer_agenda_document` | document editing |
+| MuseScore 3 | `musescore3_add_composer_and_export_all` | music notation |
+| OBS | `obs_add_sources_to_existing` | streaming scene setup |
+| Obsidian | `obsidian_add_links_to_existing` | knowledge-base editing |
+| RenderDoc | `renderdoc_add_recent_captures` | graphics debugging |
+| Shotcut | `shotcut_720p_project_single_clip` | video editing |
+| Zoom | `zoom_accessibility_bundle` | application preferences |
+| Zotero | `zotero_add_author_to_survey` | reference management |
 
 Current blocker:
 

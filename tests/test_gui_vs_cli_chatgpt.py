@@ -1,6 +1,8 @@
 from agentlens.models.gui_vs_cli_chatgpt import (
     GUI_SCREEN_ONLY_POLICY,
     GuiVsCliChatGPTModel,
+    GuiVsCliClaudeModel,
+    GuiVsCliGeminiModel,
     gui_vs_cli_actions_to_computer_actions,
 )
 from agentlens.schemas import ModelConfig
@@ -34,3 +36,9 @@ def test_gui_vs_cli_prompt_uses_gui_screen_only_policy_by_default() -> None:
 
     assert GUI_SCREEN_ONLY_POLICY in prompt
     assert "<USER_TASK>\nFinish the task\n</USER_TASK>" in prompt
+
+
+def test_gui_vs_cli_backend_names_are_distinct() -> None:
+    assert GuiVsCliChatGPTModel.backend_name == "gui_vs_cli_chatgpt"
+    assert GuiVsCliClaudeModel.backend_name == "gui_vs_cli_claude"
+    assert GuiVsCliGeminiModel.backend_name == "gui_vs_cli_gemini"

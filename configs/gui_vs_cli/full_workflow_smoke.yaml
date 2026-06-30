@@ -1,8 +1,8 @@
 id: gui_vs_cli_full_workflow_smoke
 description: >
   Full-workflow GUI-vs-CLI smoke plan. This uses the gui-vs-cli desktop
-  environment/app launcher/verifier stack, then runs either AgentLens strict
-  GUI tool-call or the gui-vs-cli ChatGPT computer-use agent.
+  environment/app launcher/verifier stack, then runs AgentLens strict GUI
+  tool-call agents and paper-style computer-use agents over the same tasks.
 
 env_backend: docker
 docker_image: paraverse-agent-runtime:latest
@@ -14,12 +14,20 @@ max_steps: 40
 output_dir: runs/gui_vs_cli_full_workflow_smoke
 
 agents:
-  - id: agentlens_gui_toolcall
+  - id: openai_gpt_computer_use
+    provider: openai
+    model: gpt-5.4
+    interaction_backend: openai_computer
+    prompt_policy: gui_screen_only
+    family: native_computer_use
+
+  - id: agentlens_gui_toolcall_gpt54
     provider: openai
     model: gpt-5.4
     interaction_backend: tool_call
     prompt_policy: gui_screen_only
-    tools:
+    family: agentlens_strict_gui_toolcall
+    tools: &strict_gui_tools
       - desktop.screenshot
       - desktop.click
       - desktop.double_click
@@ -31,34 +39,114 @@ agents:
       - desktop.wait
       - task.final_answer
 
+  - id: agentlens_gui_toolcall_haiku
+    provider: anthropic
+    model: claude-3-5-haiku-20241022
+    interaction_backend: tool_call
+    prompt_policy: gui_screen_only
+    family: agentlens_strict_gui_toolcall
+    tools: *strict_gui_tools
+
+  - id: agentlens_gui_toolcall_gemini
+    provider: gemini
+    model: gemini-3-flash-preview
+    interaction_backend: tool_call
+    prompt_policy: gui_screen_only
+    family: agentlens_strict_gui_toolcall
+    enabled: false
+    status: pending_gemini_provider_tool_call_adapter
+    tools: *strict_gui_tools
+
   - id: gui_vs_cli_chatgpt
     provider: openai
     model: gpt-5.4
     interaction_backend: gui_vs_cli_chatgpt
     prompt_policy: gui_screen_only
+    family: paper_style_gui_vs_cli
+
+  - id: gui_vs_cli_claude
+    provider: anthropic
+    model: claude-sonnet-4-6
+    interaction_backend: gui_vs_cli_claude
+    prompt_policy: gui_screen_only
+    family: paper_style_gui_vs_cli
+
+  - id: gui_vs_cli_gemini
+    provider: gemini
+    model: gemini-3-flash-preview
+    interaction_backend: gui_vs_cli_gemini
+    prompt_policy: gui_screen_only
+    family: paper_style_gui_vs_cli
 
 tasks:
-  - id: chrome_download_httpbin_file
+  - id: audacity_add_chapter_labels
+    app: audacity
+    category: audio_editing
+
+  - id: chrome_dom_inspection_wikipedia
     app: chrome
-    category: browser_download
-    reason: Browser workflow with no seed files.
+    category: browser_research
 
-  - id: calc_sales_summary_sheet
-    app: libreoffice_calc
-    category: spreadsheet_analysis
-    reason: Data-analysis workflow in a complex spreadsheet interface.
+  - id: cloudcompare_colorize_add_rgb
+    app: cloudcompare
+    category: point_cloud_visualization
 
-  - id: gimp_add_alpha_transparent
-    app: gimp
-    category: image_editing
-    reason: Visual editing workflow with artifact verification.
+  - id: drawio_aws_cloud_arch
+    app: drawio
+    category: diagram_editing
 
   - id: freecad_add_sphere_to_doc
     app: freecad
     category: spatial_cad
-    reason: Visual/spatial desktop workflow.
 
-  - id: audacity_export_flac_mono
-    app: audacity
-    category: media_editing
-    reason: Media workflow with export verification.
+  - id: gimp_add_alpha_transparent
+    app: gimp
+    category: image_editing
+
+  - id: godot4_add_autoload_singleton
+    app: godot4
+    category: game_editor
+
+  - id: krita_add_document_metadata
+    app: krita
+    category: digital_art
+
+  - id: calc_3d_quarterly_consolidation
+    app: libreoffice_calc
+    category: spreadsheet_analysis
+
+  - id: impress_add_entry_animations_to_bullets
+    app: libreoffice_impress
+    category: presentation_editing
+
+  - id: libreoffice_writer_agenda_document
+    app: libreoffice_writer
+    category: document_editing
+
+  - id: musescore3_add_composer_and_export_all
+    app: musescore3
+    category: music_notation
+
+  - id: obs_add_sources_to_existing
+    app: obs
+    category: streaming_scene_setup
+
+  - id: obsidian_add_links_to_existing
+    app: obsidian
+    category: knowledge_base_editing
+
+  - id: renderdoc_add_recent_captures
+    app: renderdoc
+    category: graphics_debugging
+
+  - id: shotcut_720p_project_single_clip
+    app: shotcut
+    category: video_editing
+
+  - id: zoom_accessibility_bundle
+    app: zoom
+    category: application_preferences
+
+  - id: zotero_add_author_to_survey
+    app: zotero
+    category: reference_management

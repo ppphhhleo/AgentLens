@@ -99,8 +99,17 @@ scripts/gui_vs_cli_full_workflow_smoke.py
 This bridge reuses gui-vs-cli's desktop environment setup, app launcher,
 seed-file upload, and verifier stack, then runs either:
 
-- `agentlens_gui_toolcall`: AgentLens strict GUI-only tool-call agent.
+- `openai_gpt_computer_use`: OpenAI native `{"type": "computer"}`.
+- `agentlens_gui_toolcall_gpt54`: AgentLens strict GUI-only registered tools.
+- `agentlens_gui_toolcall_haiku`: AgentLens strict GUI-only registered tools.
+- `agentlens_gui_toolcall_gemini`: planned; pending a Gemini provider
+  tool-call adapter.
 - `gui_vs_cli_chatgpt`: the paper's ChatGPT computer-use agent structure.
+- `gui_vs_cli_claude`: the paper's Claude computer-use agent structure.
+- `gui_vs_cli_gemini`: the paper's Gemini generic-desktop agent structure.
+
+The smoke config selects one representative task from each GUI-vs-CLI
+application category, currently 18 applications.
 
 Build the paper-style local Docker runtime before full execution:
 
