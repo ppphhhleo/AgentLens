@@ -1,2 +1,0 @@
-experiment_id,run_id,trajectory_id,model,tool_harness,memory_harness,task,seed,trial,success,score,duration_ms,steps,tokens_input,tokens_output,cost_usd,tool_calls
-domsteer_datavoyager_toolcall_matrix,dv_most_fuel__gpt54__sandbox,6de24086-2607-4923-adb8-ce834243848b,gpt54,full_sandbox,no_memory,datavoyager_most_fuel_efficient,0,1,True,1.0,72932,8,26114,458,,7

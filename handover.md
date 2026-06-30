@@ -1,49 +1,48 @@
 # AgentLens Handover
 
 This file tracks current status, replacement-sensitive decisions, and exact
-commands. Keep detailed planning in:
+commands. Longer-term planning lives in:
 
 - `docs/trajectory-collection-tasks.md`
 - `docs/acting-evaluating-pipeline.md`
 
-## 2026-06-30: Config And Docs Cleanup
+## 2026-06-30: Repo Structure Cleanup
 
 What changed:
 
-- Pruned `configs/experiments/` to a single active experiment file:
-  - `configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml`
-- Reduced the active experiment to the GPT-5.4 DataVoyager smoke only:
-  - `dv_most_fuel__gpt54__browser`
-  - `dv_most_fuel__gpt54__sandbox`
-  - `dv_most_fuel__gpt54__nogui`
-- Pruned `docs/` to two project docs:
-  - `docs/trajectory-collection-tasks.md`
-  - `docs/acting-evaluating-pipeline.md`
-- Updated `AGENT.md` and this handover so commands no longer point at deleted
-  configs or docs.
+- Active batch config now lives at:
+  - `configs/batches/gpt54_datavoyager_smoke.yaml`
+- Added task definitions under:
+  - `tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml`
+- Added `task_files` support so batch YAMLs can reference task files.
+- Default generated outputs now go to `runs/`.
+- Moved the curated GPT-5.4 smoke result bundle to:
+  - `examples/results/gpt54_datavoyager_smoke/`
+- Removed duplicated published summary viewers and stale summary folders.
+- Moved Docker templates to `environments/docker/`.
+- Removed stale scripts that referenced deleted configs.
 
 Policy:
 
-- Do not enable intervention during standard collection unless the user asks.
-- Add retired configs back only when they are needed for a current run, with a
-  small explicit YAML and a clear batch folder.
-- Do not commit generated trajectory results unless explicitly requested.
+- `runs/` is local and gitignored.
+- `examples/results/` is for small, intentionally published examples.
+- Do not enable intervention during standard collection unless explicitly asked.
 
 ## Current Active Smoke
-
-Run from:
-
-```bash
-/Users/pan00342/Documents/Projects/AgentLens
-```
 
 Active config:
 
 ```bash
-configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml
+configs/batches/gpt54_datavoyager_smoke.yaml
 ```
 
-Current run IDs:
+Task file:
+
+```bash
+tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml
+```
+
+Run IDs:
 
 | Run ID | Harness | Model | Task |
 | --- | --- | --- | --- |
@@ -57,38 +56,24 @@ Expected answer:
 Mazda GLC
 ```
 
-## Current Practical Commands
+## Commands
 
-Validate the remaining YAML:
+Validate:
 
 ```bash
-.venv/bin/python - <<'PY'
-from pathlib import Path
-import yaml
-for path in sorted(Path("configs/experiments").glob("*.yaml")):
-    yaml.safe_load(path.read_text())
-print("yaml ok")
-PY
+.venv/bin/agentlens validate-config configs/batches/gpt54_datavoyager_smoke.yaml
 ```
 
-Dry-run all active smoke runs:
+Dry-run:
 
 ```bash
-.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54__browser --dry-run
-
-.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54__sandbox --dry-run
-
-.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54__nogui --dry-run
+.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml --dry-run
 ```
 
-Run a fresh smoke trajectory:
+Execute:
 
 ```bash
-.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54__browser \
+.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml \
   --execute \
   --log-actions
 ```
@@ -99,19 +84,13 @@ Regenerate a compact viewer:
 .venv/bin/agentlens trajectory-viewer path/to/trajectory.json
 ```
 
-Remove dry-run noise after checking:
-
-```bash
-rm -f agentlens_results/run_plan.json
-```
-
-Check that intervention is off in normal configs:
+Check intervention is off:
 
 ```bash
 .venv/bin/python - <<'PY'
 from pathlib import Path
 import yaml
-for p in sorted(Path("configs/experiments").glob("*.yaml")):
+for p in sorted(Path("configs/batches").glob("*.yaml")):
     data = yaml.safe_load(p.read_text()) or {}
     enabled = []
     for h in data.get("tool_harnesses") or []:
@@ -130,40 +109,33 @@ Expected output:
 <empty>
 ```
 
-Run focused validation on recently touched runtime code:
+## Published Example
 
-```bash
-.venv/bin/python -m py_compile src/agentlens/harnesses/browser_actions.py
-.venv/bin/python -m ruff check src/agentlens/harnesses/browser_actions.py
+Curated result bundle:
+
+```text
+examples/results/gpt54_datavoyager_smoke/
 ```
 
-## Recent Smoke Results
+Dashboard:
 
-The full GPT-5.4 DataVoyager smoke has already produced successful local
-trajectories for all three harnesses:
+```text
+examples/results/gpt54_datavoyager_smoke/dashboard/dashboard.html
+```
+
+Trajectories:
 
 | Harness | Path | Status |
 | --- | --- | --- |
-| `browser_only` | `agentlens_results/domsteer_datavoyager_toolcall_matrix/raw/2026-06-29_08-46-47/trajectories/dv_most_fuel__gpt54__browser_seed0_trial1/trajectory.json` | success, score `1.0` |
-| `full_sandbox` | `agentlens_results/domsteer_datavoyager_toolcall_matrix/raw/2026-06-29_08-52-44/trajectories/dv_most_fuel__gpt54__sandbox_seed0_trial1/trajectory.json` | success, score `1.0` |
-| `no_gui_tool_only` | `agentlens_results/domsteer_datavoyager_toolcall_matrix/raw/2026-06-29_08-54-08/trajectories/dv_most_fuel__gpt54__nogui_seed0_trial1/trajectory.json` | success, score `1.0` |
-
-## Runtime Notes
-
-- Browser coordinates are browser viewport coordinates.
-- Desktop coordinates are virtual desktop screen coordinates.
-- Browser `move`/hover waits briefly before screenshot capture so tooltip
-  observations can render.
-- `browser.keypress` normalizes common uppercase key names such as `END` and
-  `HOME` to Playwright key names.
+| `browser_only` | `examples/results/gpt54_datavoyager_smoke/trajectories/browser/trajectory.json` | success, score `1.0` |
+| `full_sandbox` | `examples/results/gpt54_datavoyager_smoke/trajectories/sandbox/trajectory.json` | success, score `1.0` |
+| `no_gui_tool_only` | `examples/results/gpt54_datavoyager_smoke/trajectories/nogui/trajectory.json` | success, score `1.0` |
 
 ## Open Items
 
-- Re-run the three GPT-5.4 smoke trajectories after this cleanup if a fresh
-  batch is needed.
 - Add the next DataVoyager task only after the current three-harness smoke path
-  is stable.
+  remains stable under the new layout.
 - Reintroduce TheAgentCompany, Weka, Blender, Unity, or intervention configs as
-  small dedicated YAML files when those are the active target again.
+  small dedicated batch YAMLs when those are active again.
 - Keep Wang-style aggregation and Act-onomy-style behavioral analysis as
   post-hoc methods over raw trajectories.

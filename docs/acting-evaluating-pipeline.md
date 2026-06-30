@@ -1,42 +1,29 @@
 # Evaluation And Post-Analysis Plan
 
-AgentLens should keep four layers separate:
+AgentLens keeps four layers separate:
 
-1. `acting`: model loop, harness tier, tool calls, screenshots, and artifacts.
-2. `outcome`: task finish status, final answer, score, and validator result.
+1. `acting`: model loop, harness tier, tool calls, screenshots, artifacts.
+2. `outcome`: finish status, final answer, score, validator result.
 3. `trajectory`: process-level counts, errors, loops, actions, observations.
 4. `analysis`: Wang-style workflow aggregation and Act-onomy-style behavioral
    tagging/summarization.
 
 ## Current Smoke Path
 
-Active config:
-
 ```bash
-.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54__browser --dry-run
-
-.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54__sandbox --dry-run
-
-.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54__nogui --dry-run
+.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml --dry-run
 ```
 
-Fresh trajectories should go under:
+Fresh trajectories are written under:
 
 ```text
-agentlens_results/domsteer_datavoyager_toolcall_matrix/raw/<timestamp>/trajectories/<run_id>/
+runs/gpt54_datavoyager_smoke/raw/<timestamp>/trajectories/<run_id>/
 ```
 
-Each batch should keep a copy of the YAML used for that batch when possible:
+Published examples are curated separately:
 
 ```text
-agentlens_results/<batch_name>/
-  batch_config.yaml
-  raw/
-  dashboard/
-  analysis/
+examples/results/gpt54_datavoyager_smoke/
 ```
 
 ## Outcome Evaluation
@@ -68,10 +55,9 @@ These methods should remain post-hoc. They should not mutate the raw trajectory.
 
 - Verify each trajectory records raw provider tool calls and executed tool
   results.
-- Keep screenshots in trajectory folders and use compact HTML viewers for
-  inspection.
+- Keep screenshots in trajectory folders and use one compact
+  `trajectory_viewer.html` per trajectory.
+- Do not generate or publish summary-level duplicate trajectory viewers.
 - Do not enable intervention during collection unless explicitly requested.
-- Treat manual/mock desktop evaluators as placeholders until artifact/state
-  validators are implemented.
 - Add new benchmark tasks only after the task catalog records harness fit,
   expected answer or artifact, and evaluator design.

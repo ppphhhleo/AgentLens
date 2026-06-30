@@ -238,9 +238,12 @@ class DesktopReactAdapter:
         return plan.output_dir / "trajectories" / safe
 
     def _write_trajectory(self, trajectory: Trajectory) -> None:
+        from agentlens.reports.trajectory_viewer import write_trajectory_viewer
+
         trajectory.artifact_dir.mkdir(parents=True, exist_ok=True)
         path = trajectory.artifact_dir / "trajectory.json"
         path.write_text(trajectory.model_dump_json(indent=2), encoding="utf-8")
+        write_trajectory_viewer(path)
 
     def _validate_supported(
         self,
