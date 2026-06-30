@@ -51,12 +51,12 @@ Desktop task metadata that is not yet in an active batch can live under
 metadata is stored under:
 
 ```text
-tasks/gui_vs_cli/
+tasks/gui_vs_cli/tasks.jsonl
 ```
 
-Those tasks preserve original task text, seed-file requirements, and verifier
-commands, but should not be run until the matching desktop image/assets and
-verifier bridge are available.
+This catalog contains 440 desktop tasks. It preserves original task text,
+seed-file requirements, and verifier commands, but should not be run until the
+matching desktop image/assets and verifier bridge are available.
 
 ## Curated Example
 

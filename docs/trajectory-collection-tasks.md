@@ -33,9 +33,40 @@ tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml
 | DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_most_fuel_efficient` | Active GPT-5.4 smoke task across three harnesses. | `final_answer`, contains `Mazda GLC` |
 | DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_europe_100hp_4cyl_count` | Retired from active config until the first GPT-5.4 smoke path is stable. | `final_answer`, exact number `10` |
 | TheAgentCompany-style | Workplace analytics / browser + code + files | Browser/files/Python | TAC-shaped local smoke | Not active in current config; next integration target. | Task-specific artifact or answer check |
-| GUI-vs-CLI | Desktop spreadsheet analysis | LibreOffice Calc | `gui_vs_cli_calc_budget_multi_sheet` | Metadata imported; not active in current config. | Original verifier commands preserved, bridge pending |
+| GUI-vs-CLI | Desktop applications | 18 apps | `tasks/gui_vs_cli/tasks.jsonl` | Full 440-task metadata list imported; not active in current config. | Original verifier commands preserved, bridge pending |
 | Workflow-GYM-style | Desktop data analysis | Weka | Weka Iris smoke | Not active in current config. | Mock/manual until artifact evaluator exists |
 | Workflow-GYM-style | Desktop visual/spatial authoring | Blender | Blender cube smoke | Not active in current config. | Mock/manual until artifact evaluator exists |
+
+## GUI-vs-CLI Imported Catalog
+
+Tracked source:
+
+```text
+tasks/gui_vs_cli/tasks.jsonl
+```
+
+App counts:
+
+| Application | Tasks |
+| --- | ---: |
+| RenderDoc | 41 |
+| LibreOffice Writer | 39 |
+| LibreOffice Calc | 36 |
+| LibreOffice Impress | 32 |
+| FreeCAD | 26 |
+| Zotero | 26 |
+| MuseScore 3 | 25 |
+| Audacity | 24 |
+| CloudCompare | 23 |
+| Obsidian | 23 |
+| Shotcut | 20 |
+| Zoom | 20 |
+| GIMP | 19 |
+| Godot 4 | 19 |
+| OBS Studio | 18 |
+| Chrome | 17 |
+| Krita | 17 |
+| draw.io | 15 |
 
 ## Candidate Tasks
 

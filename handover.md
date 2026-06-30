@@ -28,24 +28,25 @@ Policy:
 - `examples/results/` is for small, intentionally published examples.
 - Do not enable intervention during standard collection unless explicitly asked.
 
-## 2026-06-30: GUI-vs-CLI Task Metadata
+## 2026-06-30: GUI-vs-CLI Task Catalog
 
 What changed:
 
 - Added `gui_vs_cli` as a recognized `TaskConfig.benchmark`.
-- Added one candidate task file:
-  - `tasks/gui_vs_cli/libreoffice_calc/calc_budget_multi_sheet/task.yaml`
+- Added the full public task catalog:
+  - `tasks/gui_vs_cli/tasks.jsonl`
+- Removed the earlier hand-written placeholder GUI-vs-CLI task YAML.
 - Added environment backend notes:
   - `environments/README.md`
 
 Status:
 
-- This task is metadata-only for now. It preserves the original natural-language
-  task, required seed file, and verifier commands from the public GUI-vs-CLI
-  dataset.
-- It is not in an active batch yet.
-- It needs a compatible desktop image, seed assets, and a verifier bridge before
-  it can produce executable trajectories.
+- The catalog has 440 task records across 18 desktop applications.
+- It preserves task text, required seed files, and verifier commands from the
+  public GUI-vs-CLI dataset.
+- These tasks are not in an active batch yet.
+- They need a compatible desktop image, seed assets, and a verifier bridge
+  before they can produce executable trajectories in AgentLens.
 
 Decision:
 
