@@ -1,31 +1,13 @@
 schema_version: "0.1"
 id: domsteer_datavoyager_toolcall_matrix
 description: >
-  Clean DataVoyager trajectory collection using tool-call agents.
-  Stores raw trajectories separately from dashboards and post-hoc analyses.
+  GPT-5.4 DataVoyager smoke collection across three harness tiers:
+  browser-only GUI, full sandbox, and no-GUI tools.
 
 models:
-  - id: gpt54_mini
+  - id: gpt54
     provider: openai
-    name: gpt-5.4-mini
-    temperature: 0.0
-    vision: true
-    max_output_tokens: 1024
-    extra:
-      interaction_backend: tool_call
-
-  - id: gpt4o_mini
-    provider: openai
-    name: gpt-4o-mini
-    temperature: 0.0
-    vision: true
-    max_output_tokens: 1024
-    extra:
-      interaction_backend: tool_call
-
-  - id: gpt5_mini
-    provider: openai
-    name: gpt-5-mini
+    name: gpt-5.4
     temperature: 0.0
     vision: true
     max_output_tokens: 1024
@@ -160,224 +142,33 @@ tasks:
       canonical_task: datavoyager_most_fuel_efficient
       task_family: visual_analytics
 
-  - id: datavoyager_europe_100hp_4cyl_count
-    benchmark: domsteer
-    task_id: datavoyager.europe_100hp_4cyl_count
-    goal: How many Europe cars have horsepower under 100 and 4 cylinders?
-    start_url: https://vega.github.io/voyager2/
-    capability_required: [browser_ui, visual_reasoning, data_analysis]
-    validator: final_answer
-    expected_answer: "10"
-    answer_validator: number_exact
-    extra:
-      canonical_task: datavoyager_europe_100hp_4cyl_count
-      task_family: visual_analytics
-
-  - id: datavoyager_horsepower_range_by_origin
-    benchmark: domsteer
-    task_id: datavoyager.horsepower_range_by_origin
-    goal: Which origin's cars show the widest range of horsepower?
-    start_url: https://vega.github.io/voyager2/
-    capability_required: [browser_ui, visual_reasoning, data_analysis]
-    validator: final_answer
-    expected_answer: USA
-    answer_validator: exact
-    extra:
-      canonical_task: datavoyager_horsepower_range_by_origin
-      task_family: visual_analytics
-      task_registry_only: true
-
-  - id: datavoyager_8_cylinder_origin
-    benchmark: domsteer
-    task_id: datavoyager.8_cylinder_origin
-    goal: What origin are all cars with 8 cylinders from in the dataset?
-    start_url: https://vega.github.io/voyager2/
-    capability_required: [browser_ui, visual_reasoning, data_analysis]
-    validator: final_answer
-    expected_answer: USA
-    answer_validator: exact
-    extra:
-      canonical_task: datavoyager_8_cylinder_origin
-      task_family: visual_analytics
-      task_registry_only: true
-
 runs:
-  - id: dv_most_fuel__gpt54mini__browser
-    model: gpt54_mini
+  - id: dv_most_fuel__gpt54__browser
+    model: gpt54
     tool_harness: browser_only
     memory_harness: no_memory
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
     output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, browser_only, gpt54_mini]
+    tags: [domsteer, datavoyager, smoke, browser_only, gpt54]
 
-  - id: dv_most_fuel__gpt54mini__sandbox
-    model: gpt54_mini
+  - id: dv_most_fuel__gpt54__sandbox
+    model: gpt54
     tool_harness: full_sandbox
     memory_harness: no_memory
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
     output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, full_sandbox, gpt54_mini]
+    tags: [domsteer, datavoyager, smoke, full_sandbox, gpt54]
 
-  - id: dv_most_fuel__gpt54mini__nogui
-    model: gpt54_mini
+  - id: dv_most_fuel__gpt54__nogui
+    model: gpt54
     tool_harness: no_gui_tool_only
     memory_harness: no_memory
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
     output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt54_mini]
-
-  - id: dv_most_fuel__gpt4omini__browser
-    model: gpt4o_mini
-    tool_harness: browser_only
-    memory_harness: no_memory
-    task: datavoyager_most_fuel_efficient
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, browser_only, gpt4o_mini]
-
-  - id: dv_most_fuel__gpt4omini__sandbox
-    model: gpt4o_mini
-    tool_harness: full_sandbox
-    memory_harness: no_memory
-    task: datavoyager_most_fuel_efficient
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, full_sandbox, gpt4o_mini]
-
-  - id: dv_most_fuel__gpt4omini__nogui
-    model: gpt4o_mini
-    tool_harness: no_gui_tool_only
-    memory_harness: no_memory
-    task: datavoyager_most_fuel_efficient
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt4o_mini]
-
-  - id: dv_most_fuel__gpt5mini__browser
-    model: gpt5_mini
-    tool_harness: browser_only
-    memory_harness: no_memory
-    task: datavoyager_most_fuel_efficient
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, browser_only, gpt5_mini]
-
-  - id: dv_most_fuel__gpt5mini__sandbox
-    model: gpt5_mini
-    tool_harness: full_sandbox
-    memory_harness: no_memory
-    task: datavoyager_most_fuel_efficient
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, full_sandbox, gpt5_mini]
-
-  - id: dv_most_fuel__gpt5mini__nogui
-    model: gpt5_mini
-    tool_harness: no_gui_tool_only
-    memory_harness: no_memory
-    task: datavoyager_most_fuel_efficient
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt5_mini]
-
-  - id: dv_europe_count__gpt54mini__browser
-    model: gpt54_mini
-    tool_harness: browser_only
-    memory_harness: no_memory
-    task: datavoyager_europe_100hp_4cyl_count
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, browser_only, gpt54_mini]
-
-  - id: dv_europe_count__gpt54mini__sandbox
-    model: gpt54_mini
-    tool_harness: full_sandbox
-    memory_harness: no_memory
-    task: datavoyager_europe_100hp_4cyl_count
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, full_sandbox, gpt54_mini]
-
-  - id: dv_europe_count__gpt54mini__nogui
-    model: gpt54_mini
-    tool_harness: no_gui_tool_only
-    memory_harness: no_memory
-    task: datavoyager_europe_100hp_4cyl_count
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt54_mini]
-
-  - id: dv_europe_count__gpt4omini__browser
-    model: gpt4o_mini
-    tool_harness: browser_only
-    memory_harness: no_memory
-    task: datavoyager_europe_100hp_4cyl_count
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, browser_only, gpt4o_mini]
-
-  - id: dv_europe_count__gpt4omini__sandbox
-    model: gpt4o_mini
-    tool_harness: full_sandbox
-    memory_harness: no_memory
-    task: datavoyager_europe_100hp_4cyl_count
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, full_sandbox, gpt4o_mini]
-
-  - id: dv_europe_count__gpt4omini__nogui
-    model: gpt4o_mini
-    tool_harness: no_gui_tool_only
-    memory_harness: no_memory
-    task: datavoyager_europe_100hp_4cyl_count
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt4o_mini]
-
-  - id: dv_europe_count__gpt5mini__browser
-    model: gpt5_mini
-    tool_harness: browser_only
-    memory_harness: no_memory
-    task: datavoyager_europe_100hp_4cyl_count
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, browser_only, gpt5_mini]
-
-  - id: dv_europe_count__gpt5mini__sandbox
-    model: gpt5_mini
-    tool_harness: full_sandbox
-    memory_harness: no_memory
-    task: datavoyager_europe_100hp_4cyl_count
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, full_sandbox, gpt5_mini]
-
-  - id: dv_europe_count__gpt5mini__nogui
-    model: gpt5_mini
-    tool_harness: no_gui_tool_only
-    memory_harness: no_memory
-    task: datavoyager_europe_100hp_4cyl_count
-    seeds: [0]
-    trials: 1
-    output_dir: agentlens_results/domsteer_datavoyager_toolcall_matrix/raw
-    tags: [domsteer, datavoyager, matrix, no_gui_tool_only, gpt5_mini]
+    tags: [domsteer, datavoyager, smoke, no_gui_tool_only, gpt54]

@@ -36,18 +36,10 @@ pull/run on the server.
 ## Important Files
 
 - `handover.md`: current status, milestones, exact validation/run commands.
-- `docs/trajectory-data-layout.md`: expected batch/result layout.
 - `docs/trajectory-collection-tasks.md`: task catalog and candidate tasks.
-- `docs/task-registry.md`: compact task implementation status.
+- `docs/acting-evaluating-pipeline.md`: evaluator and post-analysis plan.
 - `configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml`: current
-  DataVoyager tool-call collection config.
-- `configs/experiments/domsteer_claude_toolcall_smoke.yaml`: Claude tool-call
-  smoke config.
-- `configs/experiments/workflow_desktop_apps_poc.yaml`: Weka/Blender desktop
-  app smoke config.
-- `configs/experiments/intervention_repeated_action_smoke.yaml`: the explicit
-  intervention test config. This is the only config that should normally keep
-  repeated-action intervention enabled.
+  GPT-5.4 DataVoyager smoke collection config for three harness tiers.
 
 ## Validation Commands
 
@@ -79,13 +71,13 @@ stdout/stderr. If that happens, use the direct fallback documented in
 
 ```bash
 .venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54mini__browser --dry-run
+  --run-id dv_most_fuel__gpt54__browser --dry-run
 
-.venv/bin/agentlens run configs/experiments/domsteer_claude_toolcall_smoke.yaml \
-  --dry-run
+.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  --run-id dv_most_fuel__gpt54__sandbox --dry-run
 
-.venv/bin/agentlens run configs/experiments/workflow_desktop_apps_poc.yaml \
-  --dry-run
+.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  --run-id dv_most_fuel__gpt54__nogui --dry-run
 ```
 
 Dry-runs may write `agentlens_results/run_plan.json`; remove it after checking
@@ -102,7 +94,7 @@ viewer:
 
 ```bash
 .venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54mini__browser \
+  --run-id dv_most_fuel__gpt54__browser \
   --execute \
   --log-actions
 ```
@@ -138,7 +130,7 @@ PY
 Expected normal output:
 
 ```text
-configs/experiments/intervention_repeated_action_smoke.yaml ['browser_capture_with_intervention']
+<empty>
 ```
 
 ## Result Layout

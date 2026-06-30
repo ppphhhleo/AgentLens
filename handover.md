@@ -1,100 +1,65 @@
 # AgentLens Handover
 
-This file tracks big implementation milestones and replacement-sensitive
-decisions. Update it whenever a major harness, task source, evaluator, image,
-or analysis pipeline is replaced.
+This file tracks current status, replacement-sensitive decisions, and exact
+commands. Keep detailed planning in:
 
-Task planning lives in:
+- `docs/trajectory-collection-tasks.md`
+- `docs/acting-evaluating-pipeline.md`
 
-- `docs/trajectory-collection-tasks.md` for benchmark/type/application/harness
-  planning for trajectory collection.
-- `docs/task-registry.md` for compact implementation status.
-
-Update those files whenever adding, replacing, retiring, or reprioritizing
-runnable or candidate tasks.
-
-## 2026-06-20: Desktop POC And Post-Hoc Evaluation
-
-Commit: `a225bbd Add desktop POC and trajectory evaluator pipeline`
+## 2026-06-30: Config And Docs Cleanup
 
 What changed:
 
-- Added `desktop_react` for desktop-app trajectories in the sandbox virtual computer.
-- Added desktop tool actions: screenshot, click, type, keypress, shell, wait.
-- Added post-hoc evaluator CLI:
-  - `agentlens evaluate-trajectory`
-  - `agentlens evaluate-batch`
-- Evaluation bundles now keep:
-  - `acting`
-  - `evaluating.outcome`
-  - `evaluating.trajectory`
-  - `evaluating.methods.wang`
-  - `evaluating.methods.actonomy`
-- Added Workflow-GYM-style Unity smoke config:
-  - `configs/experiments/workflow_desktop_poc.yaml`
-- Added replaceable desktop image scaffold:
-  - `docker/desktop-poc/`
-- Added exact answers for the two additional Domsteer/DataVoyager task entries.
+- Pruned `configs/experiments/` to a single active experiment file:
+  - `configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml`
+- Reduced the active experiment to the GPT-5.4 DataVoyager smoke only:
+  - `dv_most_fuel__gpt54__browser`
+  - `dv_most_fuel__gpt54__sandbox`
+  - `dv_most_fuel__gpt54__nogui`
+- Pruned `docs/` to two project docs:
+  - `docs/trajectory-collection-tasks.md`
+  - `docs/acting-evaluating-pipeline.md`
+- Updated `AGENT.md` and this handover so commands no longer point at deleted
+  configs or docs.
 
-Validated:
+Policy:
 
-- Local desktop POC generated trajectories and screenshots.
-- AWS desktop POC generated trajectories and screenshots from
-  `/home/ubuntu/AgentLens_desktop_poc`.
-- The current generic desktop image does not install Unity; Unity outcome is
-  intentionally `manual_pending`.
+- Do not enable intervention during standard collection unless the user asks.
+- Add retired configs back only when they are needed for a current run, with a
+  small explicit YAML and a clear batch folder.
+- Do not commit generated trajectory results unless explicitly requested.
 
-Important replacement note:
+## Current Active Smoke
 
-- Replacing `tool_harnesses[].extra.sandbox_image` with a Unity/Blender image is
-  the next real Workflow-GYM milestone. When that happens, update this file with
-  the image tag, installed application version, launch command, and evaluator.
+Run from:
 
-## 2026-06-22: Weka And Blender Desktop App Smoke Tasks
+```bash
+/Users/pan00342/Documents/Projects/AgentLens
+```
 
-What changed:
+Active config:
 
-- Added Workflow-GYM-style desktop app smoke config:
-  - `configs/experiments/workflow_desktop_apps_poc.yaml`
-- Added replaceable app image scaffold:
-  - `docker/desktop-apps-poc/`
-  - image tag: `agentlens/desktop-apps-poc:latest`
-  - installed apps: Weka, Blender, Java runtime
-- Added prep script:
-  - `scripts/prepare_workflow_desktop_apps_poc.sh`
-  - prefers Dockerfile build;
-  - falls back to run-plus-commit build on hosts where Docker's legacy builder
-    stalls, while restoring the AIO sandbox entrypoint `/opt/gem/run.sh`.
-- Registered tasks:
-  - `workflowgym_weka_iris_smoke`
-  - `workflowgym_blender_cube_smoke`
+```bash
+configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml
+```
 
-Validated:
+Current run IDs:
 
-- Local smoke generated two trajectories:
-  - `agentlens_results/workflow_desktop_apps_poc/2026-06-22_07-24-14/`
-- Local post-hoc evaluation bundles generated under:
-  - `agentlens_results/evaluations/workflow_desktop_apps_poc/2026-06-22_07-24-14/`
-- AWS smoke generated two trajectories from `/home/ubuntu/AgentLens_desktop_poc`
-  and was synced back locally:
-  - `agentlens_results/workflow_desktop_apps_poc/2026-06-22_07-48-38_aws/`
-- AWS post-hoc evaluation bundles generated under:
-  - `agentlens_results/evaluations/workflow_desktop_apps_poc/2026-06-22_07-48-38_aws/`
+| Run ID | Harness | Model | Task |
+| --- | --- | --- | --- |
+| `dv_most_fuel__gpt54__browser` | `browser_only` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
+| `dv_most_fuel__gpt54__sandbox` | `full_sandbox` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
+| `dv_most_fuel__gpt54__nogui` | `no_gui_tool_only` | `gpt-5.4` | `datavoyager_most_fuel_efficient` |
 
-Important smoke finding:
+Expected answer:
 
-- When the app is already launched by `desktop_start_cmd`, the agent may still
-  call `desktop.shell` with GUI commands such as `weka` or `blender`. These
-  foreground GUI processes can block the shell tool. Short-term mitigation is
-  to avoid telling the model to launch already-started GUI apps; longer-term
-  fix is to make desktop shell execution safer for GUI commands, such as
-  detached launch helpers or timeout/kill handling.
+```text
+Mazda GLC
+```
 
 ## Current Practical Commands
 
-Run these from `/Users/pan00342/Documents/Projects/AgentLens`.
-
-Validate YAML and compile touched runtime files:
+Validate the remaining YAML:
 
 ```bash
 .venv/bin/python - <<'PY'
@@ -104,70 +69,43 @@ for path in sorted(Path("configs/experiments").glob("*.yaml")):
     yaml.safe_load(path.read_text())
 print("yaml ok")
 PY
-
-.venv/bin/python -m py_compile \
-  src/agentlens/models/base.py \
-  src/agentlens/models/openai_tool_call.py \
-  src/agentlens/models/anthropic_tool_call.py \
-  src/agentlens/tools/registry.py \
-  src/agentlens/harnesses/browser_actions.py \
-  src/agentlens/harnesses/desktop_actions.py \
-  src/agentlens/harnesses/screenshot_react_loop.py \
-  src/agentlens/harnesses/desktop_react_loop.py \
-  src/agentlens/adapters/screenshot_react.py \
-  src/agentlens/adapters/desktop_react.py \
-  src/agentlens/reports/experiment_dashboard.py \
-  src/agentlens/reports/trajectory_viewer.py
 ```
 
-Run lint on touched Python files:
+Dry-run all active smoke runs:
 
 ```bash
-.venv/bin/python -m ruff check \
-  src/agentlens/models/base.py \
-  src/agentlens/models/openai_tool_call.py \
-  src/agentlens/models/anthropic_tool_call.py \
-  src/agentlens/tools/registry.py \
-  src/agentlens/harnesses/browser_actions.py \
-  src/agentlens/harnesses/desktop_actions.py \
-  src/agentlens/harnesses/screenshot_react_loop.py \
-  src/agentlens/harnesses/desktop_react_loop.py \
-  src/agentlens/adapters/screenshot_react.py \
-  src/agentlens/adapters/desktop_react.py \
-  src/agentlens/reports/experiment_dashboard.py \
-  src/agentlens/reports/trajectory_viewer.py \
-  tests/test_openai_tool_adapter.py
+.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  --run-id dv_most_fuel__gpt54__browser --dry-run
+
+.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  --run-id dv_most_fuel__gpt54__sandbox --dry-run
+
+.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  --run-id dv_most_fuel__gpt54__nogui --dry-run
 ```
 
-Focused OpenAI adapter tests. Prefer pytest in a normal shell/CI:
+Run a fresh smoke trajectory:
 
 ```bash
-.venv/bin/python -m pytest tests/test_openai_tool_adapter.py -q
+.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
+  --run-id dv_most_fuel__gpt54__browser \
+  --execute \
+  --log-actions
 ```
 
-If local desktop pytest exits with code `-1` and no output, use this direct
-fallback:
+Regenerate a compact viewer:
 
 ```bash
-.venv/bin/python - <<'PY'
-from tests.test_openai_tool_adapter import (
-    test_model_step_action_list_defaults_to_primary_action,
-    test_openai_adapter_parses_multiple_tool_calls,
-    test_openai_tool_payload_keeps_configured_target_modes,
-    test_openai_tool_payload_strips_top_level_combinators,
-)
-for fn in [
-    test_openai_tool_payload_strips_top_level_combinators,
-    test_openai_tool_payload_keeps_configured_target_modes,
-    test_openai_adapter_parses_multiple_tool_calls,
-    test_model_step_action_list_defaults_to_primary_action,
-]:
-    fn()
-    print(fn.__name__, "ok")
-PY
+.venv/bin/agentlens trajectory-viewer path/to/trajectory.json
 ```
 
-Verify intervention is only enabled in the explicit intervention smoke config:
+Remove dry-run noise after checking:
+
+```bash
+rm -f agentlens_results/run_plan.json
+```
+
+Check that intervention is off in normal configs:
 
 ```bash
 .venv/bin/python - <<'PY'
@@ -189,289 +127,43 @@ PY
 Expected output:
 
 ```text
-configs/experiments/intervention_repeated_action_smoke.yaml ['browser_capture_with_intervention']
+<empty>
 ```
 
-Dry-run the current target configs:
+Run focused validation on recently touched runtime code:
 
 ```bash
-.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54mini__browser --dry-run
-
-.venv/bin/agentlens run configs/experiments/domsteer_claude_toolcall_smoke.yaml \
-  --dry-run
-
-.venv/bin/agentlens run configs/experiments/workflow_desktop_apps_poc.yaml \
-  --dry-run
+.venv/bin/python -m py_compile src/agentlens/harnesses/browser_actions.py
+.venv/bin/python -m ruff check src/agentlens/harnesses/browser_actions.py
 ```
 
-Remove generated dry-run noise after checking:
+## Recent Smoke Results
 
-```bash
-rm -f agentlens_results/run_plan.json
-```
+The full GPT-5.4 DataVoyager smoke has already produced successful local
+trajectories for all three harnesses:
 
-Run a fresh GPT smoke trajectory with intervention off:
+| Harness | Path | Status |
+| --- | --- | --- |
+| `browser_only` | `agentlens_results/domsteer_datavoyager_toolcall_matrix/raw/2026-06-29_08-46-47/trajectories/dv_most_fuel__gpt54__browser_seed0_trial1/trajectory.json` | success, score `1.0` |
+| `full_sandbox` | `agentlens_results/domsteer_datavoyager_toolcall_matrix/raw/2026-06-29_08-52-44/trajectories/dv_most_fuel__gpt54__sandbox_seed0_trial1/trajectory.json` | success, score `1.0` |
+| `no_gui_tool_only` | `agentlens_results/domsteer_datavoyager_toolcall_matrix/raw/2026-06-29_08-54-08/trajectories/dv_most_fuel__gpt54__nogui_seed0_trial1/trajectory.json` | success, score `1.0` |
 
-```bash
-.venv/bin/agentlens run configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml \
-  --run-id dv_most_fuel__gpt54mini__browser \
-  --execute \
-  --log-actions
-```
+## Runtime Notes
 
-Regenerate a compact trajectory viewer for one trajectory:
-
-```bash
-.venv/bin/agentlens trajectory-viewer \
-  agentlens_results/domsteer_datavoyager_toolcall_matrix/smoke/raw/<snapshot>/trajectories/<run_id>/trajectory.json
-```
-
-Prepare desktop POC locally or on AWS:
-
-```bash
-scripts/prepare_workflow_desktop_poc.sh
-```
-
-Prepare Weka/Blender desktop app POC locally or on AWS:
-
-```bash
-scripts/prepare_workflow_desktop_apps_poc.sh
-```
-
-For the isolated AWS POC sync at `/home/ubuntu/AgentLens_desktop_poc`, reuse
-the existing AgentLens virtualenv. The script prepends the current checkout's
-`src` directory to `PYTHONPATH`, so the shared executable still imports the
-synced POC source:
-
-```bash
-AGENTLENS_CLI=/home/ubuntu/AgentLens/.venv/bin/agentlens \
-  scripts/prepare_workflow_desktop_poc.sh
-```
-
-Run one desktop smoke trajectory:
-
-```bash
-.venv/bin/agentlens run configs/experiments/workflow_desktop_poc.yaml \
-  --execute \
-  --max-runs 1 \
-  --log-actions
-```
-
-Evaluate one completed trajectory:
-
-```bash
-.venv/bin/agentlens evaluate-trajectory path/to/trajectory.json \
-  --output-dir agentlens_results/evaluations/example \
-  --config configs/experiments/workflow_desktop_poc.yaml
-```
+- Browser coordinates are browser viewport coordinates.
+- Desktop coordinates are virtual desktop screen coordinates.
+- Browser `move`/hover waits briefly before screenshot capture so tooltip
+  observations can render.
+- `browser.keypress` normalizes common uppercase key names such as `END` and
+  `HOME` to Playwright key names.
 
 ## Open Items
 
-- Keep Weka/Blender outcome validation as `manual_pending` until real
-  artifact/state evaluators are added.
-- Provide or build a Unity/official Workflow-GYM-ready sandbox image.
-- Replace `manual_pending` for real desktop app tasks with an artifact/state
-  evaluator once the target application is actually installed.
-- Broaden the detached GUI launch guard if future desktop tasks add additional
-  foreground GUI apps beyond Weka and Blender.
-- Decide whether to reconcile or replace the dirty AWS checkout at
-  `/home/ubuntu/AgentLens`; current POC work used `/home/ubuntu/AgentLens_desktop_poc`
-  to avoid overwriting server-side changes.
-
-## 2026-06-23: Safer Desktop GUI Launch Behavior
-
-What changed:
-
-- Added `desktop.launch_app` as the explicit detached GUI app launch tool.
-- Kept `desktop.shell` available for non-GUI inspection and file/programmatic
-  work, but added a runtime guard for known foreground GUI launch commands:
-  - `blender`
-  - `weka`
-  - `java -jar /usr/share/java/weka.jar`
-- If an agent still emits one of those commands through `desktop.shell`, the
-  executor converts it to a detached `nohup bash -lc ... &` launch and returns
-  promptly instead of blocking the trajectory loop.
-- Added the new action to tool gating, OpenAI tool-call registration, trajectory
-  formatting, Wang-style canonical phases, and Actonomy-style labels.
-- Updated `workflow_desktop_apps_poc.yaml` to expose `desktop.launch_app`.
-
-Validated:
-
-- `agentlens validate-config configs/experiments/workflow_desktop_apps_poc.yaml`
-- `ruff check src/agentlens tests`
-- `scripts/prepare_workflow_desktop_apps_poc.sh`
-- Direct helper check confirmed `blender` detaches and `ls /tmp` stays a normal
-  shell command.
-
-Note:
-
-- `pytest` 9.0.3 is installed in the local venv, but both
-  `.venv/bin/python -m pytest tests/test_desktop_actions.py` and
-  `.venv/bin/pytest tests/test_desktop_actions.py` exited with code `-1`
-  without stdout/stderr in this desktop session. Keep the focused test file; it
-  should run in CI or a normal shell environment.
-
-## 2026-06-24: Trajectory Collection Task Catalog
-
-What changed:
-
-- Added `docs/trajectory-collection-tasks.md` as the detailed catalog for
-  trajectory-collection tasks.
-- Organized tasks by:
-  - benchmark;
-  - task type, such as visual analytics, workplace data analysis, desktop data
-    analysis, or visual-spatial GUI workflow;
-  - application, such as DataVoyager, TheAgentCompany-style browser/code/files,
-    Weka, Blender, QGIS, KNIME, FreeCAD, and Unity;
-  - harness compatibility, including `browser_only`, `full_sandbox`,
-    `desktop_gui_only`, `desktop_no_gui_tool_only`, and `no_gui_tool_only`.
-- Updated `docs/task-registry.md` to point to the new catalog and to include
-  `the_agent_company_io_capture_smoke` as a runnable TAC-shaped smoke task.
-
-## 2026-06-24: Claude Tool-Call Backend and Step-Cap Cleanup
-
-What changed:
-
-- Added `AnthropicToolCallModel` for Claude Messages API tool use.
-- Added an Anthropic provider adapter in the shared tool registry, so OpenAI
-  and Claude both consume the same AgentLens tool specs and emit the same
-  canonical trajectory records:
-  - canonical tool name, such as `browser.click`;
-  - raw provider tool name, such as `browser__click`;
-  - tool arguments;
-  - provider response metadata and token counts when available.
-- Declared the `anthropic` SDK dependency in `pyproject.toml`.
-- Added `configs/experiments/domsteer_claude_toolcall_smoke.yaml` as a
-  one-run DataVoyager Claude smoke config. This proves Claude tool calling
-  without expanding the full OpenAI DataVoyager matrix.
-- Removed explicit `max_steps: 15` entries from
-  `configs/experiments/domsteer_datavoyager_matrix.yaml`.
-- Raised the `screenshot_react` real-run fallback guard from 12 to 100 steps.
-  This is an emergency runaway cap, not a task-design cap.
-- Updated OpenAI and Anthropic tool-call prompts so the model sees only the
-  current step number, not "steps remaining" pressure. This avoids forcing
-  premature `final_answer` when the agent has not finished.
-
-Validated:
-
-- `agentlens validate-config configs/experiments/domsteer_datavoyager_matrix.yaml`
-- `agentlens validate-config configs/experiments/domsteer_claude_toolcall_smoke.yaml`
-- `ruff check src/agentlens tests`
-- Direct Python assertions for `tests/test_anthropic_tool_adapter.py`
-- Direct import check for `agentlens.models.anthropic_tool_call`
-
-Note:
-
-- Local `pytest` still exits with code `-1` and no stdout/stderr in this
-  desktop session, so focused tests were verified directly. Re-run pytest in a
-  normal shell or CI before treating this as fully CI-validated.
-- Claude smoke runs require `ANTHROPIC_API_KEY` in the local/server environment.
-
-## 2026-06-24: Clean DataVoyager Tool-Call Collection Layout
-
-What changed:
-
-- Added `configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml`.
-- Kept the old `domsteer_datavoyager_matrix.yaml` intact for provenance.
-- The tool-call config writes raw acting outputs to:
-  `agentlens_results/domsteer_datavoyager_toolcall_matrix/raw`.
-- Added `docs/trajectory-data-layout.md` to make the batch layout explicit:
-  - `batch_config.yaml` for the frozen config snapshot;
-  - `run_plan.dry_run.json` as an optional resolved dry-run expansion;
-  - `raw/` for trajectories, screenshots, traces, videos, and run summaries;
-  - `dashboard/` for reusable matrix dashboards;
-  - `analysis/` for method comparison and evaluation outputs.
-- Updated task docs to point new DataVoyager collection at the tool-call config.
-
-Recommended next step:
-
-- Run one smoke trajectory first, render the dashboard from only the tool-call
-  `raw/` root, inspect screenshots/final answer, then run the full 18-run
-  matrix.
-
-## 2026-06-24: Batch Retry Policy
-
-What changed:
-
-- Kept `browser_only` as pure screenshot + pixel-coordinate targeting for now.
-- Added model-call retry backoff in the screenshot ReAct loop:
-  - parses provider hints such as "try again in 341ms";
-  - falls back to exponential backoff;
-  - records `retry_sleep_s` in trajectory model-error events.
-- Added per-harness retry settings to
-  `configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml`:
-  - `model_max_attempts: 6`
-  - `model_retry_sleep_s: 2.0`
-  - `model_retry_max_sleep_s: 60.0`
-
-Note:
-
-- Set-of-marks stays disabled. If richer browser grounding is needed later,
-  prefer an existing package or browser-agent/MCP implementation instead of
-  hand-rolling a new marking method.
-
-## 2026-06-25: Provider Backend vs Harness Tier Protocol
-
-What changed:
-
-- Kept model-specific backends separate from harness tiers:
-  - OpenAI and Anthropic tool-call wrappers parse provider-native tool calls;
-  - `ToolSet` still gates actual execution by harness allow-list.
-- Added opt-in multi-action rounds:
-  - model response can contain multiple tool calls;
-  - loops execute up to `tool_harness.extra.max_actions_per_round`;
-  - events record `round_index`, `subaction_index`, and `actions_in_round`.
-- Browser and desktop screenshots now record coordinate metadata:
-  - browser path: `screenshot_source=browser_viewport`,
-    `coordinate_frame=browser_viewport`;
-  - desktop path: `screenshot_source=virtual_desktop`,
-    `coordinate_frame=desktop_screen`.
-- DataVoyager tool-call config now declares:
-  - `parallel_tool_calls: true`;
-  - `max_actions_per_round: 5` for browser/full-sandbox;
-  - `max_actions_per_round: 3` for no-GUI tool-only.
-- Standard collection configs omit intervention monitors by default. Keep
-  intervention opt-in through a dedicated config unless explicitly requested.
-- Browser `move`/hover actions now wait briefly before screenshot capture so
-  delayed tooltips have a chance to render.
-
-Current status:
-
-- Agent structure patch is implemented locally but not committed.
-- Provider-neutral multi-tool parsing is wired for OpenAI and Anthropic.
-- Browser and desktop ReAct loops can execute multiple subactions per model
-  round, bounded by `max_actions_per_round`.
-- Standard collection configs do not enable intervention. The only enabled
-  intervention config should be `intervention_repeated_action_smoke.yaml`.
-- Browser hover/move waits briefly before screenshot capture to make tooltip
-  observations more reliable.
-- The per-trajectory HTML viewer is compact by default: one card per model
-  round, with raw round events collapsed.
-
-Validation already run:
-
-- `.venv/bin/python -m py_compile ...` passed on touched runtime files.
-- The focused OpenAI multi-tool adapter tests pass when invoked directly.
-- `.venv/bin/python -m ruff check ...` passed on touched Python files.
-- YAML parse passed for all `configs/experiments/*.yaml`.
-- Dry-runs resolve:
-  - `dv_most_fuel__gpt54mini__browser`
-  - `domsteer_claude_toolcall_smoke`
-  - `workflow_desktop_apps_poc`
-
-Known validation caveat:
-
-- In the Codex desktop shell, `.venv/bin/python -m pytest
-  tests/test_openai_tool_adapter.py -q` exited with code `-1` and no output.
-  The same test functions pass by direct invocation. Re-run pytest in a normal
-  shell or CI before final landing.
-
-Pending:
-
-- Run a fresh smoke trajectory with intervention off before large batch
-  collection.
-- Inspect the new smoke viewer for hover behavior and final-answer quality.
-- Commit and push after the fresh smoke looks acceptable.
-- Consider switching Workflow-GYM-style tasks to `desktop_react` full virtual
-  desktop screenshots with `max_steps: 400` and three seeds/trials.
+- Re-run the three GPT-5.4 smoke trajectories after this cleanup if a fresh
+  batch is needed.
+- Add the next DataVoyager task only after the current three-harness smoke path
+  is stable.
+- Reintroduce TheAgentCompany, Weka, Blender, Unity, or intervention configs as
+  small dedicated YAML files when those are the active target again.
+- Keep Wang-style aggregation and Act-onomy-style behavioral analysis as
+  post-hoc methods over raw trajectories.
