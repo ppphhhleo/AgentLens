@@ -11,6 +11,15 @@ from agentlens.models.base import ModelStep, ScreenshotObservation
 from agentlens.schemas import ModelConfig
 
 
+GUI_SCREEN_ONLY_POLICY = """<GUI_SCREEN_ONLY_POLICY>
+Hard requirements:
+* All task-result changes must be made through the target application's visible GUI.
+* Do not directly rewrite task files on disk or mutate their underlying data using Python, shell commands, scripts, automation APIs, databases, archives, config files, or external utilities.
+* Editing content through the target application's own GUI is allowed.
+* Opening a terminal, REPL, scripting console, developer console, or macro/script editor to execute code or commands is not allowed, even if accessed through the GUI.
+</GUI_SCREEN_ONLY_POLICY>"""
+
+
 class GuiVsCliChatGPTModel:
     """Adapter for the gui-vs-cli paper's ChatGPTAgent structure.
 
@@ -24,6 +33,9 @@ class GuiVsCliChatGPTModel:
     def __init__(self, config: ModelConfig, toolset=None) -> None:
         self.config = config
         self.model_name = config.name
+        self.use_gui_screen_only_policy = bool(
+            (config.extra or {}).get("gui_screen_only_policy", True)
+        )
         self._agent = None
 
     def step(
@@ -45,7 +57,8 @@ class GuiVsCliChatGPTModel:
             self._agent.reset()
 
         screenshot_bytes = Path(observation.screenshot_path).read_bytes()
-        thought, raw_actions = self._agent.predict(goal, {"screenshot": screenshot_bytes})
+        task_prompt = self._build_task_prompt(goal)
+        thought, raw_actions = self._agent.predict(task_prompt, {"screenshot": screenshot_bytes})
         actions = gui_vs_cli_actions_to_computer_actions(raw_actions, thought)
         raw_response = {
             "gui_vs_cli_actions": raw_actions,
@@ -60,12 +73,18 @@ class GuiVsCliChatGPTModel:
                 "model": self.model_name,
                 "interaction_backend": "gui_vs_cli_chatgpt",
                 "paper_agent": "third_party/gui-vs-cli/agents/chatgpt_agent.py",
+                "gui_screen_only_policy": self.use_gui_screen_only_policy,
                 "raw_pyautogui_actions": raw_actions,
                 "provider_tool_calls": _extract_computer_calls(
                     getattr(self._agent, "last_raw_response", None)
                 ),
             },
         )
+
+    def _build_task_prompt(self, goal: str) -> str:
+        if not self.use_gui_screen_only_policy:
+            return goal
+        return f"{GUI_SCREEN_ONLY_POLICY}\n\n<USER_TASK>\n{goal}\n</USER_TASK>"
 
     def _build_agent(self):
         third_party_root = _third_party_gui_vs_cli_root()

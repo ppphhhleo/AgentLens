@@ -1,0 +1,64 @@
+id: gui_vs_cli_full_workflow_smoke
+description: >
+  Full-workflow GUI-vs-CLI smoke plan. This uses the gui-vs-cli desktop
+  environment/app launcher/verifier stack, then runs either AgentLens strict
+  GUI tool-call or the gui-vs-cli ChatGPT computer-use agent.
+
+env_backend: docker
+docker_image: paraverse-agent-runtime:latest
+docker_platform: linux/amd64
+docker_shm_size: 2g
+docker_ready_timeout: 180
+screen_size: [1920, 1080]
+max_steps: 40
+output_dir: runs/gui_vs_cli_full_workflow_smoke
+
+agents:
+  - id: agentlens_gui_toolcall
+    provider: openai
+    model: gpt-5.4
+    interaction_backend: tool_call
+    prompt_policy: gui_screen_only
+    tools:
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+
+  - id: gui_vs_cli_chatgpt
+    provider: openai
+    model: gpt-5.4
+    interaction_backend: gui_vs_cli_chatgpt
+    prompt_policy: gui_screen_only
+
+tasks:
+  - id: chrome_download_httpbin_file
+    app: chrome
+    category: browser_download
+    reason: Browser workflow with no seed files.
+
+  - id: calc_sales_summary_sheet
+    app: libreoffice_calc
+    category: spreadsheet_analysis
+    reason: Data-analysis workflow in a complex spreadsheet interface.
+
+  - id: gimp_add_alpha_transparent
+    app: gimp
+    category: image_editing
+    reason: Visual editing workflow with artifact verification.
+
+  - id: freecad_add_sphere_to_doc
+    app: freecad
+    category: spatial_cad
+    reason: Visual/spatial desktop workflow.
+
+  - id: audacity_export_flac_mono
+    app: audacity
+    category: media_editing
+    reason: Media workflow with export verification.

@@ -88,3 +88,42 @@ execution still needs:
 
 Until those pieces exist, GUI-vs-CLI tasks should stay in the catalog and not
 be added to active collection batches except as explicitly marked POCs.
+
+Current POC bridge:
+
+```text
+configs/gui_vs_cli/full_workflow_smoke.yaml
+scripts/gui_vs_cli_full_workflow_smoke.py
+```
+
+This bridge reuses gui-vs-cli's desktop environment setup, app launcher,
+seed-file upload, and verifier stack, then runs either:
+
+- `agentlens_gui_toolcall`: AgentLens strict GUI-only tool-call agent.
+- `gui_vs_cli_chatgpt`: the paper's ChatGPT computer-use agent structure.
+
+Build the paper-style local Docker runtime before full execution:
+
+```bash
+cd third_party/gui-vs-cli
+DOCKER_ENV_PLATFORM=linux/amd64 \
+  bash computer_env/provision/docker/build_image.sh paraverse-agent-runtime:latest
+```
+
+Readiness smoke:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/full_workflow_smoke.yaml \
+  --ready-check-only \
+  --task chrome_download_httpbin_file
+```
+
+Full smoke for one task and one agent:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/full_workflow_smoke.yaml \
+  --agent agentlens_gui_toolcall \
+  --task chrome_download_httpbin_file
+```

@@ -38,6 +38,7 @@ models:
       api_backend: openai
       platform: ubuntu
       computer_environment: linux
+      gui_screen_only_policy: true
       reasoning_effort: medium
       reasoning_summary: concise
       screen_size: [1600, 900]

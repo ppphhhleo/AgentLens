@@ -35,6 +35,9 @@ image, analysis pipeline, or batch/result layout.
 - `environments/README.md`: Docker/E2B backend notes.
 - `third_party/gui-vs-cli/`: ignored local reference clone of
   `rebeccaz4/gui-vs-cli`; do not commit vendored files from this folder.
+- `configs/gui_vs_cli/full_workflow_smoke.yaml` and
+  `scripts/gui_vs_cli_full_workflow_smoke.py`: POC bridge for running
+  GUI-vs-CLI full workflow tasks through AgentLens agents.
 
 ## Current Batch
 

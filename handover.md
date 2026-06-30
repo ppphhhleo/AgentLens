@@ -372,3 +372,62 @@ Current interpretation:
 - GUI-vs-CLI full workflow tasks are cataloged in
   `tasks/gui_vs_cli/tasks.jsonl`, but full execution still needs the compatible
   desktop image, seed-file bridge, app launcher bridge, and verifier bridge.
+
+## 2026-07-01: GUI-vs-CLI Full Workflow Enablement POC
+
+What changed:
+
+- Added a GUI-vs-CLI full-workflow smoke plan:
+  - `configs/gui_vs_cli/full_workflow_smoke.yaml`
+- Added an executable bridge script:
+  - `scripts/gui_vs_cli_full_workflow_smoke.py`
+- The bridge reuses gui-vs-CLI's environment setup, app launcher, seed-file
+  upload, and verifier code, then runs either:
+  - `agentlens_gui_toolcall`: AgentLens strict GUI-only tool-call agent.
+  - `gui_vs_cli_chatgpt`: the paper's ChatGPT native computer-use agent.
+- The gui-vs-cli ChatGPT adapter now wraps tasks in the paper runner's
+  `GUI_SCREEN_ONLY_POLICY` by default.
+
+Selected smoke categories:
+
+| App | Task | Category |
+| --- | --- | --- |
+| Chrome | `chrome_download_httpbin_file` | browser/download |
+| LibreOffice Calc | `calc_sales_summary_sheet` | spreadsheet analysis |
+| GIMP | `gimp_add_alpha_transparent` | image editing |
+| FreeCAD | `freecad_add_sphere_to_doc` | spatial CAD |
+| Audacity | `audacity_export_flac_mono` | media export |
+
+Current blocker:
+
+- Local Docker does not have `paraverse-agent-runtime:latest`.
+- A readiness smoke reached the gui-vs-cli Docker image check and failed with:
+  `No such image: paraverse-agent-runtime:latest`.
+- Existing AgentLens images only cover the AIO sandbox plus Weka/Blender POCs;
+  they do not contain the GUI-vs-CLI app stack.
+
+Build runtime image:
+
+```bash
+cd third_party/gui-vs-cli
+DOCKER_ENV_PLATFORM=linux/amd64 \
+  bash computer_env/provision/docker/build_image.sh paraverse-agent-runtime:latest
+```
+
+Run readiness smoke:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/full_workflow_smoke.yaml \
+  --ready-check-only \
+  --task chrome_download_httpbin_file
+```
+
+Run one full smoke:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/full_workflow_smoke.yaml \
+  --agent agentlens_gui_toolcall \
+  --task chrome_download_httpbin_file
+```
