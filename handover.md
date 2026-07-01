@@ -29,6 +29,11 @@ Tool-tier reminder:
 - `code.shell` is the shell/bash capability; use `bash -lc '...'` inside the
   command when bash semantics are needed.
 - Full sandbox exposes GUI actions plus search, Python, shell, and file tools.
+- CLI-only trajectories still record passive desktop screenshots for audit and
+  comparison, but those screenshots are not included in the CLI prompt or model
+  input. The DOMSteer CLI runner records `screenshots/initial.png` and
+  `screenshots/final.png` as `screenshot_observation` events with
+  `fed_to_model: false`.
 
 ## 2026-07-02: New CLI And Claude Opus 4.6 Comparison Work
 
@@ -40,6 +45,8 @@ New code/configs:
   - Preserves raw provider stream files (`claude_stream.jsonl` or
     `codex_stream.jsonl`) and writes `trajectory.json`, `result.json`, and
     batch `summary.json`.
+  - Records passive initial/final desktop screenshots for trajectory audit
+    without feeding screenshots to the CLI model.
   - Validates only the extracted `FINAL_ANSWER: ...` value against the
     existing DOMSteer answer validators.
 - `configs/cli/domsteer_t1_t3_cli_initial_comparison.yaml`

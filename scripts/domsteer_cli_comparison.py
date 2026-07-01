@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shlex
+import struct
 import sys
 import time
 from datetime import datetime, timezone
@@ -177,6 +178,11 @@ def _run_case(
         binary_check = _check_cli_binary(session.sandbox, binary)
         if not binary_check["ok"]:
             raise RuntimeError(binary_check["error"])
+        initial_screenshot = _capture_passive_screenshot(
+            session.sandbox,
+            case_dir,
+            "initial",
+        )
 
         prompt = CLI_ONLY_PROMPT.format(
             start_url=task.get("start_url") or "",
@@ -215,10 +221,23 @@ def _run_case(
         (case_dir / f"{provider}_stream.jsonl").write_text(raw_log, encoding="utf-8")
         events = parse_stream_json(raw_log)
         final_answer = _extract_final_answer(provider, events, raw_log)
+        final_screenshot = _capture_passive_screenshot(
+            session.sandbox,
+            case_dir,
+            "final",
+        )
+        completed_at = datetime.now(timezone.utc)
+        screenshot_events = [
+            event
+            for event in [
+                _screenshot_event(initial_screenshot, "initial", 0, started_at),
+                _screenshot_event(final_screenshot, "final", 2, completed_at),
+            ]
+            if event is not None
+        ]
 
         task_config = TaskConfig(**{k: v for k, v in task.items() if k != "path"})
         success, score, validation_message = validate_answer(final_answer, task_config)
-        completed_at = datetime.now(timezone.utc)
         trajectory = {
             "experiment_id": config.get("id"),
             "run_id": f"{task_id}__{agent_id}",
@@ -242,6 +261,11 @@ def _run_case(
                         "policy": "cli_only_data_analysis",
                     },
                 },
+                *[
+                    event
+                    for event in screenshot_events
+                    if (event.get("data") or {}).get("label") == "initial"
+                ],
                 {
                     "event_type": "cli_execution",
                     "step_index": 1,
@@ -257,9 +281,14 @@ def _run_case(
                         "raw_log_file": f"{provider}_stream.jsonl",
                     },
                 },
+                *[
+                    event
+                    for event in screenshot_events
+                    if (event.get("data") or {}).get("label") == "final"
+                ],
                 {
                     "event_type": "validation_event",
-                    "step_index": 1,
+                    "step_index": 3,
                     "timestamp": completed_at.isoformat(),
                     "data": {
                         "success": success,
@@ -281,6 +310,11 @@ def _run_case(
                     "elapsed_cli_seconds": round(elapsed, 1),
                     "raw_provider_events": len(events),
                     "stream_url": session.stream_url,
+                    "passive_screenshots": [
+                        item["data"]["screenshot_file"]
+                        for item in screenshot_events
+                        if (item.get("data") or {}).get("screenshot_file")
+                    ],
                 },
             },
             "artifact_dir": str(case_dir),
@@ -297,6 +331,11 @@ def _run_case(
             "score": score,
             "message": validation_message,
             "trajectory": str(case_dir / "trajectory.json"),
+            "passive_screenshots": [
+                item["data"]["screenshot_file"]
+                for item in screenshot_events
+                if (item.get("data") or {}).get("screenshot_file")
+            ],
             "elapsed_seconds": round((completed_at - started_at).total_seconds(), 1),
         }
         (case_dir / "result.json").write_text(json.dumps(result, indent=2, default=str))
@@ -392,6 +431,58 @@ def _read_sandbox_file(sandbox: Any, path: str) -> str:
     if isinstance(data, bytes):
         return data.decode("utf-8", errors="replace")
     return str(data)
+
+
+def _capture_passive_screenshot(
+    sandbox: Any,
+    case_dir: Path,
+    label: str,
+) -> dict[str, Any] | None:
+    """Capture desktop state for audit only; never feed it to the CLI model."""
+    try:
+        screenshot = sandbox.screenshot()
+    except Exception as exc:  # noqa: BLE001
+        return {"label": label, "error": str(exc), "fed_to_model": False}
+    if not isinstance(screenshot, bytes) or not screenshot:
+        return {"label": label, "error": "empty screenshot", "fed_to_model": False}
+    screenshots_dir = case_dir / "screenshots"
+    screenshots_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{label}.png"
+    (screenshots_dir / filename).write_bytes(screenshot)
+    payload: dict[str, Any] = {
+        "label": label,
+        "screenshot_file": f"screenshots/{filename}",
+        "fed_to_model": False,
+        "source": "passive_cli_record",
+    }
+    size = _png_size(screenshot)
+    if size:
+        payload["screenshot_size"] = list(size)
+    return payload
+
+
+def _screenshot_event(
+    payload: dict[str, Any] | None,
+    label: str,
+    step_index: int,
+    timestamp: datetime,
+) -> dict[str, Any] | None:
+    if payload is None:
+        return None
+    data = {"label": label, **payload}
+    return {
+        "event_type": "screenshot_observation",
+        "step_index": step_index,
+        "timestamp": timestamp.isoformat(),
+        "data": data,
+        "artifact_paths": [data["screenshot_file"]] if data.get("screenshot_file") else [],
+    }
+
+
+def _png_size(data: bytes) -> tuple[int, int] | None:
+    if data[:8] != b"\x89PNG\r\n\x1a\n" or len(data) < 24:
+        return None
+    return struct.unpack(">II", data[16:24])
 
 
 def _extract_final_answer(provider: str, events: list[dict[str, Any]], raw_log: str) -> str | None:

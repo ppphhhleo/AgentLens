@@ -43,6 +43,10 @@ def _render_page(traj: dict[str, Any], *, source_path: Path, output_path: Path) 
     execution_data = (cli_execution or {}).get("data") or {}
     provider_events = execution_data.get("events") or []
 
+    screenshot_cards = "\n".join(
+        _render_screenshot_event(event, source_path=source_path, output_path=output_path)
+        for event in _screenshot_events(traj)
+    )
     cards = "\n".join(_render_provider_event(event) for event in provider_events)
     if not cards:
         cards = '<section class="card muted-card">No provider stream events recorded.</section>'
@@ -188,7 +192,21 @@ def _render_page(traj: dict[str, Any], *, source_path: Path, output_path: Path) 
     .final {{ --kind: var(--answer); }}
     .system {{ --kind: #94a3b8; }}
     .validation {{ --kind: var(--ok); }}
+    .screenshot {{ --kind: #0f766e; }}
     .muted-card {{ color: var(--muted); padding: .7rem; }}
+    .shot-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: .6rem;
+      align-items: start;
+    }}
+    .shot-grid img {{
+      display: block;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }}
     pre {{
       max-height: 24rem;
       overflow: auto;
@@ -245,6 +263,7 @@ def _render_page(traj: dict[str, Any], *, source_path: Path, output_path: Path) 
       </section>
       <div class="timeline">
         <div class="section-title">CLI Execution Timeline</div>
+        {screenshot_cards}
         {cards}
         {_render_validation(validation)}
       </div>
@@ -315,6 +334,49 @@ def _render_provider_event(event: dict[str, Any]) -> str:
         body = _json({k: v for k, v in event.items() if k not in {"tools", "slash_commands", "skills"}})
         return _card("system", f"System: {subtype}", "", body)
     return _card("system", str(event_type or "event"), "", _json(event))
+
+
+def _render_screenshot_event(
+    event: dict[str, Any],
+    *,
+    source_path: Path,
+    output_path: Path,
+) -> str:
+    data = event.get("data") or {}
+    screenshot_file = data.get("screenshot_file")
+    label = str(data.get("label") or "screenshot")
+    fed_to_model = bool(data.get("fed_to_model"))
+    if not screenshot_file:
+        return _card(
+            "screenshot",
+            f"Passive screenshot: {label}",
+            "not fed to model",
+            data.get("error") or _json(data),
+        )
+    src = _relative_artifact_src(
+        str(screenshot_file),
+        source_path=source_path,
+        output_path=output_path,
+    )
+    size = data.get("screenshot_size") or []
+    size_text = f"{size[0]}x{size[1]}" if len(size) == 2 else ""
+    body = (
+        '<div class="shot-grid">'
+        f'<div><img src="{escape(src)}" loading="lazy" alt="{escape(label)} screenshot"></div>'
+        '<div class="text-block">'
+        f"label={escape(label)}<br>"
+        f"fed_to_model={escape(str(fed_to_model))}<br>"
+        f"source={escape(str(data.get('source', '')))}<br>"
+        f"size={escape(size_text)}"
+        "</div></div>"
+    )
+    return f"""<section class="card screenshot">
+  <div class="card-head">
+    <span class="card-title">Passive screenshot: {escape(label)}</span>
+    <span class="card-sub">not fed to model</span>
+  </div>
+  <div class="card-body">{body}</div>
+</section>"""
 
 
 def _render_claude_assistant_event(event: dict[str, Any]) -> str:
@@ -431,6 +493,14 @@ def _validation_event(traj: dict[str, Any]) -> dict[str, Any] | None:
     return (event or {}).get("data") if event else None
 
 
+def _screenshot_events(traj: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        event
+        for event in traj.get("events") or []
+        if event.get("event_type") == "screenshot_observation"
+    ]
+
+
 def _format_duration_ms(value: Any) -> str | None:
     if value is None:
         return None
@@ -460,10 +530,10 @@ def _json(value: Any) -> str:
     return json.dumps(value, indent=2, ensure_ascii=False, default=str)
 
 
-def _relative_artifact_src(path: str, *, output_path: Path) -> str:
+def _relative_artifact_src(path: str, *, source_path: Path, output_path: Path) -> str:
     artifact = Path(path)
     if not artifact.is_absolute():
-        artifact = Path.cwd() / artifact
+        artifact = source_path.parent / artifact
     try:
         return Path(os.path.relpath(artifact, output_path.parent)).as_posix()
     except ValueError:
