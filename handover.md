@@ -386,11 +386,15 @@ What changed:
   - `openai_gpt_computer_use`: OpenAI native computer-use.
   - `agentlens_gui_toolcall_gpt54`: AgentLens strict GUI-only registered tools.
   - `agentlens_gui_toolcall_haiku`: AgentLens strict GUI-only registered tools.
-  - `agentlens_gui_toolcall_gemini`: listed but disabled until a Gemini
-    registered-tool provider adapter exists.
+  - `agentlens_gui_toolcall_gemini`: AgentLens strict GUI-only registered
+    tools using the Gemini function-calling adapter.
   - `gui_vs_cli_chatgpt`: the paper's ChatGPT native computer-use agent.
   - `gui_vs_cli_claude`: the paper's Claude computer-use agent.
   - `gui_vs_cli_gemini`: the paper's Gemini generic-desktop agent.
+  - `gui_vs_cli_cli_claude`: the paper-style CLI-Anything agent using the
+    `claude` CLI inside the Docker task image.
+  - `gui_vs_cli_cli_codex`: the paper-style CLI-Anything agent using the
+    `codex` CLI inside the Docker task image.
 - The gui-vs-cli ChatGPT adapter now wraps tasks in the paper runner's
   `GUI_SCREEN_ONLY_POLICY` by default.
 
@@ -400,10 +404,13 @@ Naming clarification:
 | --- | --- | --- |
 | `agentlens_gui_toolcall_gpt54` | AgentLens strict GUI-only registered-tool OpenAI agent. | OpenAI native computer-use. |
 | `agentlens_gui_toolcall_haiku` | AgentLens strict GUI-only registered-tool Claude agent. | gui-vs-cli paper Claude agent. |
+| `agentlens_gui_toolcall_gemini` | AgentLens strict GUI-only registered-tool Gemini agent. | gui-vs-cli paper Gemini desktop agent. |
 | `openai_gpt_computer_use` | AgentLens wrapper around OpenAI Responses native `computer` tool. | Fine-grained registered-tool GUI-only control. |
 | `gui_vs_cli_chatgpt` | gui-vs-cli paper-style ChatGPT computer-use agent; outputs are converted through the paper pyautogui path. | AgentLens strict registered-tool agent. |
 | `gui_vs_cli_claude` | gui-vs-cli paper-style Claude computer-use agent. | AgentLens strict registered-tool Claude/Haiku agent. |
-| `gui_vs_cli_gemini` | gui-vs-cli paper-style Gemini desktop agent. | The disabled AgentLens strict Gemini tool-call adapter. |
+| `gui_vs_cli_gemini` | gui-vs-cli paper-style Gemini desktop agent. | AgentLens strict Gemini tool-call adapter. |
+| `gui_vs_cli_cli_claude` | gui-vs-cli paper-style CLI-Anything Claude Code agent. | Any GUI or screenshot agent. |
+| `gui_vs_cli_cli_codex` | gui-vs-cli paper-style CLI-Anything Codex agent. | Any GUI or screenshot agent. |
 
 Rule of thumb: `gui_vs_cli_*` refers to the paper-style agent structure from
 `third_party/gui-vs-cli`; `agentlens_gui_toolcall_*` refers to AgentLens'
@@ -451,6 +458,25 @@ Current status:
 - Claude/Gemini smoke is pending actual `.env` variables:
   `ANTHROPIC_API_KEY=...` and `GEMINI_API_KEY=...` or
   `GOOGLE_AI_STUDIO_API_KEY=...`.
+- AgentLens strict Gemini tool-call support is implemented in
+  `src/agentlens/models/gemini_tool_call.py` and routed from
+  `src/agentlens/models/base.py`. Local parser/constructor smoke passed with a
+  dummy key; real model smoke is blocked until a Gemini key is present in
+  `.env`.
+- Paper-style CLI agents are implemented in
+  `scripts/gui_vs_cli_full_workflow_smoke.py` via gui-vs-cli's
+  `run_mode="cli"` and `run_cli_agent_interactive` path.
+- AWS CLI readiness smoke on 2026-07-01:
+  - `runs/smoke_cli_ready_check/2026-07-01_09-52-07/summary.json`
+    (`gui_vs_cli_cli_claude`) failed because `claude` is not installed in
+    `paraverse-agent-runtime:latest`.
+  - `runs/smoke_cli_ready_check/2026-07-01_09-52-51/summary.json`
+    (`gui_vs_cli_cli_codex`) failed because `codex` is not installed in
+    `paraverse-agent-runtime:latest`.
+  - This is an image/authentication blocker, not a runner wiring blocker.
+- DOMSteer should not be called paper-style CLI-Anything by default. DOMSteer
+  can be run as GUI/browser/no-GUI AgentLens tiers; a CLI label is only fair
+  after defining a separate DOMSteer CLI/browser-skill harness.
 
 Recent implementation fixes:
 
@@ -487,6 +513,16 @@ Run one full smoke:
 python scripts/gui_vs_cli_full_workflow_smoke.py \
   configs/gui_vs_cli/full_workflow_smoke.yaml \
   --agent agentlens_gui_toolcall_gpt54 \
+  --task chrome_dom_inspection_wikipedia
+```
+
+Run one paper-style CLI readiness check:
+
+```bash
+python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/full_workflow_smoke.yaml \
+  --ready-check-only \
+  --agent gui_vs_cli_cli_claude \
   --task chrome_dom_inspection_wikipedia
 ```
 

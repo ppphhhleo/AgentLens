@@ -25,6 +25,11 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[1]
 THIRD_PARTY_GUI_VS_CLI = REPO_ROOT / "third_party" / "gui-vs-cli"
 
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # pragma: no cover - optional local convenience
+    load_dotenv = None
+
 GUI_SCREEN_ONLY_POLICY = """<GUI_SCREEN_ONLY_POLICY>
 Hard requirements:
 * All task-result changes must be made through the target application's visible GUI.
@@ -35,6 +40,9 @@ Hard requirements:
 
 
 def main() -> int:
+    if load_dotenv is not None:
+        load_dotenv(REPO_ROOT / ".env")
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config", type=Path)
     parser.add_argument("--agent", action="append", help="Agent id to run. Repeatable.")
@@ -49,7 +57,7 @@ def main() -> int:
 
     selected_agents = _select(config.get("agents", []), args.agent)
     selected_tasks = _select(config.get("tasks", []), args.task)
-    if args.ready_check_only:
+    if args.ready_check_only and not args.agent:
         selected_agents = [{"id": "ready_check_only"}]
 
     output_root = args.output_dir or Path(config.get("output_dir", "runs/gui_vs_cli_full_workflow_smoke"))
@@ -138,6 +146,19 @@ def _run_one(
     case_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n=== {task_id} / {agent_id} / {app} ===")
+    if _is_paper_style_cli_agent(agent_ref):
+        return _run_cli_one(
+            config=config,
+            agent_ref=agent_ref,
+            task=task,
+            app=app,
+            task_id=task_id,
+            run_dir=run_dir,
+            case_dir=case_dir,
+            ready_check_only=ready_check_only,
+            max_iterations=max_steps,
+        )
+
     session = None
     started_at = time.time()
     try:
@@ -214,6 +235,217 @@ def _run_one(
                 pass
 
 
+def _is_paper_style_cli_agent(agent_ref: dict[str, Any]) -> bool:
+    return (
+        agent_ref.get("family") == "paper_style_cli"
+        or agent_ref.get("interaction_backend") == "gui_vs_cli_cli"
+    )
+
+
+def _run_cli_one(
+    *,
+    config: dict[str, Any],
+    agent_ref: dict[str, Any],
+    task: dict[str, Any],
+    app: str,
+    task_id: str,
+    run_dir: Path,
+    case_dir: Path,
+    ready_check_only: bool,
+    max_iterations: int,
+) -> dict[str, Any]:
+    from evaluation.runtime.cli_agent_runner import run_cli_agent_interactive
+    from evaluation.runtime.sandbox_session import setup_sandbox_session
+    from evaluation.runtime.verification import verify_task
+
+    provider = agent_ref.get("cli_provider") or agent_ref.get("provider")
+    if provider == "anthropic":
+        provider = "claude"
+    if provider == "openai":
+        provider = "codex"
+    if provider not in {"claude", "codex"}:
+        raise ValueError(
+            f"paper_style_cli supports cli_provider/provider 'claude' or 'codex', got {provider!r}"
+        )
+
+    agent_id = agent_ref["id"]
+    started_at = time.time()
+    session = None
+    try:
+        session = setup_sandbox_session(
+            app,
+            task,
+            sandbox_timeout=int(config.get("sandbox_timeout", 600)),
+            run_id=run_dir.name,
+            run_mode="cli",
+            env_backend=config.get("env_backend", "docker"),
+            docker_image=config.get("docker_image"),
+            docker_platform=config.get("docker_platform"),
+            docker_shm_size=config.get("docker_shm_size"),
+            docker_ready_timeout=int(config.get("docker_ready_timeout", 180)),
+        )
+        binary = "claude" if provider == "claude" else "codex"
+        binary_check = _check_cli_binary(session.sandbox, binary)
+
+        if ready_check_only:
+            result = {
+                "ok": binary_check["ok"],
+                "task_id": task_id,
+                "app": app,
+                "agent": agent_id,
+                "family": "paper_style_cli",
+                "cli_provider": provider,
+                "ready_check_only": True,
+                "stream_url": session.stream_url,
+                "cli_binary_check": binary_check,
+                "elapsed_seconds": round(time.time() - started_at, 1),
+            }
+            (case_dir / "result.json").write_text(json.dumps(result, indent=2, default=str))
+            return result
+
+        if not binary_check["ok"]:
+            result = {
+                "ok": False,
+                "task_id": task_id,
+                "app": app,
+                "agent": agent_id,
+                "family": "paper_style_cli",
+                "cli_provider": provider,
+                "model": agent_ref.get("model"),
+                "error": binary_check["error"],
+                "cli_binary_check": binary_check,
+                "elapsed_seconds": round(time.time() - started_at, 1),
+            }
+            (case_dir / "trajectory.json").write_text(
+                json.dumps({"result": result, "trajectory": []}, indent=2, default=str)
+            )
+            (case_dir / "result.json").write_text(json.dumps(result, indent=2, default=str))
+            return result
+
+        agent_done, steps, trajectory, model_metadata = run_cli_agent_interactive(
+            session.sandbox,
+            task,
+            provider,
+            agent_ref.get("model", ""),
+            max_iterations,
+            case_dir,
+        )
+        _reload_libreoffice_file_for_cli_verification(session.sandbox, app, task)
+        passed, total, details = verify_task(
+            session.sandbox,
+            app,
+            task.get("verification", []),
+            trajectory=None,
+            traj_dir=case_dir,
+        )
+        result = {
+            "ok": passed == total and total > 0,
+            "task_id": task_id,
+            "app": app,
+            "agent": agent_id,
+            "family": "paper_style_cli",
+            "cli_provider": provider,
+            "agent_done": agent_done,
+            "agent_steps": steps,
+            "checks_passed": passed,
+            "checks_total": total,
+            "score": passed / total if total else 0.0,
+            "verification_details": details,
+            "model_metadata": model_metadata,
+            "elapsed_seconds": round(time.time() - started_at, 1),
+        }
+        (case_dir / "trajectory.json").write_text(
+            json.dumps({**result, "trajectory": trajectory}, indent=2, default=str)
+        )
+        (case_dir / "result.json").write_text(json.dumps(result, indent=2, default=str))
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result = {
+            "ok": False,
+            "task_id": task_id,
+            "app": app,
+            "agent": agent_id,
+            "family": "paper_style_cli",
+            "cli_provider": provider,
+            "error": str(exc),
+            "elapsed_seconds": round(time.time() - started_at, 1),
+        }
+        (case_dir / "result.json").write_text(json.dumps(result, indent=2, default=str))
+        print(f"ERROR: {exc}")
+        return result
+    finally:
+        if session is not None:
+            try:
+                session.sandbox.kill()
+            except Exception:
+                pass
+
+
+def _check_cli_binary(sandbox: Any, binary: str) -> dict[str, Any]:
+    try:
+        result = sandbox.commands.run(f"bash -lc 'command -v {shlex.quote(binary)}'", timeout=10)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "binary": binary,
+            "error": (
+                f"{binary!r} is not installed or not available in the Docker image PATH. "
+                "Install/authenticate the CLI in the task image before running paper-style CLI agents. "
+                f"Raw error: {exc}"
+            ),
+        }
+    path = (result.stdout or "").strip()
+    return {
+        "ok": bool(path),
+        "binary": binary,
+        "path": path,
+        "error": None if path else f"{binary!r} was not found in the Docker image PATH.",
+    }
+
+
+LIBREOFFICE_RELOAD_MODES = {
+    "libreoffice_calc": "--calc",
+    "libreoffice_impress": "--impress",
+    "libreoffice_writer": "--writer",
+    "libreoffice_draw": "--draw",
+}
+
+
+def _reload_libreoffice_file_for_cli_verification(sandbox: Any, app_name: str, task: dict[str, Any]) -> None:
+    reload_mode = LIBREOFFICE_RELOAD_MODES.get(app_name)
+    if not reload_mode:
+        return
+
+    reload_path = _reload_path_from_task(task)
+    if not reload_path:
+        return
+
+    quoted_path = shlex.quote(reload_path)
+    command = (
+        "pkill -x soffice.bin 2>/dev/null || true; "
+        "pkill -x soffice 2>/dev/null || true; "
+        "sleep 1; "
+        f"soffice {reload_mode} "
+        "'--accept=socket,host=localhost,port=2002;urp;' "
+        "--norestore --nologo "
+        f"{quoted_path} >/tmp/libreoffice_cli_reload.log 2>&1 & "
+        "sleep 4"
+    )
+    sandbox.commands.run(command, timeout=15)
+
+
+def _reload_path_from_task(task: dict[str, Any]) -> str | None:
+    reload_files = task.get("env", {}).get("reload_files", [])
+    if reload_files:
+        return str(reload_files[0])
+
+    for file_entry in task.get("env", {}).get("files", []):
+        sandbox_path = file_entry.get("sandbox_path")
+        if sandbox_path:
+            return str(sandbox_path)
+    return None
+
+
 def _run_agent_loop(
     *,
     agent_ref: dict[str, Any],
@@ -287,16 +519,6 @@ def _build_agentlens_model(agent_ref: dict[str, Any]):
         raise RuntimeError(
             f"agent {agent_ref['id']!r} is disabled: {agent_ref.get('status', 'not ready')}"
         )
-    if (
-        agent_ref.get("provider") == "gemini"
-        and agent_ref.get("interaction_backend") == "tool_call"
-    ):
-        raise RuntimeError(
-            "AgentLens strict GUI registered-tool Gemini is not implemented yet. "
-            "Use gui_vs_cli_gemini for the paper-style Gemini agent, or add a "
-            "Gemini provider tool-call adapter."
-        )
-
     config = ModelConfig(
         id=agent_ref["id"],
         provider=agent_ref.get("provider", "openai"),

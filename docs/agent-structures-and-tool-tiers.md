@@ -48,6 +48,7 @@ Current agent/model wrappers live under `src/agentlens/models/`.
 | --- | --- | --- |
 | `openai_tool_call.py` | Main controlled OpenAI agent. Used for browser-only, full-sandbox, no-GUI, and strict desktop GUI tiers. | Explicit API-registered tool list plus AgentLens runtime gate. |
 | `anthropic_tool_call.py` | Controlled Claude tool-call agent. | Explicit API-registered tool list plus AgentLens runtime gate. |
+| `gemini_tool_call.py` | Controlled Gemini tool-call agent. | Explicit API-registered function list plus AgentLens runtime gate. |
 | `openai_computer_use.py` | OpenAI native computer-use agent using `{"type": "computer"}`. | Broad native computer tool; no fine-grained provider-side subtool tier. |
 | `gui_vs_cli_chatgpt.py` | Adapter for the gui-vs-cli paper's ChatGPTAgent. | Paper-faithful native computer-use output converted to pyautogui snippets. |
 | `openai_vision.py` | Legacy JSON-action screenshot agent. | Prompt-rendered action schema plus runtime gate; avoid for new collection unless needed for backward compatibility. |
@@ -78,10 +79,12 @@ agent structure, not just the provider model.
 | `openai_gpt_computer_use` | OpenAI GPT | AgentLens wrapper for OpenAI Responses native `computer` tool. | Native computer-use GUI loop. Broad provider-side computer tool; not strict subtool control. |
 | `agentlens_gui_toolcall_gpt54` | OpenAI GPT-5.4 | AgentLens registered-tool agent using `openai_tool_call.py`. | Strict GUI-only direct-manipulation tool list registered by AgentLens. |
 | `agentlens_gui_toolcall_haiku` | Anthropic Claude Haiku | AgentLens registered-tool agent using `anthropic_tool_call.py`. | Strict GUI-only direct-manipulation tool list registered by AgentLens. |
-| `agentlens_gui_toolcall_gemini` | Gemini | Planned AgentLens registered-tool agent. | Disabled until a Gemini provider tool-call adapter exists. |
+| `agentlens_gui_toolcall_gemini` | Gemini | AgentLens registered-tool agent using `gemini_tool_call.py`. | Strict GUI-only direct-manipulation tool list registered by AgentLens. Requires `GEMINI_API_KEY` or `GOOGLE_AI_STUDIO_API_KEY`. |
 | `gui_vs_cli_chatgpt` | OpenAI GPT | gui-vs-cli paper-style `ChatGPTAgent`. | Computer-use agent from the gui-vs-cli repo; model emits native computer actions that the paper code converts to pyautogui snippets. |
 | `gui_vs_cli_claude` | Anthropic Claude | gui-vs-cli paper-style `ClaudeAgent`. | Claude computer-use agent from the gui-vs-cli repo; not the AgentLens strict registered-tool Claude agent. |
 | `gui_vs_cli_gemini` | Gemini | gui-vs-cli paper-style `GeminiAgent`. | Gemini desktop agent from the gui-vs-cli repo; not the disabled AgentLens strict registered-tool Gemini agent. |
+| `gui_vs_cli_cli_claude` | Claude Code CLI | gui-vs-cli paper-style CLI agent. | Runs `claude -p ...` inside the Docker task image with the paper's CLI-Anything-only prompt. Requires `claude` installed and authenticated inside the image. |
+| `gui_vs_cli_cli_codex` | Codex CLI | gui-vs-cli paper-style CLI agent. | Runs `codex exec ...` inside the Docker task image with the paper's CLI-Anything-only prompt. Requires `codex` installed and authenticated inside the image. |
 
 In short: `gui_vs_cli_*` means "paper-style gui-vs-cli agent structure"; it
 does not mean AgentLens strict GUI-only tool registration. The strict
@@ -121,6 +124,8 @@ seed-file upload, and verifier stack, then runs either:
 - AgentLens-native structures such as `agentlens_gui_toolcall_gpt54`.
 - Provider-native computer-use structures such as `openai_gpt_computer_use`.
 - Paper-style gui-vs-cli structures such as `gui_vs_cli_claude`.
+- Paper-style CLI structures such as `gui_vs_cli_cli_claude` and
+  `gui_vs_cli_cli_codex`.
 
 The smoke config selects one representative task from each GUI-vs-CLI
 application category, currently 18 applications.
@@ -149,3 +154,33 @@ uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
   --agent agentlens_gui_toolcall_gpt54 \
   --task chrome_dom_inspection_wikipedia
 ```
+
+Paper-style CLI readiness smoke:
+
+```bash
+python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/full_workflow_smoke.yaml \
+  --ready-check-only \
+  --agent gui_vs_cli_cli_claude \
+  --task chrome_dom_inspection_wikipedia
+```
+
+As of 2026-07-01, the AWS image `paraverse-agent-runtime:latest` starts the
+CLI task environment, but it does not yet contain `claude` or `codex` in PATH.
+The runner records this as a structured `cli_binary_check` failure instead of
+silently falling back to a different agent.
+
+## DOMSteer And CLI Agents
+
+DOMSteer DataVoyager/TensorFlow Playground tasks are web visual-analytics
+tasks. They can be run as GUI/browser/no-GUI tool tiers in AgentLens, but they
+are not directly paper-style GUI-vs-CLI CLI tasks unless we build a separate
+DOMSteer CLI/browser-skill harness.
+
+For a fair label, use:
+
+- `domsteer_gui`: visual direct manipulation.
+- `domsteer_browser_tool`: browser/DOM or MCP-style browser tools.
+- `domsteer_no_gui`: programmatic analysis tools.
+- `domsteer_cli_browser_skill`: only if we intentionally design a CLI skill
+  that solves DOMSteer through command-line/browser automation.

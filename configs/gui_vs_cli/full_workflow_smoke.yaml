@@ -53,8 +53,6 @@ agents:
     interaction_backend: tool_call
     prompt_policy: gui_screen_only
     family: agentlens_strict_gui_toolcall
-    enabled: false
-    status: pending_gemini_provider_tool_call_adapter
     tools: *strict_gui_tools
 
   - id: gui_vs_cli_chatgpt
@@ -77,6 +75,20 @@ agents:
     interaction_backend: gui_vs_cli_gemini
     prompt_policy: gui_screen_only
     family: paper_style_gui_vs_cli
+
+  - id: gui_vs_cli_cli_claude
+    provider: claude
+    cli_provider: claude
+    model: sonnet-4.6
+    interaction_backend: gui_vs_cli_cli
+    family: paper_style_cli
+
+  - id: gui_vs_cli_cli_codex
+    provider: codex
+    cli_provider: codex
+    model: gpt-5.4
+    interaction_backend: gui_vs_cli_cli
+    family: paper_style_cli
 
 tasks:
   - id: audacity_add_chapter_labels

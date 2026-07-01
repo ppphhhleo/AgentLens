@@ -109,6 +109,11 @@ def build_model(config: ModelConfig, toolset=None) -> ChatModel:
 
         return AnthropicToolCallModel(config, toolset=toolset)
 
+    if config.provider == "gemini" and interaction_backend == "tool_call":
+        from agentlens.models.gemini_tool_call import GeminiToolCallModel
+
+        return GeminiToolCallModel(config, toolset=toolset)
+
     if config.provider == "openai":
         from agentlens.models.openai_vision import OpenAIVisionModel
 
