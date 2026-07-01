@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -316,6 +317,7 @@ def _render_page(
       white-space: nowrap;
     }}
     .kind-browser {{ --kind-color: #0ea5e9; }}
+    .kind-desktop {{ --kind-color: #475569; }}
     .kind-code {{ --kind-color: #d97706; }}
     .kind-file {{ --kind-color: #8b5cf6; }}
     .kind-web {{ --kind-color: #059669; }}
@@ -333,11 +335,36 @@ def _render_page(
     .action-move {{ --kind-color: #6366f1; }}
     .action-drag {{ --kind-color: #ef4444; }}
     .action-wait {{ --kind-color: #64748b; }}
+    .action-screenshot {{ --kind-color: #94a3b8; }}
     .action-goto {{ --kind-color: #059669; }}
+    .action-back, .action-forward, .action-reload {{ --kind-color: #0f766e; }}
     .action-final_answer {{ --kind-color: #db2777; }}
     .action-run_python, .action-shell {{ --kind-color: #d97706; }}
     .action-read_file, .action-write_file {{ --kind-color: #8b5cf6; }}
     .action-web_search {{ --kind-color: #059669; }}
+    .action-mcp_tool {{ --kind-color: #7c3aed; }}
+    .action-desktop_screenshot {{ --kind-color: #94a3b8; }}
+    .action-desktop_click {{ --kind-color: #0284c7; }}
+    .action-desktop_double_click {{ --kind-color: #0891b2; }}
+    .action-desktop_scroll {{ --kind-color: #15803d; }}
+    .action-desktop_move {{ --kind-color: #4f46e5; }}
+    .action-desktop_drag {{ --kind-color: #dc2626; }}
+    .action-desktop_type {{ --kind-color: #7c3aed; }}
+    .action-desktop_keypress {{ --kind-color: #d97706; }}
+    .action-desktop_launch_app {{ --kind-color: #0f766e; }}
+    .action-desktop_pyautogui {{ --kind-color: #475569; }}
+    .action-desktop_shell {{ --kind-color: #b45309; }}
+    .action-desktop_wait {{ --kind-color: #64748b; }}
+    .action-pyautogui_wait {{ --kind-color: #64748b; }}
+    .action-pyautogui_click {{ --kind-color: #0284c7; }}
+    .action-pyautogui_double_click {{ --kind-color: #0891b2; }}
+    .action-pyautogui_drag {{ --kind-color: #dc2626; }}
+    .action-pyautogui_move {{ --kind-color: #4f46e5; }}
+    .action-pyautogui_type {{ --kind-color: #7c3aed; }}
+    .action-pyautogui_keypress {{ --kind-color: #d97706; }}
+    .action-pyautogui_hotkey {{ --kind-color: #d97706; }}
+    .action-pyautogui_screenshot {{ --kind-color: #94a3b8; }}
+    .action-pyautogui_script {{ --kind-color: #475569; }}
     .round-index {{
       position: sticky;
       top: 3.9rem;
@@ -559,12 +586,16 @@ def _render_trajectory(traj: dict[str, Any], *, idx: int, output_path: Path) -> 
     success = metrics.get("success")
     success_class = "ok" if success else "bad"
     goal = task.get("goal") or _first_goal(events) or ""
+    viewpoint = _trajectory_viewpoint(traj)
 
     metric_cards = {
         "score": metrics.get("score"),
         "success": success,
         "rounds": metrics.get("steps"),
         "executed actions": metrics.get("tool_calls"),
+        "viewpoint": viewpoint.get("source"),
+        "frame": viewpoint.get("frame"),
+        "size": viewpoint.get("size"),
         "duration": _format_duration_ms(metrics.get("duration_ms")),
         "tokens": _format_token_pair(metrics.get("tokens_input"), metrics.get("tokens_output")),
         "cost": metrics.get("cost_usd"),
@@ -750,7 +781,7 @@ def _render_round_summary(
     )
     stats = [
         ("action", action_text),
-        ("executed actions", len(browser_events)),
+        ("executed actions", len(browser_events) + len(tool_events)),
         ("tool calls", len(tool_events)),
         ("warnings", len(intervention_events)),
         ("errors", error_count),
@@ -766,7 +797,7 @@ def _render_round_summary(
 
 def _round_action_summary(data: dict[str, Any]) -> str:
     actions = data.get("actions") or ([data.get("action")] if data.get("action") else [])
-    labels = [str(action.get("type")) for action in actions if isinstance(action, dict)]
+    labels = [_action_label(action) for action in actions if isinstance(action, dict)]
     if not labels:
         return "model"
     if len(labels) <= 3:
@@ -775,23 +806,9 @@ def _round_action_summary(data: dict[str, Any]) -> str:
 
 
 def _format_action_line(action: dict[str, Any]) -> str:
-    action_type = action.get("type")
-    if action_type == "final_answer":
-        return f"final_answer: {action.get('answer')}"
-    fields = [str(action_type)]
-    if action.get("x") is not None and action.get("y") is not None:
-        fields.append(f"x={action.get('x')} y={action.get('y')}")
-    if action.get("scroll_y"):
-        fields.append(f"scroll_y={action.get('scroll_y')}")
-    if action.get("text"):
-        fields.append(f"text={_short(action.get('text'), 60)}")
-    if action.get("cmd"):
-        fields.append(f"cmd={_short(action.get('cmd'), 80)}")
-    if action.get("query"):
-        fields.append(f"query={_short(action.get('query'), 80)}")
-    if action.get("answer"):
-        fields.append(f"answer={_short(action.get('answer'), 80)}")
-    return " | ".join(fields)
+    label = _action_label(action)
+    detail = _action_detail(action)
+    return f"{label} | {detail}" if detail else label
 
 
 def _format_duration_ms(value: Any) -> str | None:
@@ -828,6 +845,207 @@ def _compact_number(value: Any) -> str:
     if number.is_integer():
         return str(int(number))
     return f"{number:.2f}"
+
+
+def _trajectory_viewpoint(traj: dict[str, Any]) -> dict[str, str | None]:
+    metrics_extra = (traj.get("metrics") or {}).get("extra") or {}
+    harness_extra = (traj.get("tool_harness") or {}).get("extra") or {}
+    first_screenshot = next(
+        (
+            event
+            for event in traj.get("events") or []
+            if event.get("event_type") == "screenshot"
+        ),
+        {},
+    )
+    screenshot_data = first_screenshot.get("data") or {}
+    viewport = (
+        screenshot_data.get("viewport")
+        or harness_extra.get("viewport")
+        or (traj.get("model") or {}).get("extra", {}).get("screen_size")
+    )
+    return {
+        "source": str(
+            metrics_extra.get("screenshot_source")
+            or harness_extra.get("screenshot_source")
+            or screenshot_data.get("screenshot_source")
+            or ""
+        )
+        or None,
+        "frame": str(
+            metrics_extra.get("coordinate_frame")
+            or harness_extra.get("coordinate_frame")
+            or screenshot_data.get("coordinate_frame")
+            or ""
+        )
+        or None,
+        "size": _viewport_size(viewport),
+    }
+
+
+def _viewport_size(value: Any) -> str | None:
+    if isinstance(value, dict):
+        width = value.get("width")
+        height = value.get("height")
+        if width and height:
+            return f"{width}x{height}"
+    if isinstance(value, (list, tuple)) and len(value) >= 2:
+        return f"{value[0]}x{value[1]}"
+    return None
+
+
+ACTION_LABELS = {
+    "screenshot": "browser.screenshot",
+    "click": "browser.click",
+    "double_click": "browser.double_click",
+    "scroll": "browser.scroll",
+    "type": "browser.type",
+    "wait": "browser.wait",
+    "move": "browser.move",
+    "keypress": "browser.keypress",
+    "drag": "browser.drag",
+    "goto": "browser.goto",
+    "back": "browser.back",
+    "forward": "browser.forward",
+    "reload": "browser.reload",
+    "web_search": "web.search",
+    "run_python": "code.run_python",
+    "shell": "code.shell",
+    "read_file": "files.read",
+    "write_file": "files.write",
+    "mcp_tool": "mcp.tool",
+    "desktop_screenshot": "desktop.screenshot",
+    "desktop_click": "desktop.click",
+    "desktop_double_click": "desktop.double_click",
+    "desktop_scroll": "desktop.scroll",
+    "desktop_move": "desktop.move",
+    "desktop_drag": "desktop.drag",
+    "desktop_type": "desktop.type",
+    "desktop_keypress": "desktop.keypress",
+    "desktop_launch_app": "desktop.launch_app",
+    "desktop_pyautogui": "desktop.pyautogui",
+    "desktop_shell": "desktop.shell",
+    "desktop_wait": "desktop.wait",
+    "final_answer": "task.final_answer",
+}
+
+
+def _action_label(action: dict[str, Any] | None) -> str:
+    if not action:
+        return "model"
+    action_type = str(action.get("type") or "action")
+    if action_type == "desktop_pyautogui":
+        return _pyautogui_label(action.get("code") or "")
+    return ACTION_LABELS.get(action_type, action_type)
+
+
+def _action_detail(action: dict[str, Any]) -> str:
+    action_type = action.get("type")
+    if action_type == "desktop_pyautogui":
+        return _pyautogui_detail(action.get("code") or "")
+
+    fields: list[str] = []
+    if action.get("x") is not None and action.get("y") is not None:
+        fields.append(f"x={action.get('x')} y={action.get('y')}")
+    if action.get("button") and action.get("button") != "left":
+        fields.append(f"button={action.get('button')}")
+    if action.get("scroll_x"):
+        fields.append(f"scroll_x={action.get('scroll_x')}")
+    if action.get("scroll_y"):
+        fields.append(f"scroll_y={action.get('scroll_y')}")
+    if action.get("keys"):
+        fields.append(f"keys={'+'.join(map(str, action.get('keys') or []))}")
+    if action.get("path"):
+        fields.append(f"path={_short(_json(action.get('path')), 110)}")
+    if action.get("text"):
+        fields.append(f"text={_short(action.get('text'), 80)}")
+    if action.get("url"):
+        fields.append(f"url={_short(action.get('url'), 90)}")
+    if action.get("query"):
+        fields.append(f"query={_short(action.get('query'), 90)}")
+    if action.get("cmd"):
+        fields.append(f"cmd={_short(action.get('cmd'), 100)}")
+    if action.get("code"):
+        fields.append(f"code={_short(_single_line(action.get('code')), 120)}")
+    if action.get("file_path"):
+        fields.append(f"file={_short(action.get('file_path'), 90)}")
+    if action.get("content"):
+        fields.append(f"content={_short(action.get('content'), 80)}")
+    if action.get("mcp_tool"):
+        fields.append(f"tool={action.get('mcp_tool')}")
+    if action.get("mcp_args"):
+        fields.append(f"args={_short(_json(action.get('mcp_args')), 90)}")
+    if action.get("app"):
+        fields.append(f"app={action.get('app')}")
+    if action.get("ms"):
+        fields.append(f"ms={action.get('ms')}")
+    if action.get("answer"):
+        fields.append(f"answer={_short(action.get('answer'), 120)}")
+    return " | ".join(fields)
+
+
+def _pyautogui_label(code: str) -> str:
+    kind = _pyautogui_kind(code)
+    return f"pyautogui.{kind}"
+
+
+def _pyautogui_detail(code: str) -> str:
+    text = _single_line(code)
+    hotkey = re.search(r"pyautogui\.hotkey\(([^)]*)\)", code)
+    if hotkey:
+        return f"keys={_clean_py_args(hotkey.group(1))}"
+    press = re.search(r"pyautogui\.(?:press|keyDown|keyUp)\(([^)]*)\)", code)
+    if press:
+        return f"key={_clean_py_args(press.group(1))}"
+    move = re.search(r"pyautogui\.moveTo\(([^)]*)\)", code)
+    if move:
+        return f"target={_clean_py_args(move.group(1))}"
+    click = re.search(r"pyautogui\.(?:click|doubleClick)\(([^)]*)\)", code)
+    if click:
+        args = _clean_py_args(click.group(1))
+        return f"args={args}" if args else _short(text, 120)
+    typed = re.search(r"pyautogui\.(?:typewrite|write)\((.+?)(?:,\s*interval=|\))", code, re.S)
+    if typed:
+        return f"text={_short(_clean_py_args(typed.group(1)), 120)}"
+    sleep = re.search(r"time\.sleep\(([^)]*)\)", code)
+    if sleep:
+        return f"seconds={_clean_py_args(sleep.group(1))}"
+    return _short(text, 140)
+
+
+def _pyautogui_kind(code: str) -> str:
+    if "time.sleep" in code:
+        return "wait"
+    if "pyautogui.hotkey" in code:
+        return "hotkey"
+    if re.search(r"pyautogui\.(?:press|keyDown|keyUp)\(", code):
+        return "keypress"
+    if "pyautogui.typewrite" in code or "pyautogui.write" in code:
+        return "type"
+    if "pyautogui.doubleClick" in code:
+        return "double_click"
+    if "pyautogui.dragTo" in code or "pyautogui.dragRel" in code:
+        return "drag"
+    if "pyautogui.click" in code:
+        return "click"
+    if "pyautogui.scroll" in code or "pyautogui.hscroll" in code:
+        return "scroll"
+    if "pyautogui.moveTo" in code or "pyautogui.moveRel" in code:
+        return "move"
+    if "pyautogui.screenshot" in code:
+        return "screenshot"
+    return "script"
+
+
+def _clean_py_args(value: str) -> str:
+    return _short(
+        value.replace("'", "").replace('"', "").replace("\n", " ").strip(),
+        140,
+    )
+
+
+def _single_line(value: Any) -> str:
+    return " ".join(str(value).strip().split())
 
 
 def _render_event(
@@ -906,14 +1124,14 @@ def _render_round_action_legend(round_events: list[dict[str, Any]]) -> str:
     seen: list[str] = []
     for event in round_events:
         action = _first_action_from_event(event)
-        action_type = str(action.get("type")) if action and action.get("type") else "model"
-        if action_type not in seen:
-            seen.append(action_type)
+        action_label = _action_label(action)
+        if action_label not in seen:
+            seen.append(action_label)
     if not seen:
         return ""
     items = "\n".join(
-        f'<span class="{escape(_action_kind({"type": action_type}))}"><i class="dot"></i>{escape(action_type)}</span>'
-        for action_type in seen
+        f'<span class="{escape(_action_kind_for_label(label))}"><i class="dot"></i>{escape(label)}</span>'
+        for label in seen
     )
     return f'<div class="round-legend">{items}</div>'
 
@@ -1019,6 +1237,10 @@ def _render_triplet_observation(
         [
             ("url", data.get("url")),
             ("kind", data.get("kind")),
+            ("viewpoint", data.get("screenshot_source")),
+            ("frame", data.get("coordinate_frame")),
+            ("size", _viewport_size(data.get("viewport"))),
+            ("remote", data.get("remote_path")),
         ]
     )
     return _triplet_cell("Observation", shot + meta)
@@ -1099,8 +1321,7 @@ def _event_tool_label(event: dict[str, Any]) -> tuple[str, str, str]:
     tool_name = data.get("tool_name") or _tool_name_from_action(action)
 
     if event_type == "model_message":
-        action_type = action.get("type") if action else None
-        return "decision", str(action_type or "message"), _action_kind(action)
+        return "decision", _action_label(action), _action_kind(action)
     if event_type == "screenshot":
         return "screenshot", str(data.get("url") or ""), "kind-screenshot"
     if event_type == "validation_event":
@@ -1109,8 +1330,7 @@ def _event_tool_label(event: dict[str, Any]) -> tuple[str, str, str]:
     if event_type == "gating_violation":
         return "gating", str(tool_name or "blocked"), "kind-error"
     if event_type == "browser_action":
-        action_type = action.get("type") if action else None
-        return "executed", str(action_type or ""), _action_kind(action)
+        return "executed", _action_label(action), _action_kind(action)
     if event_type == "tool_call":
         kind = _action_kind(action) if action else _tool_kind_class(str(tool_name or ""))
         return str(tool_name or "tool"), _tool_subtitle(data), kind
@@ -1140,6 +1360,8 @@ def _tool_subtitle(data: dict[str, Any]) -> str:
 def _kind_for_tool(tool_name: str) -> str:
     if tool_name.startswith("browser."):
         return "browser"
+    if tool_name.startswith("desktop."):
+        return "desktop"
     if tool_name.startswith("code."):
         return "code"
     if tool_name.startswith("files."):
@@ -1265,11 +1487,32 @@ def _action_kind(action: dict[str, Any] | None) -> str:
     action_type = action.get("type")
     if not action_type:
         return "kind-model"
+    if action_type == "desktop_pyautogui":
+        return f"action-pyautogui_{_pyautogui_kind(action.get('code') or '')}"
     safe = "".join(
         char if char.isalnum() or char in {"_", "-"} else "_"
         for char in str(action_type).lower()
     )
     return f"action-{safe}"
+
+
+def _action_kind_for_label(label: str) -> str:
+    if label.startswith("pyautogui."):
+        return f"action-pyautogui_{_css_token(label.split('.', 1)[1])}"
+    raw_type = next(
+        (action_type for action_type, display in ACTION_LABELS.items() if display == label),
+        None,
+    )
+    if raw_type:
+        return f"action-{_css_token(raw_type)}"
+    return f"action-{_css_token(label)}"
+
+
+def _css_token(value: str) -> str:
+    return "".join(
+        char if char.isalnum() or char in {"_", "-"} else "_"
+        for char in str(value).lower()
+    )
 
 
 def _tool_kind_class(tool_name: str) -> str:
@@ -1314,6 +1557,10 @@ def _tool_name_from_action(action: dict[str, Any] | None) -> str | None:
         return f"files.{action_type}"
     if action_type == "web_search":
         return "web.openai_search"
+    if action_type == "mcp_tool":
+        return f"mcp.{action.get('mcp_tool') or 'tool'}"
+    if str(action_type).startswith("desktop_"):
+        return "desktop." + str(action_type).removeprefix("desktop_")
     return f"browser.{action_type}"
 
 
