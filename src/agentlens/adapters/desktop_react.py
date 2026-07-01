@@ -268,8 +268,8 @@ class DesktopReactAdapter:
             raise ValueError(f"run '{run_id}' expected runner desktop_react")
         if tool_harness.tier != ToolHarnessTier.FULL_SANDBOX:
             raise ValueError("desktop_react requires tier='full_sandbox'")
-        if model.provider not in {"openai", "anthropic"}:
-            raise ValueError("desktop_react currently supports OpenAI or Anthropic models")
+        if model.provider not in {"openai", "anthropic", "gemini"}:
+            raise ValueError("desktop_react currently supports OpenAI, Anthropic, or Gemini models")
         if not model.vision:
             raise ValueError("desktop_react requires a vision-capable model")
 
