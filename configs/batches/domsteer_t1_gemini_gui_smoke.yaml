@@ -107,7 +107,7 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 40
+    max_steps: 2
     output_dir: runs/domsteer_t1_gemini_gui_smoke/raw
     tags: [domsteer, datavoyager, t1, gemini, gui_only, agentlens_toolcall]
 
@@ -118,6 +118,6 @@ runs:
     task: datavoyager_most_fuel_efficient
     seeds: [0]
     trials: 1
-    max_steps: 40
+    max_steps: 2
     output_dir: runs/domsteer_t1_gemini_gui_smoke/raw
     tags: [domsteer, datavoyager, t1, gemini, computer_agent, gui_vs_cli_gemini]
