@@ -34,6 +34,10 @@ Tool-tier reminder:
   input. The DOMSteer CLI runner records `screenshots/initial.png` and
   `screenshots/final.png` as `screenshot_observation` events with
   `fed_to_model: false`.
+- For DOMSteer web visual-analytics tasks, do not describe this condition as
+  the gui-vs-cli paper's desktop-app "CLI-Anything" setting without a caveat.
+  It is better named `domsteer_programmatic_no_visual` or `DOMSteer CLI-only
+  data-analysis baseline`.
 
 ## 2026-07-02: New CLI And Claude Opus 4.6 Comparison Work
 
@@ -58,6 +62,9 @@ New code/configs:
 - `configs/batches/domsteer_t1_t3_claude_opus46_gui_comparison.yaml`
   - Focused DOMSteer T1-T3 comparison for Claude Opus 4.6 strict GUI-toolcall
     versus gui-vs-cli Claude computer-agent.
+- `configs/batches/domsteer_t1_gemini_gui_smoke.yaml`
+  - Focused DOMSteer T1 smoke for Gemini strict GUI-toolcall and gui-vs-cli
+    paper-style Gemini computer-agent.
 - `src/agentlens/reports/cli_trajectory_viewer.py`
   - Static viewer for the DOMSteer CLI-only trajectory format.
 - `src/agentlens/reports/gui_vs_cli_trajectory_viewer.py`
