@@ -1,0 +1,158 @@
+schema_version: "0.1"
+id: arb_webarena_judge
+description: >
+  ARB 4-dimensional LLM judge evaluation on WebArena 100 trajectories.
+  Tool-usage only benchmark (no GUI navigation).
+  Judge: gpt-4o-mini. Evaluates Success, Side Effects, Optimality, Looping.
+  WHO = agent model identity. WHEN = N/A (WebArena has no temporal metadata).
+
+  Usage:
+    1. First, run agent-reward-bench's convert_trajectories_to_json.py to
+       produce cleaned trajectory JSONs under trajectories/cleaned/webarena/
+    2. Update trajectory_path entries below to point to actual JSON files
+    3. Run: agentlens arb-evaluate configs/experiments/arb_webarena_judge.yaml --execute --log-actions
+
+  Or use the import-arb CLI to auto-generate from a trajectory directory:
+    agentlens import-arb webarena_100 /path/to/trajectories/cleaned/webarena \
+      --output configs/experiments/arb_webarena_judge.yaml
+
+models:
+  - id: judge_gpt4o_mini
+    provider: openai
+    name: gpt-4o-mini-2024-07-18
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+
+tool_harnesses:
+  - id: arb_judge_harness
+    runner: arb_judge
+    tier: human
+    tools: []
+    extra:
+      use_screenshot: true
+      use_axtree: false
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+# Example tasks — replace trajectory_path with actual paths after generating
+# trajectories with agent-reward-bench. Each task represents one
+# (task_id x agent_model) combination to be judged.
+#
+# WHO dimension: captured in extra.who (the agent that produced the trajectory)
+# WHEN dimension: null for WebArena (no temporal metadata)
+
+tasks:
+  - id: wa_561_gpt4o
+    benchmark: arb
+    task_id: webarena.561
+    answer_validator: arb_judge
+    extra:
+      who: GenericAgent-gpt-4o-2024-11-20
+      when: null
+      arb_benchmark: webarena
+      trajectory_path: trajectories/cleaned/webarena/GenericAgent-gpt-4o-2024-11-20/GenericAgent-gpt-4o-2024-11-20_on_webarena/webarena.561.json
+      split: test
+
+  - id: wa_561_claude
+    benchmark: arb
+    task_id: webarena.561
+    answer_validator: arb_judge
+    extra:
+      who: GenericAgent-anthropic_claude-3.7-sonnet
+      when: null
+      arb_benchmark: webarena
+      trajectory_path: trajectories/cleaned/webarena/GenericAgent-anthropic_claude-3.7-sonnet/GenericAgent-anthropic_claude-3.7-sonnet_on_webarena/webarena.561.json
+      split: test
+
+  - id: wa_561_llama
+    benchmark: arb
+    task_id: webarena.561
+    answer_validator: arb_judge
+    extra:
+      who: GenericAgent-meta-llama_Llama-3.3-70B-Instruct
+      when: null
+      arb_benchmark: webarena
+      trajectory_path: trajectories/cleaned/webarena/GenericAgent-meta-llama_Llama-3.3-70B-Instruct/GenericAgent-meta-llama_Llama-3.3-70B-Instruct_on_webarena/webarena.561.json
+      split: test
+
+  - id: wa_561_qwen
+    benchmark: arb
+    task_id: webarena.561
+    answer_validator: arb_judge
+    extra:
+      who: GenericAgent-Qwen_Qwen2.5-VL-72B-Instruct
+      when: null
+      arb_benchmark: webarena
+      trajectory_path: trajectories/cleaned/webarena/GenericAgent-Qwen_Qwen2.5-VL-72B-Instruct/GenericAgent-Qwen_Qwen2.5-VL-72B-Instruct_on_webarena/webarena.561.json
+      split: test
+
+  - id: wa_414_gpt4o
+    benchmark: arb
+    task_id: webarena.414
+    answer_validator: arb_judge
+    extra:
+      who: GenericAgent-gpt-4o-2024-11-20
+      when: null
+      arb_benchmark: webarena
+      trajectory_path: trajectories/cleaned/webarena/GenericAgent-gpt-4o-2024-11-20/GenericAgent-gpt-4o-2024-11-20_on_webarena/webarena.414.json
+      split: test
+
+runs:
+  - id: judge_wa_561_gpt4o
+    model: judge_gpt4o_mini
+    tool_harness: arb_judge_harness
+    memory_harness: no_memory
+    task: wa_561_gpt4o
+    seeds: [0]
+    trials: 1
+    max_steps: 0
+    output_dir: agentlens_results/arb_webarena_judge
+    tags: [arb, webarena, tool_usage]
+
+  - id: judge_wa_561_claude
+    model: judge_gpt4o_mini
+    tool_harness: arb_judge_harness
+    memory_harness: no_memory
+    task: wa_561_claude
+    seeds: [0]
+    trials: 1
+    max_steps: 0
+    output_dir: agentlens_results/arb_webarena_judge
+    tags: [arb, webarena, tool_usage]
+
+  - id: judge_wa_561_llama
+    model: judge_gpt4o_mini
+    tool_harness: arb_judge_harness
+    memory_harness: no_memory
+    task: wa_561_llama
+    seeds: [0]
+    trials: 1
+    max_steps: 0
+    output_dir: agentlens_results/arb_webarena_judge
+    tags: [arb, webarena, tool_usage]
+
+  - id: judge_wa_561_qwen
+    model: judge_gpt4o_mini
+    tool_harness: arb_judge_harness
+    memory_harness: no_memory
+    task: wa_561_qwen
+    seeds: [0]
+    trials: 1
+    max_steps: 0
+    output_dir: agentlens_results/arb_webarena_judge
+    tags: [arb, webarena, tool_usage]
+
+  - id: judge_wa_414_gpt4o
+    model: judge_gpt4o_mini
+    tool_harness: arb_judge_harness
+    memory_harness: no_memory
+    task: wa_414_gpt4o
+    seeds: [0]
+    trials: 1
+    max_steps: 0
+    output_dir: agentlens_results/arb_webarena_judge
+    tags: [arb, webarena, tool_usage]

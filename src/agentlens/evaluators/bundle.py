@@ -39,6 +39,10 @@ def evaluate_trajectory_bundle(
             ),
         },
     }
+    if (trajectory.get("task") or {}).get("benchmark") == "arb":
+        from agentlens.evaluators.arb_dimensions import evaluate_arb_dimensions
+
+        bundle["evaluating"]["arb_dimensions"] = evaluate_arb_dimensions(trajectory)
     if output_dir is not None:
         output_dir.mkdir(parents=True, exist_ok=True)
         path = output_dir / "evaluation_bundle.json"

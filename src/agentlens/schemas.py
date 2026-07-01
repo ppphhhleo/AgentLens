@@ -75,6 +75,7 @@ class ToolHarnessConfig(BaseModel):
         "human",
         "custom",
         "workflow_gym",
+        "arb_judge",
     ]
     tier: ToolHarnessTier
     tools: list[str] = Field(default_factory=list)
@@ -150,6 +151,7 @@ class TaskConfig(BaseModel):
         "the_agent_company",
         "cocoabench",
         "workflow_gym",
+        "arb",
         "gui_vs_cli",
         "custom",
     ]
@@ -167,6 +169,7 @@ class TaskConfig(BaseModel):
             "url_contains",
             "webjudge",
             "cocoabench_test_py",
+            "arb_judge",
             "semantic_pending",
             "manual_pending",
         ]
