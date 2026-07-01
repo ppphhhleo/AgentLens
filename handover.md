@@ -483,18 +483,35 @@ Current status:
     `HTTP_PROXY=http://host.docker.internal:7897`; that proxy broke provider
     CLI network access on AWS.
   - Patched `scripts/gui_vs_cli_full_workflow_smoke.py` to write sandbox-local
-    `/home/user/.agentlens_cli_env` from host `.env` and a Codex
-    `/home/user/.codex/config.toml` provider using `OPENAI_API_KEY`.
+    `/home/user/.agentlens_cli_env` from host `.env`. For Codex CLI, it now
+    prefers `.secrets/codex/auth.json` ChatGPT login auth when present, and
+    only falls back to an `OPENAI_API_KEY` provider config when no saved login
+    auth exists.
   - Patched `third_party/gui-vs-cli/evaluation/runtime/cli_agent_runner.py` to
     skip interactive `codex login` recovery when the AgentLens env file
     contains `OPENAI_API_KEY`.
   - CLI binary readiness now passes:
     `runs/smoke_cli_ready_check/2026-07-01_10-18-58/summary.json`.
-  - Real `gui_vs_cli_cli_codex` smoke reaches OpenAI but is blocked by quota:
-    `runs/smoke_cli_codex/2026-07-01_10-34-00/`.
+  - Real `gui_vs_cli_cli_codex` API-key smoke reached OpenAI but was blocked
+    by quota: `runs/smoke_cli_codex/2026-07-01_10-34-00/`.
+  - After device login, Codex auth was copied to
+    `.secrets/codex/auth.json` on AWS and injected into each sandbox. A real
+    `gui_vs_cli_cli_codex` smoke passed
+    `chrome_dom_inspection_wikipedia` with score `1.0`:
+    `runs/smoke_cli_codex/2026-07-01_12-24-38/`.
   - AWS `.env` still lacks `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and
     `GOOGLE_AI_STUDIO_API_KEY` as actual variables. Add them manually on AWS
     before Claude/Gemini smoke.
+  - The Anthropic and Gemini keys were later added directly to the AWS `.env`
+    with mode `600`.
+  - Claude Code API-key auth was verified inside
+    `agentlens-gui-vs-cli-runtime:latest`; the CLI reported
+    `apiKeySource=ANTHROPIC_API_KEY` and returned `OK`.
+  - A one-step AgentLens `gui_vs_cli_claude` model-call smoke succeeded:
+    `runs/smoke_gui_vs_cli_claude_model_call/2026-07-01_10-54-40/`.
+    It produced a real `desktop_pyautogui` action from
+    `third_party/gui-vs-cli/agents/claude_agent.py`; the task verifier failed
+    only because `--max-steps 1` is not intended to solve the Chrome workflow.
 - DOMSteer should not be called paper-style CLI-Anything by default. DOMSteer
   can be run as GUI/browser/no-GUI AgentLens tiers; a CLI label is only fair
   after defining a separate DOMSteer CLI/browser-skill harness.

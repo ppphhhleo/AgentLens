@@ -433,7 +433,8 @@ def _write_cli_env_file(sandbox: Any) -> None:
         "chown user:user /home/user/.agentlens_cli_env && chmod 600 /home/user/.agentlens_cli_env",
         timeout=10,
     )
-    if os.environ.get("OPENAI_API_KEY"):
+    has_codex_auth = _copy_codex_auth_if_available(sandbox)
+    if os.environ.get("OPENAI_API_KEY") and not has_codex_auth:
         codex_config = """model_provider = "openai_env"
 
 [model_providers.openai_env]
@@ -449,6 +450,20 @@ supports_websockets = true
             "chown -R user:user /home/user/.codex && chmod 700 /home/user/.codex",
             timeout=10,
         )
+
+
+def _copy_codex_auth_if_available(sandbox: Any) -> bool:
+    auth_path = REPO_ROOT / ".secrets" / "codex" / "auth.json"
+    if not auth_path.exists():
+        return False
+    sandbox.commands.run("mkdir -p /home/user/.codex", timeout=10)
+    sandbox.files.write("/home/user/.codex/auth.json", auth_path.read_bytes())
+    sandbox.commands.run(
+        "chown -R user:user /home/user/.codex && chmod 700 /home/user/.codex "
+        "&& chmod 600 /home/user/.codex/auth.json",
+        timeout=10,
+    )
+    return True
 
 
 LIBREOFFICE_RELOAD_MODES = {
