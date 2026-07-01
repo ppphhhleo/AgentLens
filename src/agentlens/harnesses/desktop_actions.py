@@ -165,7 +165,13 @@ def _pyautogui_command(code: str) -> str:
     body = "; ".join(lines)
     preamble = "import pyautogui; import pyperclip; import time; pyautogui.FAILSAFE = False"
     quoted = shlex.quote(preamble + "; " + body)
-    return f"runuser -u gem -- env HOME=/home/gem DISPLAY=${{DISPLAY:-:99.0}} python3 -c {quoted}"
+    return (
+        'if [ "$(id -u)" -eq 0 ]; then '
+        f"runuser -u gem -- env HOME=/home/gem DISPLAY=${{DISPLAY:-:99.0}} python3 -c {quoted}; "
+        "else "
+        f"env HOME=${{HOME:-/home/gem}} DISPLAY=${{DISPLAY:-:99.0}} python3 -c {quoted}; "
+        "fi"
+    )
 
 
 def _short_code(code: str, limit: int = 120) -> str:
