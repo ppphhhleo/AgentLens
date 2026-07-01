@@ -8,6 +8,7 @@ dependencies = [
     "agentlab>=0.4.2",
     "anthropic>=0.60",
     "browsergym>=0.14.3",
+    "google-genai>=1.0",
     "openai>=1.50",
     "pandas>=2.2",
     "pydantic>=2.7",
@@ -15,6 +16,7 @@ dependencies = [
     "pyyaml>=6.0",
     "tf-playwright-stealth>=1.2",
     "typer>=0.12",
+    "websocket-client>=1.8",
 ]
 
 [project.optional-dependencies]

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import shlex
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Callable, Literal
@@ -126,10 +128,21 @@ class DesktopReactAdapter:
             keep_open_seconds=int(harness_extra.get("keep_sandbox_open_seconds", 0)),
         )
         with sandbox_cm as sandbox:
-            launch_cmd = plan.task.extra.get("desktop_start_cmd") if plan.task.extra else None
+            launch_cmd = _desktop_start_command(plan)
             if launch_cmd:
                 launch = sandbox.shell(str(launch_cmd), timeout_sec=10)
                 self._log(log_action, f"[{plan.run_id}] desktop_start_cmd ok={launch.ok} err={launch.error[:120]!r}")
+                settle_ms = int(harness_extra.get("settle_ms", 0) or 0)
+                if settle_ms > 0:
+                    time.sleep(settle_ms / 1000)
+                if plan.task.start_url and bool(harness_extra.get("force_start_url", True)):
+                    nav = sandbox.shell(_force_start_url_command(plan.task.start_url), timeout_sec=10)
+                    self._log(
+                        log_action,
+                        f"[{plan.run_id}] desktop_force_start_url ok={nav.ok} err={nav.error[:120]!r}",
+                    )
+                    if settle_ms > 0:
+                        time.sleep(settle_ms / 1000)
             toolset = ToolSet.from_harness(plan.tool_harness)
             model_config = plan.model.model_copy(
                 update={
@@ -238,9 +251,12 @@ class DesktopReactAdapter:
         return plan.output_dir / "trajectories" / safe
 
     def _write_trajectory(self, trajectory: Trajectory) -> None:
+        from agentlens.reports.trajectory_viewer import write_trajectory_viewer
+
         trajectory.artifact_dir.mkdir(parents=True, exist_ok=True)
         path = trajectory.artifact_dir / "trajectory.json"
         path.write_text(trajectory.model_dump_json(indent=2), encoding="utf-8")
+        write_trajectory_viewer(path)
 
     def _validate_supported(
         self,
@@ -284,3 +300,21 @@ class DesktopReactAdapter:
     def _log(log_action: Callable[[str], None] | None, message: str) -> None:
         if log_action is not None:
             log_action(message)
+
+
+def _desktop_start_command(plan: DesktopReactRunPlan) -> str | None:
+    if plan.task.extra and plan.task.extra.get("desktop_start_cmd"):
+        return str(plan.task.extra["desktop_start_cmd"])
+    template = plan.tool_harness.extra.get("desktop_start_cmd_template")
+    if template and plan.task.start_url:
+        return str(template).format(start_url=shlex.quote(plan.task.start_url))
+    return None
+
+
+def _force_start_url_command(start_url: str) -> str:
+    quoted_url = shlex.quote(start_url)
+    return (
+        "xdotool key --clearmodifiers ctrl+l && "
+        f"xdotool type --clearmodifiers -- {quoted_url} && "
+        "xdotool key --clearmodifiers Return"
+    )

@@ -1,0 +1,41 @@
+{
+  "example_id": "gpt54_datavoyager_smoke",
+  "task": "datavoyager_most_fuel_efficient",
+  "model": "gpt-5.4",
+  "expected_answer": "Mazda GLC",
+  "runs": [
+    {
+      "harness": "browser_only",
+      "run_id": "dv_most_fuel__gpt54__browser",
+      "trajectory": "../trajectories/browser/trajectory.json",
+      "viewer": "../trajectories/browser/trajectory_viewer.html",
+      "success": true,
+      "score": 1.0,
+      "steps": 62,
+      "tool_calls": 61,
+      "answer": "mazda glc"
+    },
+    {
+      "harness": "full_sandbox",
+      "run_id": "dv_most_fuel__gpt54__sandbox",
+      "trajectory": "../trajectories/sandbox/trajectory.json",
+      "viewer": "../trajectories/sandbox/trajectory_viewer.html",
+      "success": true,
+      "score": 1.0,
+      "steps": 8,
+      "tool_calls": 7,
+      "answer": "mazda glc"
+    },
+    {
+      "harness": "no_gui_tool_only",
+      "run_id": "dv_most_fuel__gpt54__nogui",
+      "trajectory": "../trajectories/nogui/trajectory.json",
+      "viewer": "../trajectories/nogui/trajectory_viewer.html",
+      "success": true,
+      "score": 1.0,
+      "steps": 7,
+      "tool_calls": 6,
+      "answer": "mazda glc"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+id: datavoyager_europe_hp_gt_100_four_cyl
+benchmark: domsteer
+task_id: datavoyager.europe_hp_gt_100_four_cyl
+goal: How many European cars have both horsepower above 100 and four cylinders in the cars dataset?
+start_url: https://vega.github.io/voyager2/
+capability_required:
+  - browser_ui
+  - visual_reasoning
+  - data_analysis
+validator: final_answer
+expected_answer: "10"
+answer_validator: number_exact
+extra:
+  canonical_task: datavoyager_europe_hp_gt_100_four_cyl
+  domsteer_task_id: domsteer_t3_datavoyager_europe_hp_gt_100_four_cyl
+  task_family: visual_analytics

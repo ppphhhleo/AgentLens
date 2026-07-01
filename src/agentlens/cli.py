@@ -38,8 +38,8 @@ def validate_config(path: Path) -> None:
 
 
 @app.command("list-configs")
-def list_configs(path: Path = Path("configs/experiments")) -> None:
-    """List experiment YAML files."""
+def list_configs(path: Path = Path("configs/batches")) -> None:
+    """List batch YAML files."""
     if not path.exists():
         raise typer.BadParameter(f"config directory does not exist: {path}")
 
@@ -55,7 +55,7 @@ def list_configs(path: Path = Path("configs/experiments")) -> None:
 @app.command()
 def summarize(
     path: Path,
-    output_dir: Path = Path("agentlens_results/mock_summary"),
+    output_dir: Path = Path("runs/mock_summary"),
 ) -> None:
     """Generate mock summary artifacts from an experiment config."""
     from agentlens.evals.mock import make_mock_results
@@ -96,7 +96,7 @@ def process_trajectories_cmd(
         help="One or more trajectory.json files or directories containing trajectories.",
     ),
     output_dir: Path = typer.Option(
-        Path("agentlens_results/trajectory_processing"),
+        Path("runs/trajectory_processing"),
         "--output-dir",
         "-o",
         help="Directory for workflow_steps.jsonl and summary files.",
@@ -125,7 +125,7 @@ def process_trajectories_cmd(
 def compare_trajectory_methods_cmd(
     trajectory: Path = typer.Argument(..., help="A single trajectory.json file."),
     output_dir: Path = typer.Option(
-        Path("agentlens_results/method_comparison"),
+        Path("runs/method_comparison"),
         "--output-dir",
         "-o",
         help="Directory for method outputs and the side-by-side HTML report.",
@@ -169,7 +169,7 @@ def compare_trajectory_methods_cmd(
 def evaluate_trajectory_cmd(
     trajectory: Path = typer.Argument(..., help="A single trajectory.json file."),
     output_dir: Path = typer.Option(
-        Path("agentlens_results/evaluations/single"),
+        Path("runs/evaluations/single"),
         "--output-dir",
         "-o",
         help="Directory for evaluation_bundle.json.",
@@ -204,7 +204,7 @@ def evaluate_batch_cmd(
         help="Trajectory files or directories containing trajectory.json files.",
     ),
     output_dir: Path = typer.Option(
-        Path("agentlens_results/evaluations/batch"),
+        Path("runs/evaluations/batch"),
         "--output-dir",
         "-o",
         help="Directory for evaluation_bundles.jsonl and summary.",
@@ -237,18 +237,18 @@ def evaluate_batch_cmd(
 def matrix_dashboard_cmd(
     config_path: Path = typer.Argument(..., help="Experiment config defining the matrix."),
     trajectory_root: Path = typer.Option(
-        Path("agentlens_results/domsteer_datavoyager_matrix"),
+        Path("runs/gpt54_datavoyager_smoke/raw"),
         "--trajectory-root",
         help="Directory to scan for generated trajectory.json files.",
     ),
     output: Path = typer.Option(
-        Path("agentlens_results/domsteer_datavoyager_matrix/dashboard.html"),
+        Path("runs/gpt54_datavoyager_smoke/dashboard/dashboard.html"),
         "--output",
         "-o",
         help="Where to write the reusable dashboard HTML.",
     ),
     report_root: Path = typer.Option(
-        Path("agentlens_results/method_comparison/domsteer_datavoyager_matrix"),
+        Path("runs/gpt54_datavoyager_smoke/analysis/method_comparison"),
         "--report-root",
         help="Directory for per-trajectory method-comparison reports.",
     ),
@@ -321,7 +321,7 @@ def run(
         help="Limit expanded seed/trial plans.",
     ),
     output_path: Path = typer.Option(
-        Path("agentlens_results/run_plan.json"),
+        Path("runs/run_plan.json"),
         "--output",
         help="Where to write dry-run plan JSON.",
     ),
@@ -367,7 +367,7 @@ def run(
             plans,
             log_action=typer.echo if log_actions else None,
         )
-        report_dir = plans[0].output_dir / "screenshot_react_summary"
+        report_dir = plans[0].output_dir / "summary"
     elif adapters == {"desktop_react"}:
         from agentlens.adapters.desktop_react import DesktopReactAdapter
 
@@ -414,7 +414,7 @@ def run(
 @app.command("import-online-mind2web")
 def import_online_mind2web(
     output: Path = typer.Option(
-        Path("configs/experiments/online_mind2web_screenshot_react.yaml"),
+        Path("configs/batches/online_mind2web_screenshot_react.yaml"),
         "--output",
         help="Where to write the generated experiment config.",
     ),
@@ -480,7 +480,7 @@ def import_online_mind2web(
                 "seeds": [0],
                 "trials": 1,
                 "max_steps": max_steps,
-                "output_dir": "agentlens_results/online_mind2web_screenshot_react",
+                "output_dir": "runs/online_mind2web_screenshot_react",
                 "tags": ["online_mind2web", "gpt5"],
             }
         )

@@ -1,0 +1,566 @@
+schema_version: "0.1"
+id: domsteer_t1_t3_gpt54_claude_smoke
+description: >
+  DOMSteer DataVoyager T1-T3 smoke collection for GPT-5.4 and Claude Sonnet
+  4.6. Includes browser-only, full-sandbox, no-GUI, strict desktop GUI, and
+  OpenAI-native computer-use GUI where supported.
+
+models:
+  - id: gpt54
+    provider: openai
+    name: gpt-5.4
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+    extra:
+      interaction_backend: tool_call
+
+  - id: gpt54_computer
+    provider: openai
+    name: gpt-5.4
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+    extra:
+      interaction_backend: openai_computer
+      reasoning_effort: medium
+      reasoning_summary: concise
+      computer_environment: linux
+
+  - id: gpt54_gui_vs_cli_chatgpt
+    provider: openai
+    name: gpt-5.4
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+    extra:
+      interaction_backend: gui_vs_cli_chatgpt
+      api_backend: openai
+      platform: ubuntu
+      computer_environment: linux
+      reasoning_effort: medium
+      reasoning_summary: concise
+      screen_size: [1600, 900]
+      max_steps: 400
+
+  - id: claude_sonnet46
+    provider: anthropic
+    name: claude-sonnet-4-6
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+    extra:
+      interaction_backend: tool_call
+
+tool_harnesses:
+  - id: browser_only
+    runner: screenshot_react
+    tier: browser_only
+    tools:
+      - browser.screenshot
+      - browser.click
+      - browser.double_click
+      - browser.type
+      - browser.scroll
+      - browser.wait
+      - browser.move
+      - browser.keypress
+      - browser.drag
+      - browser.goto
+      - browser.back
+      - browser.forward
+      - browser.reload
+      - task.final_answer
+    prompt_version: tool_call_v1
+    extra:
+      headless: true
+      settle_ms: 2000
+      slow_mo_ms: 350
+      viewport: {width: 1600, height: 900}
+      screenshot_source: browser_viewport
+      coordinate_frame: browser_viewport
+      parallel_tool_calls: true
+      max_actions_per_round: 5
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
+
+  - id: full_sandbox
+    runner: screenshot_react
+    tier: full_sandbox
+    tools:
+      - browser.screenshot
+      - browser.click
+      - browser.double_click
+      - browser.type
+      - browser.scroll
+      - browser.wait
+      - browser.move
+      - browser.keypress
+      - browser.drag
+      - browser.goto
+      - browser.back
+      - browser.forward
+      - browser.reload
+      - web.openai_search
+      - code.run_python
+      - code.shell
+      - files.read
+      - files.write
+      - task.final_answer
+    prompt_version: tool_call_v1
+    extra:
+      browser_source: aio_sandbox
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads]
+      headless: true
+      settle_ms: 1000
+      stealth: true
+      viewport: {width: 1600, height: 900}
+      screenshot_source: browser_viewport
+      coordinate_frame: browser_viewport
+      parallel_tool_calls: true
+      max_actions_per_round: 5
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
+
+  - id: no_gui_tool_only
+    runner: screenshot_react
+    tier: full_sandbox
+    tools:
+      - web.openai_search
+      - code.run_python
+      - code.shell
+      - files.read
+      - files.write
+      - task.final_answer
+    prompt_version: tool_call_v1
+    extra:
+      browser_source: aio_sandbox
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads]
+      headless: true
+      settle_ms: 1000
+      stealth: true
+      viewport: {width: 1600, height: 900}
+      input_modes: [axtree]
+      screenshot_source: browser_viewport
+      coordinate_frame: browser_viewport
+      parallel_tool_calls: true
+      max_actions_per_round: 3
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
+
+  - id: desktop_gui_toolcall
+    runner: desktop_react
+    tier: full_sandbox
+    tools:
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+    prompt_version: tool_call_desktop_gui_v1
+    extra:
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads]
+      desktop_start_cmd_template: >-
+        nohup bash -lc "if command -v google-chrome >/dev/null 2>&1; then exec google-chrome --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium-browser >/dev/null 2>&1; then exec chromium-browser --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium >/dev/null 2>&1; then exec chromium --no-sandbox --disable-dev-shm-usage {start_url}; else exec xdg-open {start_url}; fi" >/tmp/agentlens_start_browser.log 2>&1 &
+      settle_ms: 5000
+      screenshot_source: virtual_desktop
+      coordinate_frame: desktop_screen
+      parallel_tool_calls: true
+      max_actions_per_round: 5
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
+
+  - id: desktop_gui_openai_computer
+    runner: desktop_react
+    tier: full_sandbox
+    tools:
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+    prompt_version: openai_computer_gui_paper_v1
+    extra:
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads]
+      desktop_start_cmd_template: >-
+        nohup bash -lc "if command -v google-chrome >/dev/null 2>&1; then exec google-chrome --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium-browser >/dev/null 2>&1; then exec chromium-browser --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium >/dev/null 2>&1; then exec chromium --no-sandbox --disable-dev-shm-usage {start_url}; else exec xdg-open {start_url}; fi" >/tmp/agentlens_start_browser.log 2>&1 &
+      settle_ms: 5000
+      screenshot_source: virtual_desktop
+      coordinate_frame: desktop_screen
+      max_actions_per_round: 5
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
+
+  - id: desktop_gui_gui_vs_cli_chatgpt
+    runner: desktop_react
+    tier: full_sandbox
+    tools:
+      - desktop.screenshot
+      - desktop.pyautogui
+      - desktop.wait
+      - task.final_answer
+    prompt_version: gui_vs_cli_chatgpt_paper_v1
+    extra:
+      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_port: 8080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads]
+      desktop_start_cmd_template: >-
+        nohup bash -lc "if command -v google-chrome >/dev/null 2>&1; then exec google-chrome --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium-browser >/dev/null 2>&1; then exec chromium-browser --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium >/dev/null 2>&1; then exec chromium --no-sandbox --disable-dev-shm-usage {start_url}; else exec xdg-open {start_url}; fi" >/tmp/agentlens_start_browser.log 2>&1 &
+      settle_ms: 5000
+      screenshot_source: virtual_desktop
+      coordinate_frame: desktop_screen
+      max_actions_per_round: 5
+      model_max_attempts: 6
+      model_retry_sleep_s: 2.0
+      model_retry_max_sleep_s: 60.0
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+task_files:
+  - tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml
+  - tasks/domsteer/datavoyager_origin_horsepower_range/task.yaml
+  - tasks/domsteer/datavoyager_europe_hp_gt_100_four_cyl/task.yaml
+
+tasks: []
+
+runs:
+  - id: dv_t1__gpt54__browser
+    model: gpt54
+    tool_harness: browser_only
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t1, smoke, browser_only, gpt54]
+
+  - id: dv_t1__gpt54__sandbox
+    model: gpt54
+    tool_harness: full_sandbox
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t1, smoke, full_sandbox, gpt54]
+
+  - id: dv_t1__gpt54__nogui
+    model: gpt54
+    tool_harness: no_gui_tool_only
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t1, smoke, no_gui_tool_only, gpt54]
+
+  - id: dv_t1__gpt54__desktop_toolcall_gui
+    model: gpt54
+    tool_harness: desktop_gui_toolcall
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t1, smoke, desktop_gui_toolcall, gpt54]
+
+  - id: dv_t1__gpt54__desktop_openai_computer
+    model: gpt54_computer
+    tool_harness: desktop_gui_openai_computer
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t1, smoke, desktop_gui_openai_computer, gpt54]
+
+  - id: dv_t1__gpt54__gui_vs_cli_chatgpt
+    model: gpt54_gui_vs_cli_chatgpt
+    tool_harness: desktop_gui_gui_vs_cli_chatgpt
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t1, smoke, gui_vs_cli_chatgpt, gpt54]
+
+  - id: dv_t1__claude46__browser
+    model: claude_sonnet46
+    tool_harness: browser_only
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t1, smoke, browser_only, claude46]
+
+  - id: dv_t1__claude46__sandbox
+    model: claude_sonnet46
+    tool_harness: full_sandbox
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t1, smoke, full_sandbox, claude46]
+
+  - id: dv_t1__claude46__nogui
+    model: claude_sonnet46
+    tool_harness: no_gui_tool_only
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t1, smoke, no_gui_tool_only, claude46]
+
+  - id: dv_t1__claude46__desktop_toolcall_gui
+    model: claude_sonnet46
+    tool_harness: desktop_gui_toolcall
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t1, smoke, desktop_gui_toolcall, claude46]
+
+  - id: dv_t2__gpt54__browser
+    model: gpt54
+    tool_harness: browser_only
+    memory_harness: no_memory
+    task: datavoyager_origin_horsepower_range
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t2, smoke, browser_only, gpt54]
+
+  - id: dv_t2__gpt54__sandbox
+    model: gpt54
+    tool_harness: full_sandbox
+    memory_harness: no_memory
+    task: datavoyager_origin_horsepower_range
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t2, smoke, full_sandbox, gpt54]
+
+  - id: dv_t2__gpt54__nogui
+    model: gpt54
+    tool_harness: no_gui_tool_only
+    memory_harness: no_memory
+    task: datavoyager_origin_horsepower_range
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t2, smoke, no_gui_tool_only, gpt54]
+
+  - id: dv_t2__gpt54__desktop_toolcall_gui
+    model: gpt54
+    tool_harness: desktop_gui_toolcall
+    memory_harness: no_memory
+    task: datavoyager_origin_horsepower_range
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t2, smoke, desktop_gui_toolcall, gpt54]
+
+  - id: dv_t2__gpt54__desktop_openai_computer
+    model: gpt54_computer
+    tool_harness: desktop_gui_openai_computer
+    memory_harness: no_memory
+    task: datavoyager_origin_horsepower_range
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t2, smoke, desktop_gui_openai_computer, gpt54]
+
+  - id: dv_t2__gpt54__gui_vs_cli_chatgpt
+    model: gpt54_gui_vs_cli_chatgpt
+    tool_harness: desktop_gui_gui_vs_cli_chatgpt
+    memory_harness: no_memory
+    task: datavoyager_origin_horsepower_range
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t2, smoke, gui_vs_cli_chatgpt, gpt54]
+
+  - id: dv_t2__claude46__browser
+    model: claude_sonnet46
+    tool_harness: browser_only
+    memory_harness: no_memory
+    task: datavoyager_origin_horsepower_range
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t2, smoke, browser_only, claude46]
+
+  - id: dv_t2__claude46__sandbox
+    model: claude_sonnet46
+    tool_harness: full_sandbox
+    memory_harness: no_memory
+    task: datavoyager_origin_horsepower_range
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t2, smoke, full_sandbox, claude46]
+
+  - id: dv_t2__claude46__nogui
+    model: claude_sonnet46
+    tool_harness: no_gui_tool_only
+    memory_harness: no_memory
+    task: datavoyager_origin_horsepower_range
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t2, smoke, no_gui_tool_only, claude46]
+
+  - id: dv_t2__claude46__desktop_toolcall_gui
+    model: claude_sonnet46
+    tool_harness: desktop_gui_toolcall
+    memory_harness: no_memory
+    task: datavoyager_origin_horsepower_range
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t2, smoke, desktop_gui_toolcall, claude46]
+
+  - id: dv_t3__gpt54__browser
+    model: gpt54
+    tool_harness: browser_only
+    memory_harness: no_memory
+    task: datavoyager_europe_hp_gt_100_four_cyl
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t3, smoke, browser_only, gpt54]
+
+  - id: dv_t3__gpt54__sandbox
+    model: gpt54
+    tool_harness: full_sandbox
+    memory_harness: no_memory
+    task: datavoyager_europe_hp_gt_100_four_cyl
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t3, smoke, full_sandbox, gpt54]
+
+  - id: dv_t3__gpt54__nogui
+    model: gpt54
+    tool_harness: no_gui_tool_only
+    memory_harness: no_memory
+    task: datavoyager_europe_hp_gt_100_four_cyl
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t3, smoke, no_gui_tool_only, gpt54]
+
+  - id: dv_t3__gpt54__desktop_toolcall_gui
+    model: gpt54
+    tool_harness: desktop_gui_toolcall
+    memory_harness: no_memory
+    task: datavoyager_europe_hp_gt_100_four_cyl
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t3, smoke, desktop_gui_toolcall, gpt54]
+
+  - id: dv_t3__gpt54__desktop_openai_computer
+    model: gpt54_computer
+    tool_harness: desktop_gui_openai_computer
+    memory_harness: no_memory
+    task: datavoyager_europe_hp_gt_100_four_cyl
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t3, smoke, desktop_gui_openai_computer, gpt54]
+
+  - id: dv_t3__gpt54__gui_vs_cli_chatgpt
+    model: gpt54_gui_vs_cli_chatgpt
+    tool_harness: desktop_gui_gui_vs_cli_chatgpt
+    memory_harness: no_memory
+    task: datavoyager_europe_hp_gt_100_four_cyl
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t3, smoke, gui_vs_cli_chatgpt, gpt54]
+
+  - id: dv_t3__claude46__browser
+    model: claude_sonnet46
+    tool_harness: browser_only
+    memory_harness: no_memory
+    task: datavoyager_europe_hp_gt_100_four_cyl
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t3, smoke, browser_only, claude46]
+
+  - id: dv_t3__claude46__sandbox
+    model: claude_sonnet46
+    tool_harness: full_sandbox
+    memory_harness: no_memory
+    task: datavoyager_europe_hp_gt_100_four_cyl
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t3, smoke, full_sandbox, claude46]
+
+  - id: dv_t3__claude46__nogui
+    model: claude_sonnet46
+    tool_harness: no_gui_tool_only
+    memory_harness: no_memory
+    task: datavoyager_europe_hp_gt_100_four_cyl
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t3, smoke, no_gui_tool_only, claude46]
+
+  - id: dv_t3__claude46__desktop_toolcall_gui
+    model: claude_sonnet46
+    tool_harness: desktop_gui_toolcall
+    memory_harness: no_memory
+    task: datavoyager_europe_hp_gt_100_four_cyl
+    seeds: [0]
+    trials: 1
+    output_dir: runs/domsteer_t1_t3_gpt54_claude_smoke/raw
+    tags: [domsteer, datavoyager, t3, smoke, desktop_gui_toolcall, claude46]

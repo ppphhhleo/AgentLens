@@ -1,0 +1,17 @@
+id: datavoyager_origin_horsepower_range
+benchmark: domsteer
+task_id: datavoyager.origin_horsepower_range
+goal: Which origin has the widest horsepower range in the cars dataset?
+start_url: https://vega.github.io/voyager2/
+capability_required:
+  - browser_ui
+  - visual_reasoning
+  - data_analysis
+validator: final_answer
+expected_answer: USA
+answer_validator: contains
+extra:
+  canonical_task: datavoyager_origin_horsepower_range
+  domsteer_task_id: domsteer_t2_datavoyager_origin_horsepower_range
+  task_family: visual_analytics
+

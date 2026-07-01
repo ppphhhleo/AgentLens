@@ -84,6 +84,26 @@ def build_model(config: ModelConfig, toolset=None) -> ChatModel:
 
         return OpenAIToolCallModel(config, toolset=toolset)
 
+    if config.provider == "openai" and interaction_backend == "openai_computer":
+        from agentlens.models.openai_computer_use import OpenAIComputerUseModel
+
+        return OpenAIComputerUseModel(config, toolset=toolset)
+
+    if config.provider == "openai" and interaction_backend == "gui_vs_cli_chatgpt":
+        from agentlens.models.gui_vs_cli_chatgpt import GuiVsCliChatGPTModel
+
+        return GuiVsCliChatGPTModel(config, toolset=toolset)
+
+    if config.provider == "anthropic" and interaction_backend == "gui_vs_cli_claude":
+        from agentlens.models.gui_vs_cli_chatgpt import GuiVsCliClaudeModel
+
+        return GuiVsCliClaudeModel(config, toolset=toolset)
+
+    if config.provider == "gemini" and interaction_backend == "gui_vs_cli_gemini":
+        from agentlens.models.gui_vs_cli_chatgpt import GuiVsCliGeminiModel
+
+        return GuiVsCliGeminiModel(config, toolset=toolset)
+
     if config.provider == "anthropic" and interaction_backend == "tool_call":
         from agentlens.models.anthropic_tool_call import AnthropicToolCallModel
 
