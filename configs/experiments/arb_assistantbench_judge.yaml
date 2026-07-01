@@ -1,0 +1,143 @@
+schema_version: "0.1"
+id: arb_assistantbench_judge
+description: >
+  ARB 4-dimensional LLM judge evaluation on AssistantBench trajectories.
+  Tool-usage only benchmark (no GUI navigation).
+  Judge: gpt-4o-mini. Evaluates Success, Side Effects, Optimality, Looping.
+  WHO = agent model identity. WHEN = time_dependency (Static/Stable/Unlikely).
+
+  AssistantBench is the only ARB benchmark with the WHEN (time_dependency)
+  dimension, making it essential for studying temporal effects on agent performance.
+
+  Usage:
+    1. First, produce cleaned trajectory JSONs under trajectories/cleaned/assistantbench/
+    2. Update trajectory_path entries below to point to actual JSON files
+    3. Run: agentlens arb-evaluate configs/experiments/arb_assistantbench_judge.yaml --execute --log-actions
+
+  Or use the import-arb CLI to auto-generate from a trajectory directory:
+    agentlens import-arb assistantbench /path/to/trajectories/cleaned/assistantbench \
+      --output configs/experiments/arb_assistantbench_judge.yaml
+
+models:
+  - id: judge_gpt4o_mini
+    provider: openai
+    name: gpt-4o-mini-2024-07-18
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 1024
+
+tool_harnesses:
+  - id: arb_judge_harness
+    runner: arb_judge
+    tier: human
+    tools: []
+    extra:
+      use_screenshot: true
+      use_axtree: false
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+# Example tasks — each carries the WHEN dimension (time_dependency) from
+# assistantbench.csv. The WHEN values are:
+#   Static   — task state doesn't change between interactions
+#   Stable   — state changes gradually and predictably
+#   Unlikely — state may change but unlikely to affect solution
+#
+# Replace trajectory_path with actual paths.
+
+tasks:
+  - id: ab_val0_gpt4o
+    benchmark: arb
+    task_id: assistantbench.validation.0
+    answer_validator: arb_judge
+    extra:
+      who: GenericAgent-gpt-4o-2024-11-20
+      when: Unlikely
+      arb_benchmark: assistantbench
+      trajectory_path: trajectories/cleaned/assistantbench/GenericAgent-gpt-4o-2024-11-20/GenericAgent-gpt-4o-2024-11-20_on_assistantbench/assistantbench.validation.0.json
+      split: test
+      difficulty: Hard
+
+  - id: ab_val0_claude
+    benchmark: arb
+    task_id: assistantbench.validation.0
+    answer_validator: arb_judge
+    extra:
+      who: GenericAgent-anthropic_claude-3.7-sonnet
+      when: Unlikely
+      arb_benchmark: assistantbench
+      trajectory_path: trajectories/cleaned/assistantbench/GenericAgent-anthropic_claude-3.7-sonnet/GenericAgent-anthropic_claude-3.7-sonnet_on_assistantbench/assistantbench.validation.0.json
+      split: test
+      difficulty: Hard
+
+  - id: ab_val2_gpt4o
+    benchmark: arb
+    task_id: assistantbench.validation.2
+    answer_validator: arb_judge
+    extra:
+      who: GenericAgent-gpt-4o-2024-11-20
+      when: Static
+      arb_benchmark: assistantbench
+      trajectory_path: trajectories/cleaned/assistantbench/GenericAgent-gpt-4o-2024-11-20/GenericAgent-gpt-4o-2024-11-20_on_assistantbench/assistantbench.validation.2.json
+      split: test
+      difficulty: Medium
+
+  - id: ab_val3_gpt4o
+    benchmark: arb
+    task_id: assistantbench.validation.3
+    answer_validator: arb_judge
+    extra:
+      who: GenericAgent-gpt-4o-2024-11-20
+      when: Static
+      arb_benchmark: assistantbench
+      trajectory_path: trajectories/cleaned/assistantbench/GenericAgent-gpt-4o-2024-11-20/GenericAgent-gpt-4o-2024-11-20_on_assistantbench/assistantbench.validation.3.json
+      split: dev
+      difficulty: Medium
+
+runs:
+  - id: judge_ab_val0_gpt4o
+    model: judge_gpt4o_mini
+    tool_harness: arb_judge_harness
+    memory_harness: no_memory
+    task: ab_val0_gpt4o
+    seeds: [0]
+    trials: 1
+    max_steps: 0
+    output_dir: agentlens_results/arb_assistantbench_judge
+    tags: [arb, assistantbench, tool_usage, when_unlikely]
+
+  - id: judge_ab_val0_claude
+    model: judge_gpt4o_mini
+    tool_harness: arb_judge_harness
+    memory_harness: no_memory
+    task: ab_val0_claude
+    seeds: [0]
+    trials: 1
+    max_steps: 0
+    output_dir: agentlens_results/arb_assistantbench_judge
+    tags: [arb, assistantbench, tool_usage, when_unlikely]
+
+  - id: judge_ab_val2_gpt4o
+    model: judge_gpt4o_mini
+    tool_harness: arb_judge_harness
+    memory_harness: no_memory
+    task: ab_val2_gpt4o
+    seeds: [0]
+    trials: 1
+    max_steps: 0
+    output_dir: agentlens_results/arb_assistantbench_judge
+    tags: [arb, assistantbench, tool_usage, when_static]
+
+  - id: judge_ab_val3_gpt4o
+    model: judge_gpt4o_mini
+    tool_harness: arb_judge_harness
+    memory_harness: no_memory
+    task: ab_val3_gpt4o
+    seeds: [0]
+    trials: 1
+    max_steps: 0
+    output_dir: agentlens_results/arb_assistantbench_judge
+    tags: [arb, assistantbench, tool_usage, when_static]

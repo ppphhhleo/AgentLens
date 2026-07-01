@@ -43,6 +43,9 @@ def validate_answer(
         )
         return result.success, result.score, msg
 
+    if task.answer_validator == "arb_judge":
+        return None, None, "arb_judge: use ARBJudgeAdapter for 4-dimensional evaluation"
+
     if task.answer_validator == "semantic_pending":
         return None, None, "semantic validation pending"
 
