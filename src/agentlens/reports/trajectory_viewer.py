@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import os
 import re
@@ -530,14 +531,41 @@ def _render_page(
       margin-top: .35rem;
     }}
     .thought {{
-      white-space: pre-wrap;
       margin: .22rem 0 .4rem;
       max-height: 7.8rem;
       overflow: auto;
     }}
+    .thought p {{
+      margin: 0;
+      white-space: pre-wrap;
+    }}
+    .thought-list {{
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: .28rem;
+    }}
+    .thought-list li {{
+      position: relative;
+      padding-left: .8rem;
+      line-height: 1.35;
+    }}
+    .thought-list li::before {{
+      content: "";
+      position: absolute;
+      left: 0;
+      top: .62em;
+      width: .28rem;
+      height: .28rem;
+      border-radius: 999px;
+      background: var(--muted);
+    }}
     pre {{
       max-height: 12rem;
       overflow: auto;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
       margin: .3rem 0 0;
       padding: .5rem;
       border-radius: 7px;
@@ -583,6 +611,7 @@ def _render_trajectory(traj: dict[str, Any], *, idx: int, output_path: Path) -> 
     model = traj.get("model") or {}
     tool_harness = traj.get("tool_harness") or {}
     memory_harness = traj.get("memory_harness") or {}
+    mode_label, toolset_label = _harness_display(tool_harness)
     success = metrics.get("success")
     success_class = "ok" if success else "bad"
     goal = task.get("goal") or _first_goal(events) or ""
@@ -614,7 +643,8 @@ def _render_trajectory(traj: dict[str, Any], *, idx: int, output_path: Path) -> 
     </div>
     <div class="run-badges">
       <span class="badge">model: {escape(str(model.get("name") or model.get("id") or ""))}</span>
-      <span class="badge">tools: {escape(str(tool_harness.get("tier") or tool_harness.get("id") or ""))}</span>
+      <span class="badge">mode: {escape(mode_label)}</span>
+      <span class="badge">allowed: {escape(toolset_label)}</span>
       <span class="badge">memory: {escape(str(memory_harness.get("kind") or memory_harness.get("id") or ""))}</span>
     </div>
   </div>
@@ -624,6 +654,57 @@ def _render_trajectory(traj: dict[str, Any], *, idx: int, output_path: Path) -> 
   {_render_tool_map(events, output_path=output_path)}
   <div class="timeline">{event_cards}</div>
 </section>"""
+
+
+def _harness_display(tool_harness: dict[str, Any]) -> tuple[str, str]:
+    harness_id = str(tool_harness.get("id") or "")
+    tools = [str(tool) for tool in tool_harness.get("tools") or []]
+
+    if harness_id == "browser_only":
+        return (
+            "GUI-only",
+            "click, double click, move, drag, scroll, type, keypress, wait, final_answer",
+        )
+    if harness_id == "desktop_gui_toolcall":
+        return (
+            "GUI-only",
+            "click, double click, move, drag, scroll, type, keypress, wait, final_answer",
+        )
+    if harness_id == "full_sandbox":
+        return (
+            "Full sandbox",
+            "GUI actions + web search, Python, shell, files, final_answer",
+        )
+    if harness_id == "no_gui_tool_only":
+        return (
+            "No-GUI/tool-only",
+            "web search, Python, shell, files, final_answer",
+        )
+    if harness_id == "desktop_gui_gui_vs_cli_chatgpt":
+        return (
+            "Computer-agent (gui-vs-cli)",
+            "pyautogui, wait, final_answer",
+        )
+    if harness_id == "desktop_gui_openai_computer":
+        return (
+            "Computer-agent",
+            "click, double click, move, drag, scroll, type, keypress, wait, final_answer",
+        )
+
+    mode = str(tool_harness.get("tier") or harness_id or "unknown")
+    if tools:
+        labels = [_display_tool_name(tool) for tool in tools]
+        return mode, ", ".join(labels)
+    return mode, "unknown"
+
+
+def _display_tool_name(tool_name: str) -> str:
+    name = tool_name
+    for prefix in ("browser.", "desktop.", "task.", "code.", "files.", "web."):
+        if name.startswith(prefix):
+            name = name[len(prefix) :]
+            break
+    return name.replace("_", " ")
 
 
 def _render_compact_timeline(
@@ -990,6 +1071,10 @@ def _pyautogui_label(code: str) -> str:
 
 
 def _pyautogui_detail(code: str) -> str:
+    parsed = _pyautogui_call_details(code)
+    if parsed:
+        return parsed
+
     text = _single_line(code)
     hotkey = re.search(r"pyautogui\.hotkey\(([^)]*)\)", code)
     if hotkey:
@@ -1011,6 +1096,61 @@ def _pyautogui_detail(code: str) -> str:
     if sleep:
         return f"seconds={_clean_py_args(sleep.group(1))}"
     return _short(text, 140)
+
+
+def _pyautogui_call_details(code: str) -> str:
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return ""
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Attribute):
+            name = func.attr
+            owner = func.value
+            owner_name = owner.id if isinstance(owner, ast.Name) else None
+        elif isinstance(func, ast.Name):
+            name = func.id
+            owner_name = None
+        else:
+            continue
+
+        if owner_name == "pyautogui" and name == "hotkey":
+            return "keys=" + ", ".join(_ast_value(arg) for arg in node.args)
+        if owner_name == "pyautogui" and name in {"press", "keyDown", "keyUp"}:
+            return "key=" + ", ".join(_ast_value(arg) for arg in node.args)
+        if owner_name == "pyautogui" and name in {"typewrite", "write"}:
+            if node.args:
+                return "text=" + _ast_value(node.args[0])
+        if owner_name == "pyautogui" and name in {"moveTo", "moveRel", "dragTo", "dragRel"}:
+            return "target=" + ", ".join(_ast_value(arg) for arg in node.args)
+        if owner_name == "pyautogui" and name in {"click", "doubleClick"}:
+            pieces = [_ast_value(arg) for arg in node.args]
+            pieces.extend(
+                f"{kw.arg}={_ast_value(kw.value)}"
+                for kw in node.keywords
+                if kw.arg
+            )
+            return "args=" + ", ".join(pieces) if pieces else ""
+        if owner_name == "pyautogui" and name in {"scroll", "hscroll"}:
+            return "amount=" + ", ".join(_ast_value(arg) for arg in node.args)
+        if owner_name == "time" and name == "sleep" and node.args:
+            return "seconds=" + _ast_value(node.args[0])
+
+    return ""
+
+
+def _ast_value(node: ast.AST) -> str:
+    try:
+        value = ast.literal_eval(node)
+    except (ValueError, SyntaxError):
+        return _single_line(ast.unparse(node))
+    if isinstance(value, str):
+        return value
+    return str(value)
 
 
 def _pyautogui_kind(code: str) -> str:

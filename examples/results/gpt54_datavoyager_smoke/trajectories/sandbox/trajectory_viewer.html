@@ -6,109 +6,142 @@
   <title>AgentLens Trajectory Viewer</title>
   <style>
     :root {
-      --bg: #11120f;
-      --panel: #1b1d18;
-      --panel-2: #24271f;
-      --text: #f1f0e8;
-      --muted: #a9aa9e;
-      --line: #363a30;
-      --accent: #f5b642;
-      --ok: #79c267;
-      --bad: #e3655b;
-      --code: #0d0e0c;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --panel-2: #f9fafc;
+      --text: #171a1f;
+      --muted: #677080;
+      --line: #dfe4ec;
+      --line-strong: #c9d1dc;
+      --accent: #2563eb;
+      --ok: #168a4a;
+      --bad: #d23f31;
+      --code: #f3f5f8;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       background:
-        radial-gradient(circle at top left, rgba(245,182,66,.14), transparent 34rem),
-        linear-gradient(135deg, #11120f 0%, #171913 55%, #0d0e0c 100%);
+        linear-gradient(180deg, #ffffff 0, var(--bg) 18rem),
+        var(--bg);
       color: var(--text);
-      font: 14px/1.45 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font: 13px/1.42 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     header {
       position: sticky;
       top: 0;
       z-index: 5;
-      padding: 1rem 1.5rem;
-      background: rgba(17, 18, 15, .92);
-      backdrop-filter: blur(12px);
+      padding: .75rem 1rem;
+      background: rgba(255, 255, 255, .92);
+      backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--line);
     }
     h1, h2, h3 { margin: 0; }
-    h1 { font-size: 1.35rem; letter-spacing: -.02em; }
+    h1 { font-size: 1.05rem; letter-spacing: 0; }
     a { color: var(--accent); text-decoration: none; }
-    .source { color: var(--muted); margin-top: .25rem; }
+    .source {
+      color: var(--muted);
+      margin-top: .2rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .run-nav {
       display: flex;
       gap: .5rem;
       flex-wrap: wrap;
-      margin-top: .75rem;
+      margin-top: .45rem;
     }
     .run-nav a, .badge {
       display: inline-flex;
       align-items: center;
       border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: .2rem .55rem;
+      border-radius: 6px;
+      padding: .16rem .42rem;
       background: var(--panel-2);
       color: var(--text);
-      font-size: .8rem;
+      font-size: .76rem;
     }
-    main { max-width: 1500px; margin: 0 auto; padding: 1.25rem; }
+    main { max-width: 1400px; margin: 0 auto; padding: .75rem; }
     .run {
       border: 1px solid var(--line);
-      border-radius: 18px;
-      background: rgba(27,29,24,.88);
+      border-radius: 10px;
+      background: var(--panel);
       overflow: hidden;
-      margin-bottom: 1.25rem;
-      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      margin-bottom: .75rem;
+      box-shadow: 0 14px 34px rgba(28, 38, 57, .08);
     }
     .run-head {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 1rem;
-      padding: 1rem;
+      gap: .75rem;
+      padding: .65rem .75rem;
       border-bottom: 1px solid var(--line);
-      background: linear-gradient(90deg, rgba(245,182,66,.10), transparent);
+      background: var(--panel);
+    }
+    .run-head h2 {
+      font-size: 1.04rem;
+      letter-spacing: 0;
+      line-height: 1.2;
+    }
+    .run-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .3rem;
+      justify-content: flex-end;
     }
     .meta-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: .5rem;
-      padding: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .25rem .7rem;
+      padding: .45rem .75rem;
       border-bottom: 1px solid var(--line);
+      background: var(--panel-2);
     }
     .metric {
-      background: var(--panel-2);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: .7rem;
+      display: inline-flex;
+      align-items: baseline;
+      gap: .32rem;
+      min-width: max-content;
+      color: var(--text);
     }
-    .metric span { display: block; color: var(--muted); font-size: .75rem; }
+    .metric span { color: var(--muted); font-size: .72rem; }
+    .metric strong { font-size: .82rem; }
     .goal {
-      margin: 0 1rem 1rem;
-      padding: .8rem;
+      margin: .65rem .75rem .55rem;
+      padding: .45rem .55rem;
       border: 1px solid var(--line);
-      border-radius: 12px;
-      background: rgba(0,0,0,.18);
+      border-radius: 7px;
+      background: var(--panel-2);
       white-space: pre-wrap;
     }
     .tool-map {
-      margin: 1rem;
-      padding: .85rem;
+      margin: .55rem .75rem;
+      padding: .5rem;
       border: 1px solid var(--line);
-      border-radius: 14px;
-      background: rgba(0,0,0,.20);
+      border-radius: 7px;
+      background: var(--panel-2);
+    }
+    .tool-map > summary {
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 700;
+      list-style-position: inside;
+    }
+    .tool-map > summary span {
+      color: var(--muted);
+      font-weight: 450;
+      margin-left: .4rem;
+      font-size: .76rem;
     }
     .tool-map-head {
       display: flex;
       justify-content: space-between;
       gap: 1rem;
       align-items: baseline;
-      margin-bottom: .65rem;
+      margin: .55rem 0 .45rem;
     }
-    .tool-map-title { font-weight: 800; letter-spacing: -.01em; }
+    .tool-map-title { font-weight: 700; letter-spacing: 0; }
     .legend {
       display: flex;
       flex-wrap: wrap;
@@ -122,25 +155,23 @@
       gap: .3rem;
     }
     .dot {
-      width: .65rem;
-      height: .65rem;
+      width: .55rem;
+      height: .55rem;
       border-radius: 999px;
       display: inline-block;
       background: var(--kind-color, var(--line));
     }
     .tool-strip {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(3.7rem, 1fr));
-      gap: .35rem;
+      grid-template-columns: repeat(auto-fit, minmax(3rem, 1fr));
+      gap: .22rem;
     }
     .tool-cell {
-      min-height: 3.8rem;
-      border: 1px solid color-mix(in srgb, var(--kind-color, var(--line)) 68%, var(--line));
-      border-radius: 10px;
-      padding: .4rem;
-      background:
-        linear-gradient(180deg, color-mix(in srgb, var(--kind-color, #333) 24%, transparent), transparent),
-        rgba(0,0,0,.18);
+      min-height: 2.65rem;
+      border: 1px solid color-mix(in srgb, var(--kind-color, var(--line)) 54%, var(--line));
+      border-radius: 6px;
+      padding: .25rem .3rem;
+      background: #fff;
       color: var(--text);
       display: flex;
       flex-direction: column;
@@ -148,61 +179,245 @@
       gap: .2rem;
     }
     .tool-cell:hover {
-      outline: 2px solid var(--kind-color);
+      outline: 2px solid color-mix(in srgb, var(--kind-color) 70%, white);
       outline-offset: 1px;
     }
-    .tool-step { color: var(--muted); font-size: .72rem; }
+    .tool-step { color: var(--muted); font-size: .68rem; }
     .tool-label {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       font-weight: 750;
-      font-size: .82rem;
+      font-size: .76rem;
     }
     .tool-sub {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       color: var(--muted);
-      font-size: .72rem;
+      font-size: .68rem;
     }
-    .kind-browser { --kind-color: #5db7de; }
-    .kind-code { --kind-color: #f5b642; }
-    .kind-file { --kind-color: #b391ff; }
-    .kind-web { --kind-color: #64d6a4; }
-    .kind-model { --kind-color: #d6d166; }
-    .kind-screenshot { --kind-color: #7d8794; }
-    .kind-validation { --kind-color: #79c267; }
-    .kind-error { --kind-color: #e3655b; }
-    .kind-final { --kind-color: #ff8ec7; }
-    .kind-other { --kind-color: #9ea39a; }
-    .timeline { padding: 1rem; }
-    .event {
+    .step-log {
       display: grid;
-      grid-template-columns: minmax(320px, 48%) minmax(320px, 1fr);
-      gap: 1rem;
-      border-left: 3px solid var(--line);
-      margin-left: .5rem;
-      padding: 0 0 1rem 1rem;
+      gap: .45rem;
     }
-    .event.interesting { border-left-color: var(--accent); }
-    .event-head {
-      display: flex;
-      gap: .5rem;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-bottom: .5rem;
-    }
-    .event-type { color: var(--accent); font-weight: 700; }
-    .timestamp { color: var(--muted); font-size: .78rem; }
-    .screenshot {
-      position: relative;
-      background: #000;
+    .step-triplet {
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-left: 3px solid var(--kind-color, var(--line-strong));
+      border-radius: 7px;
+      background: #fff;
       overflow: hidden;
     }
-    .screenshot img { display: block; width: 100%; height: auto; }
+    .step-triplet-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .35rem;
+      padding: .34rem .45rem;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--kind-color, var(--line)) 7%, white);
+    }
+    .step-triplet-head strong {
+      color: var(--kind-color, var(--text));
+    }
+    .triplet-grid {
+      display: grid;
+      grid-template-columns: minmax(170px, .78fr) minmax(220px, 1fr) minmax(220px, 1fr);
+      gap: .45rem;
+      padding: .45rem;
+    }
+    .triplet-cell {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: .4rem;
+      background: var(--panel-2);
+    }
+    .triplet-cell h4 {
+      margin: 0 0 .28rem;
+      color: var(--muted);
+      font-size: .68rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .triplet-cell p {
+      margin: 0;
+      color: var(--text);
+      font-size: .76rem;
+    }
+    .triplet-shot {
+      display: block;
+      max-width: 100%;
+      max-height: 130px;
+      object-fit: contain;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fff;
+    }
+    .triplet-meta {
+      color: var(--muted);
+      font-size: .7rem;
+      margin-top: .3rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .kind-browser { --kind-color: #0ea5e9; }
+    .kind-desktop { --kind-color: #475569; }
+    .kind-code { --kind-color: #d97706; }
+    .kind-file { --kind-color: #8b5cf6; }
+    .kind-web { --kind-color: #059669; }
+    .kind-model { --kind-color: #64748b; }
+    .kind-screenshot { --kind-color: #94a3b8; }
+    .kind-validation { --kind-color: #16a34a; }
+    .kind-error { --kind-color: #dc2626; }
+    .kind-final { --kind-color: #db2777; }
+    .kind-other { --kind-color: #737373; }
+    .action-click { --kind-color: #0ea5e9; }
+    .action-double_click { --kind-color: #06b6d4; }
+    .action-scroll { --kind-color: #16a34a; }
+    .action-keypress { --kind-color: #f59e0b; }
+    .action-type { --kind-color: #8b5cf6; }
+    .action-move { --kind-color: #6366f1; }
+    .action-drag { --kind-color: #ef4444; }
+    .action-wait { --kind-color: #64748b; }
+    .action-screenshot { --kind-color: #94a3b8; }
+    .action-goto { --kind-color: #059669; }
+    .action-back, .action-forward, .action-reload { --kind-color: #0f766e; }
+    .action-final_answer { --kind-color: #db2777; }
+    .action-run_python, .action-shell { --kind-color: #d97706; }
+    .action-read_file, .action-write_file { --kind-color: #8b5cf6; }
+    .action-web_search { --kind-color: #059669; }
+    .action-mcp_tool { --kind-color: #7c3aed; }
+    .action-desktop_screenshot { --kind-color: #94a3b8; }
+    .action-desktop_click { --kind-color: #0284c7; }
+    .action-desktop_double_click { --kind-color: #0891b2; }
+    .action-desktop_scroll { --kind-color: #15803d; }
+    .action-desktop_move { --kind-color: #4f46e5; }
+    .action-desktop_drag { --kind-color: #dc2626; }
+    .action-desktop_type { --kind-color: #7c3aed; }
+    .action-desktop_keypress { --kind-color: #d97706; }
+    .action-desktop_launch_app { --kind-color: #0f766e; }
+    .action-desktop_pyautogui { --kind-color: #475569; }
+    .action-desktop_shell { --kind-color: #b45309; }
+    .action-desktop_wait { --kind-color: #64748b; }
+    .action-pyautogui_wait { --kind-color: #64748b; }
+    .action-pyautogui_click { --kind-color: #0284c7; }
+    .action-pyautogui_double_click { --kind-color: #0891b2; }
+    .action-pyautogui_drag { --kind-color: #dc2626; }
+    .action-pyautogui_move { --kind-color: #4f46e5; }
+    .action-pyautogui_type { --kind-color: #7c3aed; }
+    .action-pyautogui_keypress { --kind-color: #d97706; }
+    .action-pyautogui_hotkey { --kind-color: #d97706; }
+    .action-pyautogui_screenshot { --kind-color: #94a3b8; }
+    .action-pyautogui_script { --kind-color: #475569; }
+    .round-index {
+      position: sticky;
+      top: 3.9rem;
+      z-index: 4;
+      margin: 0 .75rem .55rem;
+      padding: .45rem;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, .95);
+      backdrop-filter: blur(10px);
+    }
+    .round-index-head {
+      display: flex;
+      justify-content: space-between;
+      gap: .7rem;
+      color: var(--muted);
+      font-size: .74rem;
+      margin: 0 .1rem .35rem;
+    }
+    .round-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .3rem .65rem;
+      color: var(--muted);
+      font-size: .7rem;
+      margin: 0 .15rem .4rem;
+    }
+    .round-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+    }
+    .round-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(4.05rem, 1fr));
+      gap: .2rem;
+      max-height: 6.4rem;
+      overflow: auto;
+      padding-right: .15rem;
+    }
+    .round-link {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: space-between;
+      gap: .25rem;
+      border: 1px solid color-mix(in srgb, var(--kind-color) 34%, var(--line));
+      border-left: 3px solid var(--kind-color, var(--accent));
+      border-radius: 6px;
+      padding: .2rem .3rem;
+      background: #fff;
+      color: var(--text);
+      font-size: .72rem;
+    }
+    .round-link:hover { background: color-mix(in srgb, var(--kind-color) 8%, white); }
+    .round-link strong { font-size: .72rem; }
+    .round-link span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+    }
+    .timeline { padding: 0 .75rem .75rem; }
+    .event {
+      --round-color: var(--kind-color, var(--accent));
+      scroll-margin-top: 15rem;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--line);
+      border-radius: 8px;
+      margin: 0 0 .55rem;
+      background: var(--panel);
+      overflow: hidden;
+    }
+    .event.interesting { border-left-color: var(--round-color, var(--accent)); }
+    .event-head {
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: .38rem .52rem;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--round-color, var(--accent)) 7%, white);
+    }
+    .event-type { color: var(--round-color, var(--accent)); font-weight: 750; }
+    .event-title { min-width: 5.8rem; }
+    .timestamp { color: var(--muted); font-size: .78rem; }
+    .event-body {
+      display: grid;
+      grid-template-columns: minmax(260px, 40%) minmax(320px, 1fr);
+      gap: .55rem;
+      padding: .5rem;
+    }
+    .screenshot {
+      position: relative;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      overflow: hidden;
+    }
+    .screenshot img {
+      display: block;
+      width: 100%;
+      max-height: 330px;
+      height: auto;
+      object-fit: contain;
+    }
     .marker {
       position: absolute;
       width: 20px;
@@ -215,39 +430,76 @@
       pointer-events: none;
     }
     .empty-shot {
-      min-height: 8rem;
+      min-height: 5rem;
       display: grid;
       place-items: center;
       color: var(--muted);
       border: 1px dashed var(--line);
-      border-radius: 12px;
-      background: rgba(0,0,0,.16);
+      border-radius: 7px;
+      background: var(--panel-2);
     }
     .details {
       min-width: 0;
-      background: rgba(0,0,0,.18);
+      background: #fff;
       border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: .8rem;
+      border-radius: 7px;
+      padding: .5rem;
     }
-    .thought { white-space: pre-wrap; margin: .4rem 0 .7rem; }
-    pre {
-      max-height: 24rem;
+    .round-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(7.8rem, 1fr));
+      gap: .28rem;
+      margin-bottom: .42rem;
+    }
+    .round-stat {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: .28rem .35rem;
+      background: var(--panel-2);
+      min-width: 0;
+    }
+    .round-stat span {
+      display: block;
+      color: var(--muted);
+      font-size: .66rem;
+    }
+    .round-stat strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: .76rem;
+    }
+    .event-note {
+      color: var(--muted);
+      font-size: .75rem;
+      margin-top: .35rem;
+    }
+    .thought {
+      white-space: pre-wrap;
+      margin: .22rem 0 .4rem;
+      max-height: 7.8rem;
       overflow: auto;
-      margin: .5rem 0 0;
-      padding: .75rem;
-      border-radius: 10px;
-      background: var(--code);
-      border: 1px solid #2b2e27;
-      color: #e9eadf;
-      font-size: .78rem;
     }
-    details { margin-top: .6rem; }
+    pre {
+      max-height: 12rem;
+      overflow: auto;
+      margin: .3rem 0 0;
+      padding: .5rem;
+      border-radius: 7px;
+      background: var(--code);
+      border: 1px solid var(--line);
+      color: #1f2937;
+      font-size: .74rem;
+    }
+    details { margin-top: .4rem; }
     summary { cursor: pointer; color: var(--accent); }
     .ok { color: var(--ok); }
     .bad { color: var(--bad); }
     @media (max-width: 900px) {
-      .run-head, .event { grid-template-columns: 1fr; }
+      .run-head, .event-body { grid-template-columns: 1fr; }
+      .triplet-grid { grid-template-columns: 1fr; }
+      .round-index { position: static; }
       main { padding: .75rem; }
     }
   </style>
@@ -264,171 +516,242 @@
       <h2>dv_most_fuel__gpt54__sandbox</h2>
       <div class="source">gpt54_datavoyager_smoke · task=datavoyager_most_fuel_efficient</div>
     </div>
-    <div>
+    <div class="run-badges">
       <span class="badge">model: gpt-5.4</span>
-      <span class="badge">tools: full_sandbox</span>
+      <span class="badge">mode: Full sandbox</span>
+      <span class="badge">allowed: GUI actions + web search, Python, shell, files, final_answer</span>
       <span class="badge">memory: none</span>
     </div>
   </div>
   <div class="meta-grid"><div class="metric"><span>score</span><strong class="">1.0</strong></div>
 <div class="metric"><span>success</span><strong class="ok">True</strong></div>
-<div class="metric"><span>steps</span><strong class="">8</strong></div>
-<div class="metric"><span>tool calls</span><strong class="">7</strong></div>
-<div class="metric"><span>duration ms</span><strong class="">72932</strong></div>
-<div class="metric"><span>tokens in</span><strong class="">26114</strong></div>
-<div class="metric"><span>tokens out</span><strong class="">458</strong></div></div>
-  <section class="tool-map">
-  <div class="tool-map-head">
-    <div class="tool-map-title">Tool / Action Timeline</div>
-    <div class="legend"><span class="kind-browser"><i class="dot"></i>browser</span>
-<span class="kind-code"><i class="dot"></i>code</span>
-<span class="kind-file"><i class="dot"></i>files</span>
-<span class="kind-web"><i class="dot"></i>web</span>
-<span class="kind-model"><i class="dot"></i>model</span>
-<span class="kind-screenshot"><i class="dot"></i>screenshot</span>
-<span class="kind-final"><i class="dot"></i>final</span>
-<span class="kind-validation"><i class="dot"></i>validation</span>
-<span class="kind-error"><i class="dot"></i>error</span></div>
-  </div>
-  <div class="tool-strip"><a class="tool-cell kind-other" href="#event-9de1e355-931d-4e99-ab7d-3b6a72d9a44b" title="session_boundary ">
-  <span class="tool-step">step 0</span>
-  <span class="tool-label">session_boundary</span>
-  <span class="tool-sub"></span>
-</a>
-<a class="tool-cell kind-screenshot" href="#event-3f92f108-f3f6-462e-88b4-b33e7da17927" title="screenshot https://vega.github.io/voyager2/">
-  <span class="tool-step">step 0</span>
-  <span class="tool-label">screenshot</span>
-  <span class="tool-sub">https://vega.github.io/voyager2/</span>
-</a>
-<a class="tool-cell kind-model" href="#event-eb865e9a-7e8c-4b6e-a6fe-7a9c0d9c902e" title="model click">
-  <span class="tool-step">step 1</span>
-  <span class="tool-label">model</span>
-  <span class="tool-sub">click</span>
-</a>
-<a class="tool-cell kind-browser" href="#event-dafbefe6-89da-4e6e-9dbc-9351a0f6a227" title="browser.click click">
-  <span class="tool-step">step 1</span>
-  <span class="tool-label">browser.click</span>
-  <span class="tool-sub">click</span>
-</a>
-<a class="tool-cell kind-screenshot" href="#event-02be902e-a709-4ac7-9f16-4384a09f96c1" title="screenshot https://vega.github.io/voyager2/">
-  <span class="tool-step">step 1</span>
-  <span class="tool-label">screenshot</span>
-  <span class="tool-sub">https://vega.github.io/voyager2/</span>
-</a>
-<a class="tool-cell kind-model" href="#event-3509c936-0c38-4900-bda8-8a6c5cc00506" title="model double_click">
-  <span class="tool-step">step 2</span>
-  <span class="tool-label">model</span>
-  <span class="tool-sub">double_click</span>
-</a>
-<a class="tool-cell kind-browser" href="#event-f81b4102-380a-455d-b4a0-8c4476469ebd" title="browser.double_click double_click">
-  <span class="tool-step">step 2</span>
-  <span class="tool-label">browser.double_click</span>
-  <span class="tool-sub">double_click</span>
-</a>
-<a class="tool-cell kind-screenshot" href="#event-ea7ec61b-1161-41d2-89b7-93d709cbd7d2" title="screenshot https://vega.github.io/voyager2/">
-  <span class="tool-step">step 2</span>
-  <span class="tool-label">screenshot</span>
-  <span class="tool-sub">https://vega.github.io/voyager2/</span>
-</a>
-<a class="tool-cell kind-model" href="#event-e2771f23-c3e2-4d9a-afac-ebc9ed37962c" title="model click">
-  <span class="tool-step">step 3</span>
-  <span class="tool-label">model</span>
-  <span class="tool-sub">click</span>
-</a>
-<a class="tool-cell kind-browser" href="#event-80a1f6c1-e032-4c45-9f34-d04f5fb3a47a" title="browser.click click">
-  <span class="tool-step">step 3</span>
-  <span class="tool-label">browser.click</span>
-  <span class="tool-sub">click</span>
-</a>
-<a class="tool-cell kind-screenshot" href="#event-cfdcb179-e731-49d2-bce8-ca7fa265ad8c" title="screenshot https://vega.github.io/voyager2/">
-  <span class="tool-step">step 3</span>
-  <span class="tool-label">screenshot</span>
-  <span class="tool-sub">https://vega.github.io/voyager2/</span>
-</a>
-<a class="tool-cell kind-model" href="#event-a79c4f32-346c-4150-bc92-386a156846f4" title="model click">
-  <span class="tool-step">step 4</span>
-  <span class="tool-label">model</span>
-  <span class="tool-sub">click</span>
-</a>
-<a class="tool-cell kind-browser" href="#event-34e9d072-ab5a-4e7e-9e4b-3a2a6ce1c1ec" title="browser.click click">
-  <span class="tool-step">step 4</span>
-  <span class="tool-label">browser.click</span>
-  <span class="tool-sub">click</span>
-</a>
-<a class="tool-cell kind-screenshot" href="#event-94969b71-f9e2-4040-983c-4d883c80aa72" title="screenshot https://vega.github.io/voyager2/">
-  <span class="tool-step">step 4</span>
-  <span class="tool-label">screenshot</span>
-  <span class="tool-sub">https://vega.github.io/voyager2/</span>
-</a>
-<a class="tool-cell kind-model" href="#event-ac4de62d-f13a-4099-8979-bf901130feb0" title="model click">
-  <span class="tool-step">step 5</span>
-  <span class="tool-label">model</span>
-  <span class="tool-sub">click</span>
-</a>
-<a class="tool-cell kind-browser" href="#event-7bbb5098-5092-4aa9-86d9-f65d49186cf3" title="browser.click click">
-  <span class="tool-step">step 5</span>
-  <span class="tool-label">browser.click</span>
-  <span class="tool-sub">click</span>
-</a>
-<a class="tool-cell kind-screenshot" href="#event-4f1faeba-724d-4420-8628-69e3668d9539" title="screenshot https://vega.github.io/voyager2/">
-  <span class="tool-step">step 5</span>
-  <span class="tool-label">screenshot</span>
-  <span class="tool-sub">https://vega.github.io/voyager2/</span>
-</a>
-<a class="tool-cell kind-model" href="#event-73312c85-70b6-4137-8249-fb0664877841" title="model click">
-  <span class="tool-step">step 6</span>
-  <span class="tool-label">model</span>
-  <span class="tool-sub">click</span>
-</a>
-<a class="tool-cell kind-browser" href="#event-e45c6ce7-44e2-47ae-8095-d9c55a212ff2" title="browser.click click">
-  <span class="tool-step">step 6</span>
-  <span class="tool-label">browser.click</span>
-  <span class="tool-sub">click</span>
-</a>
-<a class="tool-cell kind-screenshot" href="#event-ada5b8e8-8a16-457b-954f-f4b8b9a60d8a" title="screenshot https://vega.github.io/voyager2/">
-  <span class="tool-step">step 6</span>
-  <span class="tool-label">screenshot</span>
-  <span class="tool-sub">https://vega.github.io/voyager2/</span>
-</a>
-<a class="tool-cell kind-model" href="#event-50a26175-4a0a-4c5e-b014-425bf33611ed" title="model shell">
-  <span class="tool-step">step 7</span>
-  <span class="tool-label">model</span>
-  <span class="tool-sub">shell</span>
-</a>
-<a class="tool-cell kind-code" href="#event-167939b6-a261-4767-ba51-2584677d33d3" title="code.shell python - &lt;&lt;&#x27;PY&#x27;
-import pandas as pd
-url=&#x27;…">
-  <span class="tool-step">step 7</span>
-  <span class="tool-label">code.shell</span>
-  <span class="tool-sub">python - &lt;&lt;&#x27;PY&#x27;
-import pandas as pd
-url=&#x27;…</span>
-</a>
-<a class="tool-cell kind-model" href="#event-eed87087-93b8-4d9b-89f7-115b70b88342" title="model final_answer">
-  <span class="tool-step">step 8</span>
-  <span class="tool-label">model</span>
-  <span class="tool-sub">final_answer</span>
-</a>
-<a class="tool-cell kind-validation" href="#event-eec6c6fc-6ccb-46ca-a7ae-f0b22b8f89d0" title="validation success=True">
-  <span class="tool-step">step 1</span>
-  <span class="tool-label">validation</span>
-  <span class="tool-sub">success=True</span>
-</a></div>
-</section>
+<div class="metric"><span>rounds</span><strong class="">8</strong></div>
+<div class="metric"><span>executed actions</span><strong class="">7</strong></div>
+<div class="metric"><span>viewpoint</span><strong class="">browser_viewport</strong></div>
+<div class="metric"><span>frame</span><strong class="">browser_viewport</strong></div>
+<div class="metric"><span>size</span><strong class="">1600x900</strong></div>
+<div class="metric"><span>duration</span><strong class="">1m 13s</strong></div>
+<div class="metric"><span>tokens</span><strong class="">26.1k in / 458 out</strong></div></div>
   <section class="goal"><strong>Goal</strong>
 What is the most fuel-efficient car in the dataset?</section>
-  <div class="timeline"><article class="event interesting" id="event-eb865e9a-7e8c-4b6e-a6fe-7a9c0d9c902e">
-  <div>
-    <div class="event-head">
-      <span class="event-type">round 1</span>
-      <span class="badge">click</span>
-      <span class="badge">browser.click</span>
-      <span class="timestamp">2026-06-29T08:53:19.268878Z</span>
-    </div>
-    <div class="screenshot"><img src="screenshots/step_001.png" loading="lazy"><span class="marker" style="left:22.562%; top:50.333%"></span></div>
+  <section class="round-index">
+  <div class="round-index-head">
+    <strong>Rounds</strong>
+    <span>8 model step(s)</span>
   </div>
-  <div class="details"><strong>Reasoning</strong><div class="thought">Use DataVoyager&#x27;s wildcard query input to ask for the most fuel-efficient car.</div>
-<strong>Actions</strong><pre>click | x=361.0 y=453.0</pre>
+  <div class="round-legend"><span class="action-click"><i class="dot"></i>browser.click</span>
+<span class="action-double_click"><i class="dot"></i>browser.double_click</span>
+<span class="action-shell"><i class="dot"></i>code.shell</span>
+<span class="action-final_answer"><i class="dot"></i>task.final_answer</span></div>
+  <div class="round-links"><a class="round-link action-click" href="#event-eb865e9a-7e8c-4b6e-a6fe-7a9c0d9c902e" title="browser.click">
+  <strong>1</strong>
+  <span>browser.click</span>
+</a>
+<a class="round-link action-double_click" href="#event-3509c936-0c38-4900-bda8-8a6c5cc00506" title="browser.double_click">
+  <strong>2</strong>
+  <span>browser.double_click</span>
+</a>
+<a class="round-link action-click" href="#event-e2771f23-c3e2-4d9a-afac-ebc9ed37962c" title="browser.click">
+  <strong>3</strong>
+  <span>browser.click</span>
+</a>
+<a class="round-link action-click" href="#event-a79c4f32-346c-4150-bc92-386a156846f4" title="browser.click">
+  <strong>4</strong>
+  <span>browser.click</span>
+</a>
+<a class="round-link action-click" href="#event-ac4de62d-f13a-4099-8979-bf901130feb0" title="browser.click">
+  <strong>5</strong>
+  <span>browser.click</span>
+</a>
+<a class="round-link action-click" href="#event-73312c85-70b6-4137-8249-fb0664877841" title="browser.click">
+  <strong>6</strong>
+  <span>browser.click</span>
+</a>
+<a class="round-link action-shell" href="#event-50a26175-4a0a-4c5e-b014-425bf33611ed" title="code.shell + browser.screenshot">
+  <strong>7</strong>
+  <span>code.shell + browser.screen…</span>
+</a>
+<a class="round-link action-final_answer" href="#event-eed87087-93b8-4d9b-89f7-115b70b88342" title="task.final_answer">
+  <strong>8</strong>
+  <span>task.final_answer</span>
+</a></div>
+</section>
+  <details class="tool-map">
+  <summary>Raw Step Log <span>24 records grouped into observation / thought / action across 8 round(s)</span></summary>
+  <div class="tool-map-head">
+    <div>
+      <div class="tool-map-title">Raw Step Log</div>
+      <div class="event-note">Each row groups the raw records for one step: observed screen state, model thought, then requested/executed action.</div>
+    </div>
+  </div>
+  <section id="cc-analysis">
+<style>
+ #cc-analysis { background:var(--panel); border:1px solid var(--line-strong); border-radius:12px;
+   margin:18px 0; padding:16px 20px; color:var(--text); }
+ #cc-analysis > h2 { margin:0 0 2px; font-size:15px; color:var(--accent); letter-spacing:.01em; }
+ #cc-analysis h3 { margin:14px 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+ #cc-analysis .cc-sub, #cc-analysis .cc-mut { color:var(--muted); font-weight:400; }
+ #cc-analysis .cc-sub { font-size:12px; margin-top:3px; }
+ #cc-analysis .cc-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+ #cc-analysis .cc-line { font-size:13px; margin:3px 0; }
+ #cc-analysis .cc-badge { background:var(--code); border:1px solid var(--line); border-radius:5px;
+   padding:1px 6px; font-size:11px; color:var(--text); }
+ #cc-analysis .cc-tbl { border-collapse:collapse; width:100%; font-size:12px; margin-bottom:4px; }
+ #cc-analysis .cc-tbl th { background:var(--code); color:var(--muted); font-weight:600; text-align:left; }
+ #cc-analysis .cc-tbl th, #cc-analysis .cc-tbl td { border:1px solid var(--line); padding:4px 7px; vertical-align:top; }
+ #cc-analysis .cc-wf { margin:4px 0; padding-left:20px; font-size:13px; }
+ #cc-analysis .cc-wf li { margin:2px 0; }
+ @media (max-width:720px) { #cc-analysis .cc-grid { grid-template-columns:1fr; } }
+</style>
+<h2>Behavior analysis</h2>
+<div class="cc-line"><b>gpt-5.4</b> · tier <span class='cc-badge'>full_sandbox</span> · What is the most fuel-efficient car in the dataset?<div class='cc-sub'>success=True · answer=&ldquo;mazda glc&rdquo; · expected=&ldquo;Mazda GLC&rdquo;</div></div>
+<div class="cc-grid">
+  <div><h3>Judge · result rubric</h3><div class='cc-line'>completion &nbsp;<b>1.0</b> <span class='cc-mut'>— The agent produced a single final answer identifying the most fuel-efficient car.</span></div><div class='cc-line'>correctness &nbsp;<b>1.0</b> <span class='cc-mut'>— Answer &#x27;mazda glc&#x27; matches expected &#x27;Mazda GLC&#x27; (case-insensitive). The Python shell query returned </span></div><div class='cc-line'>authenticity &nbsp;<b style='color:#d97706'>suspect</b><span class='cc-mut'> — The answer-bearing computation (step 7 shell + step 8 answer) has no screenshots. The result is consistent with the real</span></div><div class='cc-line'>final <b>1.0</b> · conf medium · agrees w/ verifier <b>True</b></div></div>
+  <div><h3>Codebook · behavior episodes</h3><table class='cc-tbl'><thead><tr><th>behavior</th><th>steps</th><th>conf</th><th>evidence</th></tr></thead><tbody><tr><td><b>A3</b> deadend_loop</td><td>[1, 2, 3, 4, 5, 6]</td><td>high</td><td class='cc-mut'>The actor clicks at marginally varying coordinates around the same &#x27;wildcard any&#x27; input area six consecutive times (e.g., reasoning at step </td></tr><tr><td><b>A2</b> multi_approach</td><td>[1, 2, 3, 4, 5, 6, 7]</td><td>high</td><td class='cc-mut'>After six near-identical clicks on the DataVoyager wildcard input produce no observable change, the actor abandons the UI entirely at step 7 and switc</td></tr><tr><td><b>E2</b> prefer_code_over_ui</td><td>[7]</td><td>high</td><td class='cc-mut'>At step 7 the actor writes and runs `python - &lt;&lt;&#x27;PY&#x27;` with `pd.read_json(url)` to directly fetch and aggregate the Vega cars dataset, </td></tr></tbody></table><div class='cc-line'>C1 verify_before_finish: <b style='color:var(--bad)'>ABSENT</b><span class='cc-mut'> — After the Python script returns the result at step 7, the actor immediately issues the final answer at step 8 (&#x27;mazda glc&#x27;) with n</span></div></div>
+</div>
+<h3>Procedure analysis · workflow segments</h3><ol class='cc-wf'><li>Start session <span class='cc-mut'>[raw 0]</span></li><li>Repeatedly tried to focus the wildcard query input field in DataVoyager to enter a fuel efficiency query <span class='cc-mut'>[raw 1-6]</span></li><li>Directly query the Vega cars dataset via Python to find the car with the highest Miles_per_Gallon <span class='cc-mut'>[raw 7]</span></li><li>Report the answer: mazda glc (46.6 MPG) <span class='cc-mut'>[raw 8]</span></li></ol>
+</section>
+
+<div class="step-log"><section class="step-triplet kind-model" id="step-0">
+  <div class="step-triplet-head">
+    <strong>Step 0</strong>
+    <a class="badge" href="#event-3f92f108-f3f6-462e-88b4-b33e7da17927">round card</a>
+    <span class="badge">model</span>
+    <span class="source">2 raw record(s)</span>
+  </div>
+  <div class="triplet-grid">
+    <section class="triplet-cell"><h4>Observation</h4><img class="triplet-shot" src="screenshots/step_000.png" loading="lazy"><div class="triplet-meta">url: https://vega.github.io/voyager2/ | kind: post_action | viewpoint: browser_viewport | frame: browser_viewport | size: 1600x900</div></section>
+    <section class="triplet-cell"><h4>Thought</h4><p>No model thought for this step.</p></section>
+    <section class="triplet-cell"><h4>Action</h4><p>No action recorded.</p></section>
+  </div>
+</section>
+<section class="step-triplet action-click" id="step-1">
+  <div class="step-triplet-head">
+    <strong>Step 1</strong>
+    <a class="badge" href="#event-eb865e9a-7e8c-4b6e-a6fe-7a9c0d9c902e">round card</a>
+    <span class="badge">browser.click</span>
+    <span class="source">4 raw record(s)</span>
+  </div>
+  <div class="triplet-grid">
+    <section class="triplet-cell"><h4>Observation</h4><img class="triplet-shot" src="screenshots/step_001.png" loading="lazy"><div class="triplet-meta">url: https://vega.github.io/voyager2/ | kind: post_action | viewpoint: browser_viewport | frame: browser_viewport | size: 1600x900</div></section>
+    <section class="triplet-cell"><h4>Thought</h4><p>Use DataVoyager&#x27;s wildcard query input to ask for the most fuel-efficient car.</p></section>
+    <section class="triplet-cell"><h4>Action</h4><pre>browser.click | x=361.0 y=453.0</pre><div class="triplet-meta">execution: executed</div><div class="triplet-meta">validation: True | answer: mazda glc | message: contains match</div></section>
+  </div>
+</section>
+<section class="step-triplet action-double_click" id="step-2">
+  <div class="step-triplet-head">
+    <strong>Step 2</strong>
+    <a class="badge" href="#event-3509c936-0c38-4900-bda8-8a6c5cc00506">round card</a>
+    <span class="badge">browser.double_click</span>
+    <span class="source">3 raw record(s)</span>
+  </div>
+  <div class="triplet-grid">
+    <section class="triplet-cell"><h4>Observation</h4><img class="triplet-shot" src="screenshots/step_002.png" loading="lazy"><div class="triplet-meta">url: https://vega.github.io/voyager2/ | kind: post_action | viewpoint: browser_viewport | frame: browser_viewport | size: 1600x900</div></section>
+    <section class="triplet-cell"><h4>Thought</h4><p>Activate the wildcard input field to type a query about fuel efficiency.</p></section>
+    <section class="triplet-cell"><h4>Action</h4><pre>browser.double_click | x=360.0 y=410.0</pre><div class="triplet-meta">execution: executed</div></section>
+  </div>
+</section>
+<section class="step-triplet action-click" id="step-3">
+  <div class="step-triplet-head">
+    <strong>Step 3</strong>
+    <a class="badge" href="#event-e2771f23-c3e2-4d9a-afac-ebc9ed37962c">round card</a>
+    <span class="badge">browser.click</span>
+    <span class="source">3 raw record(s)</span>
+  </div>
+  <div class="triplet-grid">
+    <section class="triplet-cell"><h4>Observation</h4><img class="triplet-shot" src="screenshots/step_003.png" loading="lazy"><div class="triplet-meta">url: https://vega.github.io/voyager2/ | kind: post_action | viewpoint: browser_viewport | frame: browser_viewport | size: 1600x900</div></section>
+    <section class="triplet-cell"><h4>Thought</h4><p>Focus the wildcard &#x27;any&#x27; input box so I can type a query to identify the most fuel-efficient car.</p></section>
+    <section class="triplet-cell"><h4>Action</h4><pre>browser.click | x=318.0 y=410.0</pre><div class="triplet-meta">execution: executed</div></section>
+  </div>
+</section>
+<section class="step-triplet action-click" id="step-4">
+  <div class="step-triplet-head">
+    <strong>Step 4</strong>
+    <a class="badge" href="#event-a79c4f32-346c-4150-bc92-386a156846f4">round card</a>
+    <span class="badge">browser.click</span>
+    <span class="source">3 raw record(s)</span>
+  </div>
+  <div class="triplet-grid">
+    <section class="triplet-cell"><h4>Observation</h4><img class="triplet-shot" src="screenshots/step_004.png" loading="lazy"><div class="triplet-meta">url: https://vega.github.io/voyager2/ | kind: post_action | viewpoint: browser_viewport | frame: browser_viewport | size: 1600x900</div></section>
+    <section class="triplet-cell"><h4>Thought</h4><p>Focus the wildcard input text box to enter a query for fuel efficiency.</p></section>
+    <section class="triplet-cell"><h4>Action</h4><pre>browser.click | x=296.0 y=410.0</pre><div class="triplet-meta">execution: executed</div></section>
+  </div>
+</section>
+<section class="step-triplet action-click" id="step-5">
+  <div class="step-triplet-head">
+    <strong>Step 5</strong>
+    <a class="badge" href="#event-ac4de62d-f13a-4099-8979-bf901130feb0">round card</a>
+    <span class="badge">browser.click</span>
+    <span class="source">3 raw record(s)</span>
+  </div>
+  <div class="triplet-grid">
+    <section class="triplet-cell"><h4>Observation</h4><img class="triplet-shot" src="screenshots/step_005.png" loading="lazy"><div class="triplet-meta">url: https://vega.github.io/voyager2/ | kind: post_action | viewpoint: browser_viewport | frame: browser_viewport | size: 1600x900</div></section>
+    <section class="triplet-cell"><h4>Thought</h4><p>Focus the wildcard input box to enter a natural language query.</p></section>
+    <section class="triplet-cell"><h4>Action</h4><pre>browser.click | x=312.0 y=409.0</pre><div class="triplet-meta">execution: executed</div></section>
+  </div>
+</section>
+<section class="step-triplet action-click" id="step-6">
+  <div class="step-triplet-head">
+    <strong>Step 6</strong>
+    <a class="badge" href="#event-73312c85-70b6-4137-8249-fb0664877841">round card</a>
+    <span class="badge">browser.click</span>
+    <span class="source">3 raw record(s)</span>
+  </div>
+  <div class="triplet-grid">
+    <section class="triplet-cell"><h4>Observation</h4><img class="triplet-shot" src="screenshots/step_006.png" loading="lazy"><div class="triplet-meta">url: https://vega.github.io/voyager2/ | kind: post_action | viewpoint: browser_viewport | frame: browser_viewport | size: 1600x900</div></section>
+    <section class="triplet-cell"><h4>Thought</h4><p>Focus the wildcard &#x27;any&#x27; input field to enter a query or field for fuel efficiency.</p></section>
+    <section class="triplet-cell"><h4>Action</h4><pre>browser.click | x=337.0 y=410.0</pre><div class="triplet-meta">execution: executed</div></section>
+  </div>
+</section>
+<section class="step-triplet action-shell" id="step-7">
+  <div class="step-triplet-head">
+    <strong>Step 7</strong>
+    <a class="badge" href="#event-50a26175-4a0a-4c5e-b014-425bf33611ed">round card</a>
+    <span class="badge">code.shell + browser.screenshot</span>
+    <span class="source">2 raw record(s)</span>
+  </div>
+  <div class="triplet-grid">
+    <section class="triplet-cell"><h4>Observation</h4><p>No screenshot record for this step.</p></section>
+    <section class="triplet-cell"><h4>Thought</h4><p>Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.</p></section>
+    <section class="triplet-cell"><h4>Action</h4><pre>code.shell | cmd=python - &lt;&lt;&#x27;PY&#x27;
+import pandas as pd
+url=&#x27;https://raw.githubusercontent.com/vega/vega-datasets/maste…
+browser.screenshot</pre><div class="triplet-meta">execution: executed</div></section>
+  </div>
+</section>
+<section class="step-triplet action-final_answer" id="step-8">
+  <div class="step-triplet-head">
+    <strong>Step 8</strong>
+    <a class="badge" href="#event-eed87087-93b8-4d9b-89f7-115b70b88342">round card</a>
+    <span class="badge">task.final_answer</span>
+    <span class="source">1 raw record(s)</span>
+  </div>
+  <div class="triplet-grid">
+    <section class="triplet-cell"><h4>Observation</h4><p>No screenshot record for this step.</p></section>
+    <section class="triplet-cell"><h4>Thought</h4><p>Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.</p></section>
+    <section class="triplet-cell"><h4>Action</h4><pre>task.final_answer | answer=mazda glc</pre><div class="triplet-meta">execution: not executed in this step</div></section>
+  </div>
+</section></div>
+</details>
+  <div class="timeline"><article class="event interesting action-click" id="event-eb865e9a-7e8c-4b6e-a6fe-7a9c0d9c902e">
+  <div class="event-head">
+    <span class="event-type event-title">Round 1</span>
+    <span class="badge">browser.click</span>
+
+    <span class="timestamp">2026-06-29T08:53:19.268878Z</span>
+  </div>
+  <div class="event-body">
+    <div>
+    <div class="screenshot"><img src="screenshots/step_001.png" loading="lazy"><span class="marker" style="left:22.562%; top:50.333%"></span></div>
+    </div>
+    <div class="details"><section class="round-summary"><div class="round-stat"><span>action</span><strong>browser.click</strong></div>
+<div class="round-stat"><span>first target</span><strong>browser.click | x=361.0 y=453.0</strong></div>
+<div class="round-stat"><span>executed actions</span><strong>1</strong></div>
+<div class="round-stat"><span>tool calls</span><strong>0</strong></div>
+<div class="round-stat"><span>warnings</span><strong>0</strong></div>
+<div class="round-stat"><span>errors</span><strong>0</strong></div></section>
+<strong>Reasoning</strong><div class="thought">Use DataVoyager&#x27;s wildcard query input to ask for the most fuel-efficient car.</div>
+<strong>Actions</strong><pre>browser.click | x=361.0 y=453.0</pre>
 <details><summary>Raw round events</summary><pre>{
   &quot;model_event&quot;: {
     &quot;event_id&quot;: &quot;eb865e9a-7e8c-4b6e-a6fe-7a9c0d9c902e&quot;,
@@ -747,19 +1070,27 @@ What is the most fuel-efficient car in the dataset?</section>
   &quot;tool_events&quot;: [],
   &quot;intervention_events&quot;: []
 }</pre></details></div>
-</article>
-<article class="event interesting" id="event-3509c936-0c38-4900-bda8-8a6c5cc00506">
-  <div>
-    <div class="event-head">
-      <span class="event-type">round 2</span>
-      <span class="badge">double_click</span>
-      <span class="badge">browser.double_click</span>
-      <span class="timestamp">2026-06-29T08:53:23.319702Z</span>
-    </div>
-    <div class="screenshot"><img src="screenshots/step_002.png" loading="lazy"><span class="marker" style="left:22.500%; top:45.556%"></span></div>
   </div>
-  <div class="details"><strong>Reasoning</strong><div class="thought">Activate the wildcard input field to type a query about fuel efficiency.</div>
-<strong>Actions</strong><pre>double_click | x=360.0 y=410.0</pre>
+</article>
+<article class="event interesting action-double_click" id="event-3509c936-0c38-4900-bda8-8a6c5cc00506">
+  <div class="event-head">
+    <span class="event-type event-title">Round 2</span>
+    <span class="badge">browser.double_click</span>
+
+    <span class="timestamp">2026-06-29T08:53:23.319702Z</span>
+  </div>
+  <div class="event-body">
+    <div>
+    <div class="screenshot"><img src="screenshots/step_002.png" loading="lazy"><span class="marker" style="left:22.500%; top:45.556%"></span></div>
+    </div>
+    <div class="details"><section class="round-summary"><div class="round-stat"><span>action</span><strong>browser.double_click</strong></div>
+<div class="round-stat"><span>first target</span><strong>browser.double_click | x=360.0 y=410.0</strong></div>
+<div class="round-stat"><span>executed actions</span><strong>1</strong></div>
+<div class="round-stat"><span>tool calls</span><strong>0</strong></div>
+<div class="round-stat"><span>warnings</span><strong>0</strong></div>
+<div class="round-stat"><span>errors</span><strong>0</strong></div></section>
+<strong>Reasoning</strong><div class="thought">Activate the wildcard input field to type a query about fuel efficiency.</div>
+<strong>Actions</strong><pre>browser.double_click | x=360.0 y=410.0</pre>
 <details><summary>Raw round events</summary><pre>{
   &quot;model_event&quot;: {
     &quot;event_id&quot;: &quot;3509c936-0c38-4900-bda8-8a6c5cc00506&quot;,
@@ -1078,19 +1409,27 @@ What is the most fuel-efficient car in the dataset?</section>
   &quot;tool_events&quot;: [],
   &quot;intervention_events&quot;: []
 }</pre></details></div>
-</article>
-<article class="event interesting" id="event-e2771f23-c3e2-4d9a-afac-ebc9ed37962c">
-  <div>
-    <div class="event-head">
-      <span class="event-type">round 3</span>
-      <span class="badge">click</span>
-      <span class="badge">browser.click</span>
-      <span class="timestamp">2026-06-29T08:53:26.187472Z</span>
-    </div>
-    <div class="screenshot"><img src="screenshots/step_003.png" loading="lazy"><span class="marker" style="left:19.875%; top:45.556%"></span></div>
   </div>
-  <div class="details"><strong>Reasoning</strong><div class="thought">Focus the wildcard &#x27;any&#x27; input box so I can type a query to identify the most fuel-efficient car.</div>
-<strong>Actions</strong><pre>click | x=318.0 y=410.0</pre>
+</article>
+<article class="event interesting action-click" id="event-e2771f23-c3e2-4d9a-afac-ebc9ed37962c">
+  <div class="event-head">
+    <span class="event-type event-title">Round 3</span>
+    <span class="badge">browser.click</span>
+
+    <span class="timestamp">2026-06-29T08:53:26.187472Z</span>
+  </div>
+  <div class="event-body">
+    <div>
+    <div class="screenshot"><img src="screenshots/step_003.png" loading="lazy"><span class="marker" style="left:19.875%; top:45.556%"></span></div>
+    </div>
+    <div class="details"><section class="round-summary"><div class="round-stat"><span>action</span><strong>browser.click</strong></div>
+<div class="round-stat"><span>first target</span><strong>browser.click | x=318.0 y=410.0</strong></div>
+<div class="round-stat"><span>executed actions</span><strong>1</strong></div>
+<div class="round-stat"><span>tool calls</span><strong>0</strong></div>
+<div class="round-stat"><span>warnings</span><strong>0</strong></div>
+<div class="round-stat"><span>errors</span><strong>0</strong></div></section>
+<strong>Reasoning</strong><div class="thought">Focus the wildcard &#x27;any&#x27; input box so I can type a query to identify the most fuel-efficient car.</div>
+<strong>Actions</strong><pre>browser.click | x=318.0 y=410.0</pre>
 <details><summary>Raw round events</summary><pre>{
   &quot;model_event&quot;: {
     &quot;event_id&quot;: &quot;e2771f23-c3e2-4d9a-afac-ebc9ed37962c&quot;,
@@ -1409,19 +1748,27 @@ What is the most fuel-efficient car in the dataset?</section>
   &quot;tool_events&quot;: [],
   &quot;intervention_events&quot;: []
 }</pre></details></div>
-</article>
-<article class="event interesting" id="event-a79c4f32-346c-4150-bc92-386a156846f4">
-  <div>
-    <div class="event-head">
-      <span class="event-type">round 4</span>
-      <span class="badge">click</span>
-      <span class="badge">browser.click</span>
-      <span class="timestamp">2026-06-29T08:53:28.414217Z</span>
-    </div>
-    <div class="screenshot"><img src="screenshots/step_004.png" loading="lazy"><span class="marker" style="left:18.500%; top:45.556%"></span></div>
   </div>
-  <div class="details"><strong>Reasoning</strong><div class="thought">Focus the wildcard input text box to enter a query for fuel efficiency.</div>
-<strong>Actions</strong><pre>click | x=296.0 y=410.0</pre>
+</article>
+<article class="event interesting action-click" id="event-a79c4f32-346c-4150-bc92-386a156846f4">
+  <div class="event-head">
+    <span class="event-type event-title">Round 4</span>
+    <span class="badge">browser.click</span>
+
+    <span class="timestamp">2026-06-29T08:53:28.414217Z</span>
+  </div>
+  <div class="event-body">
+    <div>
+    <div class="screenshot"><img src="screenshots/step_004.png" loading="lazy"><span class="marker" style="left:18.500%; top:45.556%"></span></div>
+    </div>
+    <div class="details"><section class="round-summary"><div class="round-stat"><span>action</span><strong>browser.click</strong></div>
+<div class="round-stat"><span>first target</span><strong>browser.click | x=296.0 y=410.0</strong></div>
+<div class="round-stat"><span>executed actions</span><strong>1</strong></div>
+<div class="round-stat"><span>tool calls</span><strong>0</strong></div>
+<div class="round-stat"><span>warnings</span><strong>0</strong></div>
+<div class="round-stat"><span>errors</span><strong>0</strong></div></section>
+<strong>Reasoning</strong><div class="thought">Focus the wildcard input text box to enter a query for fuel efficiency.</div>
+<strong>Actions</strong><pre>browser.click | x=296.0 y=410.0</pre>
 <details><summary>Raw round events</summary><pre>{
   &quot;model_event&quot;: {
     &quot;event_id&quot;: &quot;a79c4f32-346c-4150-bc92-386a156846f4&quot;,
@@ -1740,19 +2087,27 @@ What is the most fuel-efficient car in the dataset?</section>
   &quot;tool_events&quot;: [],
   &quot;intervention_events&quot;: []
 }</pre></details></div>
-</article>
-<article class="event interesting" id="event-ac4de62d-f13a-4099-8979-bf901130feb0">
-  <div>
-    <div class="event-head">
-      <span class="event-type">round 5</span>
-      <span class="badge">click</span>
-      <span class="badge">browser.click</span>
-      <span class="timestamp">2026-06-29T08:53:30.356566Z</span>
-    </div>
-    <div class="screenshot"><img src="screenshots/step_005.png" loading="lazy"><span class="marker" style="left:19.500%; top:45.444%"></span></div>
   </div>
-  <div class="details"><strong>Reasoning</strong><div class="thought">Focus the wildcard input box to enter a natural language query.</div>
-<strong>Actions</strong><pre>click | x=312.0 y=409.0</pre>
+</article>
+<article class="event interesting action-click" id="event-ac4de62d-f13a-4099-8979-bf901130feb0">
+  <div class="event-head">
+    <span class="event-type event-title">Round 5</span>
+    <span class="badge">browser.click</span>
+
+    <span class="timestamp">2026-06-29T08:53:30.356566Z</span>
+  </div>
+  <div class="event-body">
+    <div>
+    <div class="screenshot"><img src="screenshots/step_005.png" loading="lazy"><span class="marker" style="left:19.500%; top:45.444%"></span></div>
+    </div>
+    <div class="details"><section class="round-summary"><div class="round-stat"><span>action</span><strong>browser.click</strong></div>
+<div class="round-stat"><span>first target</span><strong>browser.click | x=312.0 y=409.0</strong></div>
+<div class="round-stat"><span>executed actions</span><strong>1</strong></div>
+<div class="round-stat"><span>tool calls</span><strong>0</strong></div>
+<div class="round-stat"><span>warnings</span><strong>0</strong></div>
+<div class="round-stat"><span>errors</span><strong>0</strong></div></section>
+<strong>Reasoning</strong><div class="thought">Focus the wildcard input box to enter a natural language query.</div>
+<strong>Actions</strong><pre>browser.click | x=312.0 y=409.0</pre>
 <details><summary>Raw round events</summary><pre>{
   &quot;model_event&quot;: {
     &quot;event_id&quot;: &quot;ac4de62d-f13a-4099-8979-bf901130feb0&quot;,
@@ -2071,19 +2426,27 @@ What is the most fuel-efficient car in the dataset?</section>
   &quot;tool_events&quot;: [],
   &quot;intervention_events&quot;: []
 }</pre></details></div>
-</article>
-<article class="event interesting" id="event-73312c85-70b6-4137-8249-fb0664877841">
-  <div>
-    <div class="event-head">
-      <span class="event-type">round 6</span>
-      <span class="badge">click</span>
-      <span class="badge">browser.click</span>
-      <span class="timestamp">2026-06-29T08:53:32.652672Z</span>
-    </div>
-    <div class="screenshot"><img src="screenshots/step_006.png" loading="lazy"><span class="marker" style="left:21.062%; top:45.556%"></span></div>
   </div>
-  <div class="details"><strong>Reasoning</strong><div class="thought">Focus the wildcard &#x27;any&#x27; input field to enter a query or field for fuel efficiency.</div>
-<strong>Actions</strong><pre>click | x=337.0 y=410.0</pre>
+</article>
+<article class="event interesting action-click" id="event-73312c85-70b6-4137-8249-fb0664877841">
+  <div class="event-head">
+    <span class="event-type event-title">Round 6</span>
+    <span class="badge">browser.click</span>
+
+    <span class="timestamp">2026-06-29T08:53:32.652672Z</span>
+  </div>
+  <div class="event-body">
+    <div>
+    <div class="screenshot"><img src="screenshots/step_006.png" loading="lazy"><span class="marker" style="left:21.062%; top:45.556%"></span></div>
+    </div>
+    <div class="details"><section class="round-summary"><div class="round-stat"><span>action</span><strong>browser.click</strong></div>
+<div class="round-stat"><span>first target</span><strong>browser.click | x=337.0 y=410.0</strong></div>
+<div class="round-stat"><span>executed actions</span><strong>1</strong></div>
+<div class="round-stat"><span>tool calls</span><strong>0</strong></div>
+<div class="round-stat"><span>warnings</span><strong>0</strong></div>
+<div class="round-stat"><span>errors</span><strong>0</strong></div></section>
+<strong>Reasoning</strong><div class="thought">Focus the wildcard &#x27;any&#x27; input field to enter a query or field for fuel efficiency.</div>
+<strong>Actions</strong><pre>browser.click | x=337.0 y=410.0</pre>
 <details><summary>Raw round events</summary><pre>{
   &quot;model_event&quot;: {
     &quot;event_id&quot;: &quot;73312c85-70b6-4137-8249-fb0664877841&quot;,
@@ -2402,22 +2765,32 @@ What is the most fuel-efficient car in the dataset?</section>
   &quot;tool_events&quot;: [],
   &quot;intervention_events&quot;: []
 }</pre></details></div>
-</article>
-<article class="event interesting" id="event-50a26175-4a0a-4c5e-b014-425bf33611ed">
-  <div>
-    <div class="event-head">
-      <span class="event-type">round 7</span>
-      <span class="badge">shell + screenshot</span>
-      <span class="badge">code.shell</span><span class="badge">browser.screenshot</span>
-      <span class="timestamp">2026-06-29T08:53:38.031753Z</span>
-    </div>
-    <div class="empty-shot">No screenshot for this event</div>
   </div>
-  <div class="details"><strong>Reasoning</strong><div class="thought">Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.</div>
-<strong>Actions</strong><pre>shell | cmd=python - &lt;&lt;&#x27;PY&#x27;
+</article>
+<article class="event interesting action-shell" id="event-50a26175-4a0a-4c5e-b014-425bf33611ed">
+  <div class="event-head">
+    <span class="event-type event-title">Round 7</span>
+    <span class="badge">code.shell + browser.screenshot</span>
+    <span class="badge">code.shell</span>
+    <span class="timestamp">2026-06-29T08:53:38.031753Z</span>
+  </div>
+  <div class="event-body">
+    <div>
+    <div class="empty-shot">No screenshot for this event</div>
+    </div>
+    <div class="details"><section class="round-summary"><div class="round-stat"><span>action</span><strong>code.shell + browser.screenshot</strong></div>
+<div class="round-stat"><span>first target</span><strong>code.shell | cmd=python - &lt;&lt;&#x27;PY&#x27;
 import pandas as pd
-url=&#x27;https://raw.githubusercontent.com/vega…
-screenshot</pre>
+url=&#x27;https://raw.githubusercontent.c…</strong></div>
+<div class="round-stat"><span>executed actions</span><strong>1</strong></div>
+<div class="round-stat"><span>tool calls</span><strong>1</strong></div>
+<div class="round-stat"><span>warnings</span><strong>0</strong></div>
+<div class="round-stat"><span>errors</span><strong>0</strong></div></section>
+<strong>Reasoning</strong><div class="thought">Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.</div>
+<strong>Actions</strong><pre>code.shell | cmd=python - &lt;&lt;&#x27;PY&#x27;
+import pandas as pd
+url=&#x27;https://raw.githubusercontent.com/vega/vega-datasets/maste…
+browser.screenshot</pre>
 <details><summary>Raw round events</summary><pre>{
   &quot;model_event&quot;: {
     &quot;event_id&quot;: &quot;50a26175-4a0a-4c5e-b014-425bf33611ed&quot;,
@@ -2919,19 +3292,27 @@ screenshot</pre>
   ],
   &quot;intervention_events&quot;: []
 }</pre></details></div>
-</article>
-<article class="event interesting" id="event-eed87087-93b8-4d9b-89f7-115b70b88342">
-  <div>
-    <div class="event-head">
-      <span class="event-type">round 8</span>
-      <span class="badge">final_answer</span>
-      <span class="badge">task.final_answer</span>
-      <span class="timestamp">2026-06-29T08:53:56.251326Z</span>
-    </div>
-    <div class="empty-shot">No screenshot for this event</div>
   </div>
-  <div class="details"><strong>Reasoning</strong><div class="thought">Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.</div>
-<strong>Actions</strong><pre>final_answer: mazda glc</pre>
+</article>
+<article class="event interesting action-final_answer" id="event-eed87087-93b8-4d9b-89f7-115b70b88342">
+  <div class="event-head">
+    <span class="event-type event-title">Round 8</span>
+    <span class="badge">task.final_answer</span>
+    <span class="badge">task.final_answer</span>
+    <span class="timestamp">2026-06-29T08:53:56.251326Z</span>
+  </div>
+  <div class="event-body">
+    <div>
+    <div class="empty-shot">No screenshot for this event</div>
+    </div>
+    <div class="details"><section class="round-summary"><div class="round-stat"><span>action</span><strong>task.final_answer</strong></div>
+<div class="round-stat"><span>first target</span><strong>task.final_answer | answer=mazda glc</strong></div>
+<div class="round-stat"><span>executed actions</span><strong>0</strong></div>
+<div class="round-stat"><span>tool calls</span><strong>0</strong></div>
+<div class="round-stat"><span>warnings</span><strong>0</strong></div>
+<div class="round-stat"><span>errors</span><strong>0</strong></div></section>
+<strong>Reasoning</strong><div class="thought">Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.</div>
+<strong>Actions</strong><pre>task.final_answer | answer=mazda glc</pre>
 <details><summary>Raw round events</summary><pre>{
   &quot;model_event&quot;: {
     &quot;event_id&quot;: &quot;eed87087-93b8-4d9b-89f7-115b70b88342&quot;,
@@ -3225,6 +3606,7 @@ screenshot</pre>
   &quot;tool_events&quot;: [],
   &quot;intervention_events&quot;: []
 }</pre></details></div>
+  </div>
 </article></div>
 </section></main>
 </body>

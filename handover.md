@@ -7,6 +7,111 @@ commands. Longer-term planning lives in:
 - `docs/agent-structures-and-tool-tiers.md`
 - `docs/acting-evaluating-pipeline.md`
 
+## 2026-07-02: Current Agent Structures
+
+AgentLens now has five distinct agent structures. Keep these names separate
+when reporting results:
+
+| Structure | Current ids/examples | Interface | Use for |
+| --- | --- | --- | --- |
+| AgentLens strict registered-tool agent | `agentlens_gui_toolcall_*`, `claude_opus46_gui_toolcall` | Provider tool/function calls registered from the harness allow-list. | Controlled browser/desktop GUI-only, no-GUI, and full-sandbox tiers. |
+| AgentLens native OpenAI computer agent | `openai_gpt_computer_use` | OpenAI Responses API built-in `{"type": "computer"}`. | Model-native computer-use baseline; not fine-grained provider-side tool tiering. |
+| gui-vs-cli paper-style computer agent | `gui_vs_cli_chatgpt`, `gui_vs_cli_claude`, `gui_vs_cli_gemini`, `claude_opus46_gui_vs_cli` | Paper agent structure; provider computer/desktop outputs are executed through pyautogui-style desktop actions and recorded. | Paper-faithful GUI/computer-agent comparison. |
+| gui-vs-cli paper-style CLI agent | `gui_vs_cli_cli_claude`, `gui_vs_cli_cli_codex` | `claude` or `codex` CLI inside the gui-vs-cli task image. | Full gui-vs-cli workflow CLI-Anything comparison. |
+| DOMSteer standalone CLI-only agent | `claude_opus46_cli`, `codex_gpt55_cli` | `scripts/domsteer_cli_comparison.py` runs provider CLIs with a terminal-only DOMSteer prompt. | Fair terminal/programmatic DOMSteer baseline without converting CLI events into GUI actions. |
+
+Tool-tier reminder:
+
+- Strict GUI-only exposes desktop/browser direct-manipulation tools plus
+  `task.final_answer`.
+- No-GUI/tool-only exposes `web.openai_search`, `code.run_python`,
+  `code.shell`, `files.read`, `files.write`, and `task.final_answer`.
+- `code.shell` is the shell/bash capability; use `bash -lc '...'` inside the
+  command when bash semantics are needed.
+- Full sandbox exposes GUI actions plus search, Python, shell, and file tools.
+
+## 2026-07-02: New CLI And Claude Opus 4.6 Comparison Work
+
+New code/configs:
+
+- `scripts/domsteer_cli_comparison.py`
+  - Collects DOMSteer T1-T3 CLI-only trajectories with Claude Code CLI and
+    Codex CLI.
+  - Preserves raw provider stream files (`claude_stream.jsonl` or
+    `codex_stream.jsonl`) and writes `trajectory.json`, `result.json`, and
+    batch `summary.json`.
+  - Validates only the extracted `FINAL_ANSWER: ...` value against the
+    existing DOMSteer answer validators.
+- `configs/cli/domsteer_t1_t3_cli_initial_comparison.yaml`
+  - Runs `claude_opus46_cli` and `codex_gpt55_cli` over DataVoyager T1-T3.
+- `configs/gui_vs_cli/claude_opus46_initial_comparison.yaml`
+  - Runs Claude Opus 4.6 across AgentLens strict GUI-toolcall, gui-vs-cli
+    Claude computer-agent, and gui-vs-cli Claude CLI structures on selected
+    gui-vs-cli desktop workflow tasks.
+- `configs/batches/domsteer_t1_t3_claude_opus46_gui_comparison.yaml`
+  - Focused DOMSteer T1-T3 comparison for Claude Opus 4.6 strict GUI-toolcall
+    versus gui-vs-cli Claude computer-agent.
+- `src/agentlens/reports/cli_trajectory_viewer.py`
+  - Static viewer for the DOMSteer CLI-only trajectory format.
+- `src/agentlens/reports/gui_vs_cli_trajectory_viewer.py`
+  - Static viewer for gui-vs-cli list-format trajectories.
+- `scripts/gui_vs_cli_full_workflow_smoke.py`
+  - Agent config now honors per-agent `extra` values and
+    `max_output_tokens`, so Claude Opus 4.6 configs can override defaults.
+
+Completed data collection:
+
+- DOMSteer CLI-only T1-T3 completed on AWS and synced locally:
+  - Local root:
+    `runs/domsteer_t1_t3_cli_initial_comparison/2026-07-01_13-34-03/`
+  - AWS root:
+    `/home/ubuntu/AgentLens-smoke/runs/domsteer_t1_t3_cli_initial_comparison/2026-07-01_13-34-03/`
+  - Result: 6/6 passed (`claude_opus46_cli` and `codex_gpt55_cli` on T1-T3).
+- gui-vs-cli Claude Opus 4.6 workflow smoke completed for Chrome only:
+  - AWS root:
+    `/home/ubuntu/AgentLens-smoke/runs/gui_vs_cli_claude_opus46_initial_comparison/2026-07-01_13-41-36/`
+  - Completed computer-agent trajectory:
+    `chrome_dom_inspection_wikipedia__gui_vs_cli_claude_opus46/trajectory.json`.
+  - The local sync of this AWS workflow run is incomplete because screenshot
+    rsync was stopped; sync selectively if needed.
+
+Partial/incomplete data collection:
+
+- DOMSteer Claude Opus 4.6 GUI-focused batch was started then stopped:
+  - AWS root:
+    `/home/ubuntu/AgentLens-smoke/runs/domsteer_t1_t3_claude_opus46_gui_comparison/raw/2026-07-01_14-16-17/`
+  - `dv_t1__claude_opus46__gui_toolcall` reached the max-step limit and wrote
+    a trajectory.
+  - `dv_t1__claude_opus46__gui_vs_cli` produced screenshots but did not finish
+    before the run was killed.
+  - No completed DOMSteer Claude computer-agent trajectory exists yet.
+
+Useful commands:
+
+```bash
+.venv/bin/python -m py_compile \
+  scripts/domsteer_cli_comparison.py \
+  scripts/gui_vs_cli_full_workflow_smoke.py \
+  src/agentlens/reports/cli_trajectory_viewer.py \
+  src/agentlens/reports/gui_vs_cli_trajectory_viewer.py \
+  src/agentlens/reports/trajectory_viewer.py
+```
+
+```bash
+.venv/bin/agentlens validate-config \
+  configs/batches/domsteer_t1_t3_claude_opus46_gui_comparison.yaml
+```
+
+```bash
+.venv/bin/python scripts/domsteer_cli_comparison.py \
+  configs/cli/domsteer_t1_t3_cli_initial_comparison.yaml
+```
+
+```bash
+.venv/bin/agentlens cli-trajectory-viewer \
+  runs/domsteer_t1_t3_cli_initial_comparison/2026-07-01_13-34-03/trajectories/datavoyager_most_fuel_efficient__claude_opus46_cli/trajectory.json
+```
+
 ## 2026-06-30: Repo Structure Cleanup
 
 What changed:

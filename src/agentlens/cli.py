@@ -89,6 +89,42 @@ def trajectory_viewer(
     typer.echo(str(viewer_path))
 
 
+@app.command("cli-trajectory-viewer")
+def cli_trajectory_viewer(
+    path: Path,
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Where to write the static CLI HTML viewer. Defaults next to the input file.",
+    ),
+) -> None:
+    """Generate a static HTML viewer for CLI-only trajectory.json files."""
+    from agentlens.reports.cli_trajectory_viewer import write_cli_trajectory_viewer
+
+    viewer_path = write_cli_trajectory_viewer(path, output)
+    typer.echo(str(viewer_path))
+
+
+@app.command("gui-vs-cli-trajectory-viewer")
+def gui_vs_cli_trajectory_viewer(
+    path: Path,
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Where to write the static GUI-vs-CLI HTML viewer. Defaults next to the input file.",
+    ),
+) -> None:
+    """Generate a static HTML viewer for gui-vs-cli list-format trajectories."""
+    from agentlens.reports.gui_vs_cli_trajectory_viewer import (
+        write_gui_vs_cli_trajectory_viewer,
+    )
+
+    viewer_path = write_gui_vs_cli_trajectory_viewer(path, output)
+    typer.echo(str(viewer_path))
+
+
 @app.command("process-trajectories")
 def process_trajectories_cmd(
     inputs: list[Path] = typer.Argument(

@@ -531,7 +531,36 @@ How many European cars have both horsepower above 100 and four cylinders in the 
       <div class="event-note">Each row groups the raw records for one step: observed screen state, model thought, then requested/executed action.</div>
     </div>
   </div>
-  <div class="step-log"><section class="step-triplet kind-model" id="step-0">
+  <section id="cc-analysis">
+<style>
+ #cc-analysis { background:var(--panel); border:1px solid var(--line-strong); border-radius:12px;
+   margin:18px 0; padding:16px 20px; color:var(--text); }
+ #cc-analysis > h2 { margin:0 0 2px; font-size:15px; color:var(--accent); letter-spacing:.01em; }
+ #cc-analysis h3 { margin:14px 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+ #cc-analysis .cc-sub, #cc-analysis .cc-mut { color:var(--muted); font-weight:400; }
+ #cc-analysis .cc-sub { font-size:12px; margin-top:3px; }
+ #cc-analysis .cc-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+ #cc-analysis .cc-line { font-size:13px; margin:3px 0; }
+ #cc-analysis .cc-badge { background:var(--code); border:1px solid var(--line); border-radius:5px;
+   padding:1px 6px; font-size:11px; color:var(--text); }
+ #cc-analysis .cc-tbl { border-collapse:collapse; width:100%; font-size:12px; margin-bottom:4px; }
+ #cc-analysis .cc-tbl th { background:var(--code); color:var(--muted); font-weight:600; text-align:left; }
+ #cc-analysis .cc-tbl th, #cc-analysis .cc-tbl td { border:1px solid var(--line); padding:4px 7px; vertical-align:top; }
+ #cc-analysis .cc-wf { margin:4px 0; padding-left:20px; font-size:13px; }
+ #cc-analysis .cc-wf li { margin:2px 0; }
+ @media (max-width:720px) { #cc-analysis .cc-grid { grid-template-columns:1fr; } }
+</style>
+<h2>Behavior analysis</h2>
+<div class="cc-line"><b>gpt-5.4</b> · tier <span class='cc-badge'>desktop_gui_gui_vs_cli_chatgpt</span> · How many European cars have both horsepower above 100 and four cylinders in the cars dataset?<div class='cc-sub'>success=True · answer=&ldquo;**Preparing concise final answer**
+10&rdquo; · expected=&ldquo;10&rdquo;</div></div>
+<div class="cc-grid">
+  <div><h3>Judge · result rubric</h3><div class='cc-line'>completion &nbsp;<b>1.0</b> <span class='cc-mut'>— The agent produced a specific numeric answer for the full question (European cars with HP &gt; 100 and 4 cylinders).</span></div><div class='cc-line'>correctness &nbsp;<b>1.0</b> <span class='cc-mut'>— The answer 10 exactly matches the expected ground truth of 10, and is confirmed by the browser dialog visible in the scr</span></div><div class='cc-line'>authenticity &nbsp;<b style='color:var(--ok)'>genuine</b><span class='cc-mut'> — The screenshot shows a real browser JavaScript alert popup from vega.github.io displaying &#x27;10&#x27;. This is consis</span></div><div class='cc-line'>final <b>1.0</b> · conf medium · agrees w/ verifier <b>True</b></div></div>
+  <div><h3>Codebook · behavior episodes</h3><table class='cc-tbl'><thead><tr><th>behavior</th><th>steps</th><th>conf</th><th>evidence</th></tr></thead><tbody><tr><td><b>E4</b> visual_grounding_bypass <span class='cc-badge'>via=url_edit</span></td><td>[2]</td><td>high</td><td class='cc-mut'>Actor pressed Ctrl+L to focus the browser address bar, then typed a javascript: URL that fetched the cars dataset and computed the filtered count prog</td></tr></tbody></table><div class='cc-line'>C1 verify_before_finish: <b style='color:var(--bad)'>ABSENT</b><span class='cc-mut'> — After the JavaScript alert displayed 10, the actor immediately submitted &#x27;10&#x27; as the final answer at step 3 with no additional cro</span></div></div>
+</div>
+<h3>Procedure analysis · workflow segments</h3><ol class='cc-wf'><li>Identify the task: count European cars with Horsepower &gt; 100 and Cylinders = 4 in the Vega cars dataset <span class='cc-mut'>[raw 0-1]</span></li><li>Execute a JavaScript snippet via the browser address bar to fetch cars.json and filter/count matching records <span class='cc-mut'>[raw 2]</span></li><li>Report the final answer: 10 <span class='cc-mut'>[raw 3]</span></li></ol>
+</section>
+
+<div class="step-log"><section class="step-triplet kind-model" id="step-0">
   <div class="step-triplet-head">
     <strong>Step 0</strong>
     <a class="badge" href="#event-b9abf219-2899-48f4-be22-76fd3083b628">round card</a>

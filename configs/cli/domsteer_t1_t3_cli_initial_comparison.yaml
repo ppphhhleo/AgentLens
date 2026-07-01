@@ -1,0 +1,37 @@
+id: domsteer_t1_t3_cli_initial_comparison
+description: >
+  CLI-only initial comparison for DOMSteer exact-answer DataVoyager tasks.
+  This is intentionally separate from GUI-only and computer-use runs: the
+  provider CLI transcript is captured directly and validated by final answer.
+
+env_backend: docker
+docker_image: agentlens-gui-vs-cli-runtime:latest
+docker_platform: linux/amd64
+docker_shm_size: 2g
+docker_ready_timeout: 180
+sandbox_timeout: 600
+timeout_s: 200
+output_dir: runs/domsteer_t1_t3_cli_initial_comparison
+
+agents:
+  - id: claude_opus46_cli
+    provider: claude
+    cli_provider: claude
+    model: claude-opus-4-6
+    family: paper_style_cli
+
+  - id: codex_gpt55_cli
+    provider: codex
+    cli_provider: codex
+    model: gpt-5.5
+    family: paper_style_cli
+
+tasks:
+  - id: datavoyager_most_fuel_efficient
+    path: tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml
+
+  - id: datavoyager_origin_horsepower_range
+    path: tasks/domsteer/datavoyager_origin_horsepower_range/task.yaml
+
+  - id: datavoyager_europe_hp_gt_100_four_cyl
+    path: tasks/domsteer/datavoyager_europe_hp_gt_100_four_cyl/task.yaml

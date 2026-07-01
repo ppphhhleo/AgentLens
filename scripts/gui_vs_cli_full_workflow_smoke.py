@@ -582,22 +582,24 @@ def _build_agentlens_model(agent_ref: dict[str, Any]):
         raise RuntimeError(
             f"agent {agent_ref['id']!r} is disabled: {agent_ref.get('status', 'not ready')}"
         )
+    extra = {
+        "interaction_backend": agent_ref.get("interaction_backend", "tool_call"),
+        "gui_screen_only_policy": agent_ref.get("prompt_policy") == "gui_screen_only",
+        "screen_size": [1920, 1080],
+        "computer_environment": "linux",
+        "reasoning_effort": "medium",
+        "reasoning_summary": "concise",
+        "max_steps": 400,
+    }
+    extra.update(agent_ref.get("extra") or {})
     config = ModelConfig(
         id=agent_ref["id"],
         provider=agent_ref.get("provider", "openai"),
         name=agent_ref.get("model", "gpt-5.4"),
         temperature=0.0,
         vision=True,
-        max_output_tokens=1024,
-        extra={
-            "interaction_backend": agent_ref.get("interaction_backend", "tool_call"),
-            "gui_screen_only_policy": agent_ref.get("prompt_policy") == "gui_screen_only",
-            "screen_size": [1920, 1080],
-            "computer_environment": "linux",
-            "reasoning_effort": "medium",
-            "reasoning_summary": "concise",
-            "max_steps": 400,
-        },
+        max_output_tokens=int(agent_ref.get("max_output_tokens", 1024)),
+        extra=extra,
     )
     return build_model(config, toolset=ToolSet(allowed=frozenset(agent_ref.get("tools", []))))
 

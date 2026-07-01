@@ -518,7 +518,8 @@
     </div>
     <div class="run-badges">
       <span class="badge">model: gpt-5.4</span>
-      <span class="badge">tools: browser_only</span>
+      <span class="badge">mode: GUI-only</span>
+      <span class="badge">allowed: click, double click, move, drag, scroll, type, keypress, wait, final_answer</span>
       <span class="badge">memory: none</span>
     </div>
   </div>
@@ -800,7 +801,35 @@ What is the most fuel-efficient car in the dataset?</section>
       <div class="event-note">Each row groups the raw records for one step: observed screen state, model thought, then requested/executed action.</div>
     </div>
   </div>
-  <div class="step-log"><section class="step-triplet kind-model" id="step-0">
+  <section id="cc-analysis">
+<style>
+ #cc-analysis { background:var(--panel); border:1px solid var(--line-strong); border-radius:12px;
+   margin:18px 0; padding:16px 20px; color:var(--text); }
+ #cc-analysis > h2 { margin:0 0 2px; font-size:15px; color:var(--accent); letter-spacing:.01em; }
+ #cc-analysis h3 { margin:14px 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+ #cc-analysis .cc-sub, #cc-analysis .cc-mut { color:var(--muted); font-weight:400; }
+ #cc-analysis .cc-sub { font-size:12px; margin-top:3px; }
+ #cc-analysis .cc-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+ #cc-analysis .cc-line { font-size:13px; margin:3px 0; }
+ #cc-analysis .cc-badge { background:var(--code); border:1px solid var(--line); border-radius:5px;
+   padding:1px 6px; font-size:11px; color:var(--text); }
+ #cc-analysis .cc-tbl { border-collapse:collapse; width:100%; font-size:12px; margin-bottom:4px; }
+ #cc-analysis .cc-tbl th { background:var(--code); color:var(--muted); font-weight:600; text-align:left; }
+ #cc-analysis .cc-tbl th, #cc-analysis .cc-tbl td { border:1px solid var(--line); padding:4px 7px; vertical-align:top; }
+ #cc-analysis .cc-wf { margin:4px 0; padding-left:20px; font-size:13px; }
+ #cc-analysis .cc-wf li { margin:2px 0; }
+ @media (max-width:720px) { #cc-analysis .cc-grid { grid-template-columns:1fr; } }
+</style>
+<h2>Behavior analysis</h2>
+<div class="cc-line"><b>gpt-5.4</b> · tier <span class='cc-badge'>browser_only</span> · What is the most fuel-efficient car in the dataset?<div class='cc-sub'>success=True · answer=&ldquo;mazda glc&rdquo; · expected=&ldquo;Mazda GLC&rdquo;</div></div>
+<div class="cc-grid">
+  <div><h3>Judge · result rubric</h3><div class='cc-line'>completion &nbsp;<b>1.0</b> <span class='cc-mut'>— The agent produced a definitive final answer to the question.</span></div><div class='cc-line'>correctness &nbsp;<b>1.0</b> <span class='cc-mut'>— The agent&#x27;s answer &#x27;mazda glc&#x27; matches the expected answer &#x27;Mazda GLC&#x27; (case-insensitive). The </span></div><div class='cc-line'>authenticity &nbsp;<b style='color:var(--ok)'>genuine</b><span class='cc-mut'> — The answer is directly supported by the DataVoyager visualization in step_061.png which shows the sorted dataset with ma</span></div><div class='cc-line'>final <b>1.0</b> · conf high · agrees w/ verifier <b>True</b></div></div>
+  <div><h3>Codebook · behavior episodes</h3><table class='cc-tbl'><thead><tr><th>behavior</th><th>steps</th><th>conf</th><th>evidence</th></tr></thead><tbody><tr><td><b>O1</b> gather_context_before_acting</td><td>[1, 2, 3, 5, 6, 7]</td><td>high</td><td class='cc-mut'>Before attempting to identify the max-MPG car, the actor builds a Name-vs-Miles-per-Gallon view (steps 1-7), dragging Name to the Y encoding and openi</td></tr><tr><td><b>A2</b> multi_approach</td><td>[10, 32, 45, 46, 60]</td><td>high</td><td class='cc-mut'>After initial sort attempts fail to surface the top car, the actor pivots through genuinely different methods: large-offset scrolling (step 10), desel</td></tr><tr><td><b>E1</b> tool_misuse</td><td>[25, 28, 40, 44, 47, 50, 52, 54, 56, 59]</td><td>high</td><td class='cc-mut'>The actor issues keypress(&#x27;END&#x27;) and keypress(&#x27;HOME&#x27;) ten times across the trajectory; every call errors with &quot;Error: Keyboar</td></tr><tr><td><b>A3</b> deadend_loop</td><td>[25, 28, 40, 44, 47, 50, 52, 54, 56, 59]</td><td>high</td><td class='cc-mut'>The actor issues the identical unsupported END or HOME keypress ten times with zero variation — each call returns the same &#x27;Unknown key&#x27; err</td></tr></tbody></table><div class='cc-line'>C1 verify_before_finish: <b style='color:var(--bad)'>ABSENT</b><span class='cc-mut'> — Step 62 submits &#x27;mazda glc&#x27; with completely empty reasoning; the actor reads the top entry off the sorted chart in step 61 and imm</span></div></div>
+</div>
+<h3>Procedure analysis · workflow segments</h3><ol class='cc-wf'><li>Session start <span class='cc-mut'>[raw 0]</span></li><li>Open the Miles per Gallon field menu and inspect its univariate summary chart <span class='cc-mut'>[raw 1-4]</span></li><li>Add the Name field to create a Name vs. Miles per Gallon bar chart <span class='cc-mut'>[raw 5-7]</span></li><li>Repeatedly attempt to sort the Name vs. mean MPG chart in descending order, scrolling and jumping through the alphabetically-ordered list to locate the highest-MPG car (many failed sort toggle attempts, filter interactions, and scroll/END/HOME keypresses) <span class='cc-mut'>[raw 8-44]</span></li><li>Change the x-axis aggregation from MEAN to MAX Miles per Gallon <span class='cc-mut'>[raw 45-48]</span></li><li>Repeatedly toggle sort order and scroll/jump to the top or bottom of the MAX MPG by Name chart to identify the most fuel-efficient car <span class='cc-mut'>[raw 49-61]</span></li><li>Identify the highest fuel-efficiency car as &quot;mazda glc&quot; <span class='cc-mut'>[raw 62]</span></li></ol>
+</section>
+
+<div class="step-log"><section class="step-triplet kind-model" id="step-0">
   <div class="step-triplet-head">
     <strong>Step 0</strong>
     <a class="badge" href="#event-046e8bb5-cf8d-4b65-81ed-9a24181bf855">round card</a>

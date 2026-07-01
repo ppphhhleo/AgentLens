@@ -543,7 +543,36 @@ What is the most fuel-efficient car in the dataset?</section>
       <div class="event-note">Each row groups the raw records for one step: observed screen state, model thought, then requested/executed action.</div>
     </div>
   </div>
-  <div class="step-log"><section class="step-triplet kind-model" id="step-0">
+  <section id="cc-analysis">
+<style>
+ #cc-analysis { background:var(--panel); border:1px solid var(--line-strong); border-radius:12px;
+   margin:18px 0; padding:16px 20px; color:var(--text); }
+ #cc-analysis > h2 { margin:0 0 2px; font-size:15px; color:var(--accent); letter-spacing:.01em; }
+ #cc-analysis h3 { margin:14px 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+ #cc-analysis .cc-sub, #cc-analysis .cc-mut { color:var(--muted); font-weight:400; }
+ #cc-analysis .cc-sub { font-size:12px; margin-top:3px; }
+ #cc-analysis .cc-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+ #cc-analysis .cc-line { font-size:13px; margin:3px 0; }
+ #cc-analysis .cc-badge { background:var(--code); border:1px solid var(--line); border-radius:5px;
+   padding:1px 6px; font-size:11px; color:var(--text); }
+ #cc-analysis .cc-tbl { border-collapse:collapse; width:100%; font-size:12px; margin-bottom:4px; }
+ #cc-analysis .cc-tbl th { background:var(--code); color:var(--muted); font-weight:600; text-align:left; }
+ #cc-analysis .cc-tbl th, #cc-analysis .cc-tbl td { border:1px solid var(--line); padding:4px 7px; vertical-align:top; }
+ #cc-analysis .cc-wf { margin:4px 0; padding-left:20px; font-size:13px; }
+ #cc-analysis .cc-wf li { margin:2px 0; }
+ @media (max-width:720px) { #cc-analysis .cc-grid { grid-template-columns:1fr; } }
+</style>
+<h2>Behavior analysis</h2>
+<div class="cc-line"><b>gpt-5.4</b> · tier <span class='cc-badge'>desktop_gui_gui_vs_cli_chatgpt</span> · What is the most fuel-efficient car in the dataset?<div class='cc-sub'>success=True · answer=&ldquo;**Reporting fuel efficiency**
+The most fuel-efficient car in the dataset is the &rdquo; · expected=&ldquo;Mazda GLC&rdquo;</div></div>
+<div class="cc-grid">
+  <div><h3>Judge · result rubric</h3><div class='cc-line'>completion &nbsp;<b>1.0</b> <span class='cc-mut'>— The agent produced a complete, specific answer naming both the car and its MPG value.</span></div><div class='cc-line'>correctness &nbsp;<b>1.0</b> <span class='cc-mut'>— The answer &#x27;Mazda GLC&#x27; exactly matches the expected ground truth answer.</span></div><div class='cc-line'>authenticity &nbsp;<b style='color:#d97706'>suspect</b><span class='cc-mut'> — The agent appears to have made genuine fetch-based queries via browser developer console (visible in steps 3-5), but the</span></div><div class='cc-line'>final <b>1.0</b> · conf medium · agrees w/ verifier <b>True</b></div></div>
+  <div><h3>Codebook · behavior episodes</h3><table class='cc-tbl'><thead><tr><th>behavior</th><th>steps</th><th>conf</th><th>evidence</th></tr></thead><tbody><tr><td><b>A2</b> multi_approach</td><td>[2, 3]</td><td>high</td><td class='cc-mut'>At step 2 the actor tries drag-and-drop on DataVoyager encoding fields (&#x27;Trying drag-and-drop on fields&#x27;) with no visible change in the scre</td></tr><tr><td><b>E4</b> visual_grounding_bypass <span class='cc-badge'>via=js_console</span></td><td>[3, 4, 5]</td><td>high</td><td class='cc-mut'>Actor opens browser DevTools via hotkey at step 3 (screenshot confirms DevTools panel now open), navigates the console at step 4, and types a `fetch(&</td></tr></tbody></table><div class='cc-line'>C1 verify_before_finish: <b style='color:var(--ok)'>present</b><span class='cc-mut'> — At step 5, with reasoning explicitly labeled &#x27;Verifying highest MPG vehicle&#x27;, the actor issues a fetch() console call to retrieve </span></div></div>
+</div>
+<h3>Procedure analysis · workflow segments</h3><ol class='cc-wf'><li>Start session and identify the task of finding the most fuel-efficient car in the dataset <span class='cc-mut'>[raw 0-1]</span></li><li>Attempt drag-and-drop interactions on the UI fields, then open browser developer tools to troubleshoot data access <span class='cc-mut'>[raw 2-3]</span></li><li>Use the browser console to fetch the cars JSON dataset and query for the vehicle with the highest Miles per Gallon value <span class='cc-mut'>[raw 4-5]</span></li><li>Report the result: the Mazda GLC is the most fuel-efficient car at 46.6 MPG <span class='cc-mut'>[raw 6]</span></li></ol>
+</section>
+
+<div class="step-log"><section class="step-triplet kind-model" id="step-0">
   <div class="step-triplet-head">
     <strong>Step 0</strong>
     <a class="badge" href="#event-f7ec6c18-0689-406b-b84a-9189b58278c9">round card</a>
