@@ -394,6 +394,21 @@ What changed:
 - The gui-vs-cli ChatGPT adapter now wraps tasks in the paper runner's
   `GUI_SCREEN_ONLY_POLICY` by default.
 
+Naming clarification:
+
+| Agent id | Means | Does not mean |
+| --- | --- | --- |
+| `agentlens_gui_toolcall_gpt54` | AgentLens strict GUI-only registered-tool OpenAI agent. | OpenAI native computer-use. |
+| `agentlens_gui_toolcall_haiku` | AgentLens strict GUI-only registered-tool Claude agent. | gui-vs-cli paper Claude agent. |
+| `openai_gpt_computer_use` | AgentLens wrapper around OpenAI Responses native `computer` tool. | Fine-grained registered-tool GUI-only control. |
+| `gui_vs_cli_chatgpt` | gui-vs-cli paper-style ChatGPT computer-use agent; outputs are converted through the paper pyautogui path. | AgentLens strict registered-tool agent. |
+| `gui_vs_cli_claude` | gui-vs-cli paper-style Claude computer-use agent. | AgentLens strict registered-tool Claude/Haiku agent. |
+| `gui_vs_cli_gemini` | gui-vs-cli paper-style Gemini desktop agent. | The disabled AgentLens strict Gemini tool-call adapter. |
+
+Rule of thumb: `gui_vs_cli_*` refers to the paper-style agent structure from
+`third_party/gui-vs-cli`; `agentlens_gui_toolcall_*` refers to AgentLens'
+strict registered tool list.
+
 Selected smoke categories:
 
 | App | Task | Category |

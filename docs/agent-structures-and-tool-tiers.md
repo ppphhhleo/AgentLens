@@ -68,6 +68,25 @@ Use distinct run labels for these setups:
 | `full_sandbox` | `openai_tool_call.py` or `anthropic_tool_call.py` | GUI plus shell/code/file/search tools. |
 | `no_gui` | `openai_tool_call.py` or `anthropic_tool_call.py` | Programmatic tools only, no screenshots or GUI actions. |
 
+## Agent Name Mapping
+
+The GUI-vs-CLI smoke config uses explicit agent ids. These names encode the
+agent structure, not just the provider model.
+
+| Agent id | Provider/model family | Agent structure | Tool/control meaning |
+| --- | --- | --- | --- |
+| `openai_gpt_computer_use` | OpenAI GPT | AgentLens wrapper for OpenAI Responses native `computer` tool. | Native computer-use GUI loop. Broad provider-side computer tool; not strict subtool control. |
+| `agentlens_gui_toolcall_gpt54` | OpenAI GPT-5.4 | AgentLens registered-tool agent using `openai_tool_call.py`. | Strict GUI-only direct-manipulation tool list registered by AgentLens. |
+| `agentlens_gui_toolcall_haiku` | Anthropic Claude Haiku | AgentLens registered-tool agent using `anthropic_tool_call.py`. | Strict GUI-only direct-manipulation tool list registered by AgentLens. |
+| `agentlens_gui_toolcall_gemini` | Gemini | Planned AgentLens registered-tool agent. | Disabled until a Gemini provider tool-call adapter exists. |
+| `gui_vs_cli_chatgpt` | OpenAI GPT | gui-vs-cli paper-style `ChatGPTAgent`. | Computer-use agent from the gui-vs-cli repo; model emits native computer actions that the paper code converts to pyautogui snippets. |
+| `gui_vs_cli_claude` | Anthropic Claude | gui-vs-cli paper-style `ClaudeAgent`. | Claude computer-use agent from the gui-vs-cli repo; not the AgentLens strict registered-tool Claude agent. |
+| `gui_vs_cli_gemini` | Gemini | gui-vs-cli paper-style `GeminiAgent`. | Gemini desktop agent from the gui-vs-cli repo; not the disabled AgentLens strict registered-tool Gemini agent. |
+
+In short: `gui_vs_cli_*` means "paper-style gui-vs-cli agent structure"; it
+does not mean AgentLens strict GUI-only tool registration. The strict
+AgentLens variants are the `agentlens_gui_toolcall_*` ids.
+
 ## GUI-vs-CLI Full Workflow Tasks
 
 AgentLens has imported the GUI-vs-CLI task catalog:
@@ -99,14 +118,9 @@ scripts/gui_vs_cli_full_workflow_smoke.py
 This bridge reuses gui-vs-cli's desktop environment setup, app launcher,
 seed-file upload, and verifier stack, then runs either:
 
-- `openai_gpt_computer_use`: OpenAI native `{"type": "computer"}`.
-- `agentlens_gui_toolcall_gpt54`: AgentLens strict GUI-only registered tools.
-- `agentlens_gui_toolcall_haiku`: AgentLens strict GUI-only registered tools.
-- `agentlens_gui_toolcall_gemini`: planned; pending a Gemini provider
-  tool-call adapter.
-- `gui_vs_cli_chatgpt`: the paper's ChatGPT computer-use agent structure.
-- `gui_vs_cli_claude`: the paper's Claude computer-use agent structure.
-- `gui_vs_cli_gemini`: the paper's Gemini generic-desktop agent structure.
+- AgentLens-native structures such as `agentlens_gui_toolcall_gpt54`.
+- Provider-native computer-use structures such as `openai_gpt_computer_use`.
+- Paper-style gui-vs-cli structures such as `gui_vs_cli_claude`.
 
 The smoke config selects one representative task from each GUI-vs-CLI
 application category, currently 18 applications.
@@ -124,8 +138,7 @@ Readiness smoke:
 ```bash
 uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
   configs/gui_vs_cli/full_workflow_smoke.yaml \
-  --ready-check-only \
-  --task chrome_download_httpbin_file
+  --ready-check-only
 ```
 
 Full smoke for one task and one agent:
@@ -133,6 +146,6 @@ Full smoke for one task and one agent:
 ```bash
 uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
   configs/gui_vs_cli/full_workflow_smoke.yaml \
-  --agent agentlens_gui_toolcall \
-  --task chrome_download_httpbin_file
+  --agent agentlens_gui_toolcall_gpt54 \
+  --task chrome_dom_inspection_wikipedia
 ```
