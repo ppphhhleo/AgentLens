@@ -8,7 +8,7 @@ description: >
 models:
   - id: gemini_gui_toolcall
     provider: gemini
-    name: gemini-3-flash-preview
+    name: gemini-2.5-flash
     temperature: 0.0
     vision: true
     max_output_tokens: 2048
@@ -19,7 +19,7 @@ models:
 
   - id: gemini_gui_vs_cli
     provider: gemini
-    name: gemini-3-flash-preview
+    name: gemini-2.5-flash
     temperature: 0.0
     vision: true
     max_output_tokens: 4096
