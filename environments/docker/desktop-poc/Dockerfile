@@ -10,7 +10,11 @@ RUN apt-get update \
         wmctrl \
         x11-utils \
         xdotool \
+        python3-pip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --no-cache-dir pyautogui pyperclip \
+    || python3 -m pip install --no-cache-dir --break-system-packages pyautogui pyperclip
 
 # This image only provides generic desktop automation dependencies. App-specific
 # tasks should extend it and install Unity, Blender, Tableau, LibreOffice, etc.

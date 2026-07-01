@@ -634,6 +634,22 @@ Current status:
 - DOMSteer should not be called paper-style CLI-Anything by default. DOMSteer
   can be run as GUI/browser/no-GUI AgentLens tiers; a CLI label is only fair
   after defining a separate DOMSteer CLI/browser-skill harness.
+- DOMSteer web tasks can still have a useful CLI/no-visual baseline, but label
+  it as `domsteer_programmatic_no_visual` or "DOMSteer CLI-only data-analysis
+  baseline" rather than the gui-vs-cli paper's desktop-app CLI-Anything setup.
+- Gemini DOMSteer GUI smoke config:
+  `configs/batches/domsteer_t1_gemini_gui_smoke.yaml`.
+  - `dv_t1__gemini__gui_toolcall`: AgentLens strict GUI-only tool-call agent
+    using registered direct desktop tools only.
+  - `dv_t1__gemini__gui_vs_cli`: gui-vs-cli paper-style Gemini computer-agent
+    adapter, preserving raw model output and converting actions to
+    `desktop_pyautogui`.
+  - The config intentionally uses `gemini-2.5-flash` and `max_steps: 2` for
+    smoke because the current Gemini key appears to be on a low request/minute
+    quota. Increase steps only after quota/backoff is handled.
+- Paper-style `desktop_pyautogui` execution requires the desktop sandbox image
+  to include `pyautogui` and `pyperclip`; `agentlens/desktop-poc:latest` is the
+  intended local/AWS image for these smoke runs.
 
 Recent implementation fixes:
 
@@ -647,6 +663,12 @@ Recent implementation fixes:
     `return -> enter` before converting to pyautogui.
 - `pyproject.toml`
   - Adds `websocket-client>=1.8` for reused GUI-vs-CLI verifier code.
+- `src/agentlens/harnesses/desktop_actions.py`
+  - `desktop_pyautogui` now runs with `runuser -u gem` only when the shell is
+    root; non-root sandbox shells execute directly against the same display.
+- `environments/docker/desktop-poc/Dockerfile`
+  - Installs `python3-pip`, `pyautogui`, and `pyperclip` for gui-vs-cli-style
+    computer-agent action execution.
 
 Build runtime image:
 

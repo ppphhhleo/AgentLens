@@ -48,7 +48,7 @@ tool_harnesses:
       - task.final_answer
     prompt_version: tool_call_desktop_gui_v1
     extra:
-      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_image: agentlens/desktop-poc:latest
       sandbox_port: 8080
       sandbox_shm_size: 2g
       sandbox_cap_add: [SYS_ADMIN]
@@ -74,7 +74,7 @@ tool_harnesses:
       - task.final_answer
     prompt_version: gui_vs_cli_gemini_paper_v1
     extra:
-      sandbox_image: ghcr.io/agent-infra/sandbox:latest
+      sandbox_image: agentlens/desktop-poc:latest
       sandbox_port: 8080
       sandbox_shm_size: 2g
       sandbox_cap_add: [SYS_ADMIN]
