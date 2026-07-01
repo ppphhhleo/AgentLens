@@ -165,10 +165,31 @@ python scripts/gui_vs_cli_full_workflow_smoke.py \
   --task chrome_dom_inspection_wikipedia
 ```
 
-As of 2026-07-01, the AWS image `paraverse-agent-runtime:latest` starts the
-CLI task environment, but it does not yet contain `claude` or `codex` in PATH.
-The runner records this as a structured `cli_binary_check` failure instead of
-silently falling back to a different agent.
+As of 2026-07-01, AWS has a derived CLI-enabled image:
+
+```text
+agentlens-gui-vs-cli-runtime:latest
+```
+
+It is based on `paraverse-agent-runtime:latest` and includes:
+
+- Claude Code CLI: `claude`
+- Codex CLI: `codex`
+- Runtime wrappers that source `/home/user/.agentlens_cli_env`, set
+  `HOME=/home/user`, and drop root execution to the sandbox `user` account.
+
+The runner writes `/home/user/.agentlens_cli_env` and, when `OPENAI_API_KEY` is
+available, writes `/home/user/.codex/config.toml` with a custom
+`openai_env` provider using `env_key = "OPENAI_API_KEY"`.
+
+AWS smoke status:
+
+- CLI binary readiness passes for `gui_vs_cli_cli_claude` and
+  `gui_vs_cli_cli_codex`.
+- `gui_vs_cli_cli_codex` reaches the OpenAI API, but the current key is blocked
+  by quota (`Quota exceeded. Check your plan and billing details.`).
+- `gui_vs_cli_claude` and `gui_vs_cli_cli_claude` require
+  `ANTHROPIC_API_KEY` in the AWS `.env`; do not commit that file.
 
 ## DOMSteer And CLI Agents
 

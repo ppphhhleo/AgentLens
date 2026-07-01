@@ -474,6 +474,27 @@ Current status:
     (`gui_vs_cli_cli_codex`) failed because `codex` is not installed in
     `paraverse-agent-runtime:latest`.
   - This is an image/authentication blocker, not a runner wiring blocker.
+- Follow-up on 2026-07-01:
+  - Built AWS image `agentlens-gui-vs-cli-runtime:latest` from
+    `paraverse-agent-runtime:latest` with Node 22, Claude Code CLI
+    `2.1.197`, and Codex CLI `0.142.5`.
+  - Patched `third_party/gui-vs-cli/computer_env/backends/docker/runtime.py`
+    so Docker task containers no longer force
+    `HTTP_PROXY=http://host.docker.internal:7897`; that proxy broke provider
+    CLI network access on AWS.
+  - Patched `scripts/gui_vs_cli_full_workflow_smoke.py` to write sandbox-local
+    `/home/user/.agentlens_cli_env` from host `.env` and a Codex
+    `/home/user/.codex/config.toml` provider using `OPENAI_API_KEY`.
+  - Patched `third_party/gui-vs-cli/evaluation/runtime/cli_agent_runner.py` to
+    skip interactive `codex login` recovery when the AgentLens env file
+    contains `OPENAI_API_KEY`.
+  - CLI binary readiness now passes:
+    `runs/smoke_cli_ready_check/2026-07-01_10-18-58/summary.json`.
+  - Real `gui_vs_cli_cli_codex` smoke reaches OpenAI but is blocked by quota:
+    `runs/smoke_cli_codex/2026-07-01_10-34-00/`.
+  - AWS `.env` still lacks `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and
+    `GOOGLE_AI_STUDIO_API_KEY` as actual variables. Add them manually on AWS
+    before Claude/Gemini smoke.
 - DOMSteer should not be called paper-style CLI-Anything by default. DOMSteer
   can be run as GUI/browser/no-GUI AgentLens tiers; a CLI label is only fair
   after defining a separate DOMSteer CLI/browser-skill harness.

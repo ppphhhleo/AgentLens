@@ -286,6 +286,7 @@ def _run_cli_one(
         )
         binary = "claude" if provider == "claude" else "codex"
         binary_check = _check_cli_binary(session.sandbox, binary)
+        _write_cli_env_file(session.sandbox)
 
         if ready_check_only:
             result = {
@@ -401,6 +402,53 @@ def _check_cli_binary(sandbox: Any, binary: str) -> dict[str, Any]:
         "path": path,
         "error": None if path else f"{binary!r} was not found in the Docker image PATH.",
     }
+
+
+def _write_cli_env_file(sandbox: Any) -> None:
+    """Write provider keys into the sandbox without baking them into the image.
+
+    The derived CLI image wraps `claude` and `codex` so they source this file
+    before execing the real binaries. Values come from the host process, which
+    already loads repo `.env` in `main()`.
+    """
+
+    keys = [
+        "OPENAI_API_KEY",
+        "OPENAI_BASE_URL",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_BASE_URL",
+        "GEMINI_API_KEY",
+        "GOOGLE_AI_STUDIO_API_KEY",
+        "JUDGE_API_KEY",
+        "OPENROUTER_API_KEY",
+    ]
+    lines = []
+    for key in keys:
+        value = os.environ.get(key)
+        if value:
+            lines.append(f"export {key}={shlex.quote(value)}")
+    content = "\n".join(lines) + ("\n" if lines else "")
+    sandbox.files.write("/home/user/.agentlens_cli_env", content)
+    sandbox.commands.run(
+        "chown user:user /home/user/.agentlens_cli_env && chmod 600 /home/user/.agentlens_cli_env",
+        timeout=10,
+    )
+    if os.environ.get("OPENAI_API_KEY"):
+        codex_config = """model_provider = "openai_env"
+
+[model_providers.openai_env]
+name = "OpenAI via OPENAI_API_KEY"
+base_url = "https://api.openai.com/v1"
+env_key = "OPENAI_API_KEY"
+wire_api = "responses"
+supports_websockets = true
+"""
+        sandbox.commands.run("mkdir -p /home/user/.codex", timeout=10)
+        sandbox.files.write("/home/user/.codex/config.toml", codex_config)
+        sandbox.commands.run(
+            "chown -R user:user /home/user/.codex && chmod 700 /home/user/.codex",
+            timeout=10,
+        )
 
 
 LIBREOFFICE_RELOAD_MODES = {

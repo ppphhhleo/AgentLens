@@ -5,7 +5,7 @@ description: >
   tool-call agents and paper-style computer-use agents over the same tasks.
 
 env_backend: docker
-docker_image: paraverse-agent-runtime:latest
+docker_image: agentlens-gui-vs-cli-runtime:latest
 docker_platform: linux/amd64
 docker_shm_size: 2g
 docker_ready_timeout: 180
