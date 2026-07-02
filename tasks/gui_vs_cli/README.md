@@ -22,6 +22,18 @@ Regenerate from the ignored local checkout with:
 python scripts/import_gui_vs_cli_tasks.py
 ```
 
+Browse matched standard/grounded tasks with:
+
+```bash
+python scripts/gui_vs_cli_grounded_task_browser.py
+```
+
+This writes:
+
+```text
+tasks/gui_vs_cli/grounded_task_browser.html
+```
+
 AgentLens should treat these records as follows:
 
 - `task` is the natural-language task text given to the agent.
