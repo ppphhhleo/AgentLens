@@ -24,6 +24,9 @@ Tool-tier reminder:
 
 - Strict GUI-only exposes desktop/browser direct-manipulation tools plus
   `task.final_answer`.
+- CLI-Anything/no-visual is reserved for the gui-vs-cli paper-style CLI runner
+  (`gui_vs_cli_cli_*`) on gui-vs-cli workflow tasks. Do not use this label for
+  DOMSteer by default.
 - No-GUI/tool-only exposes `web.openai_search`, `code.run_python`,
   `code.shell`, `files.read`, `files.write`, and `task.final_answer`.
 - `code.shell` is the shell/bash capability; use `bash -lc '...'` inside the
@@ -38,6 +41,22 @@ Tool-tier reminder:
   the gui-vs-cli paper's desktop-app "CLI-Anything" setting without a caveat.
   It is better named `domsteer_programmatic_no_visual` or `DOMSteer CLI-only
   data-analysis baseline`.
+
+Four-condition naming for future comparison tables:
+
+| Condition | Meaning | Current implementation |
+| --- | --- | --- |
+| `gui_only` | Screenshots plus direct manipulation tools only. | AgentLens strict registered-tool GUI agents and paper-style computer agents. |
+| `cli_anything_no_visual` | No screenshots/GUI actions; paper CLI-Anything runner inside task image. | `gui_vs_cli_cli_claude`, `gui_vs_cli_cli_codex` for gui-vs-cli tasks. |
+| `programmatic_no_visual` | No screenshots/GUI actions; benchmark-specific code/shell/search baseline. | DOMSteer `scripts/domsteer_cli_comparison.py` and future no-GUI tool-call configs. |
+| `full_sandbox` | GUI plus programmatic tools. | AgentLens full-sandbox tool-call configs. |
+
+For gui-vs-cli tasks, distinguish task source type by `github_task_path`:
+
+- `task_generator/tasks/` -> `standard`.
+- `task_generator/tasks_grounding/` -> `grounded_prompt`.
+- Current imported `tasks/gui_vs_cli/tasks.jsonl` contains 440 standard tasks
+  and no grounded-prompt tasks.
 
 ## 2026-07-02: New CLI And Claude Opus 4.6 Comparison Work
 

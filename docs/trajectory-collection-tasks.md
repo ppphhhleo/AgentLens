@@ -41,6 +41,23 @@ tasks/gui_vs_cli/tasks.jsonl
 | `desktop_no_gui_tool_only` | Programmatic app/file tools without screenshots or GUI actions. | Desktop task ablations when a batch/API mode exists. |
 | `no_gui_tool_only` | Code, shell, search, and file tools only. | Programmatic baselines for data tasks. |
 
+For analysis and reporting, distinguish four broader experimental conditions:
+
+| Condition | Meaning | Use |
+| --- | --- | --- |
+| `gui_only` | The agent sees screenshots and can use only direct manipulation tools. | Main visual/GUI behavior comparison. |
+| `cli_anything_no_visual` | The agent has no screenshots and no GUI actions; it uses the gui-vs-cli paper's CLI-Anything style runner inside the task image. | Use for gui-vs-cli workflow tasks. Do not apply this label to DOMSteer unless a DOMSteer-specific CLI-Anything harness is built. |
+| `programmatic_no_visual` | The agent has no screenshots and no GUI actions, but uses AgentLens no-GUI tools or benchmark-specific scripts. | DOMSteer and data-analysis baselines. |
+| `full_sandbox` | The agent can use both GUI and programmatic tools. | Upper-bound / occupational-style mixed capability setting. |
+
+Within a task family, keep the environment fixed across conditions:
+
+- same Docker image or VM base image
+- same screen size and coordinate frame
+- same start URL/app launcher
+- same seed files and mounted paths
+- same evaluator and expected-answer/artifact rule
+
 ## Ready Or Smoke-Tested
 
 | Benchmark | Type | Application | Task ID | Current Status | Evaluator |
@@ -60,6 +77,20 @@ Tracked source:
 ```text
 tasks/gui_vs_cli/tasks.jsonl
 ```
+
+Task source type is inferred from `github_task_path`:
+
+| Prefix | Source Type | Meaning |
+| --- | --- | --- |
+| `task_generator/tasks/` | `standard` | Standard gui-vs-cli task prompt. |
+| `task_generator/tasks_grounding/` | `grounded_prompt` | Grounded-prompt variant; keep separate from standard tasks when sampling or reporting. |
+
+Current imported catalog status:
+
+| Source Type | Count |
+| --- | ---: |
+| `standard` | 440 |
+| `grounded_prompt` | 0 |
 
 App counts:
 

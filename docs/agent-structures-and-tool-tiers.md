@@ -63,11 +63,25 @@ Use distinct run labels for these setups:
 
 | Label | Agent Structure | Harness Meaning |
 | --- | --- | --- |
-| `strict_gui_toolcall` | `openai_tool_call.py` or `anthropic_tool_call.py` | GUI actions only; no shell/code/file/MCP tools. |
+| `strict_gui_toolcall` | `openai_tool_call.py`, `anthropic_tool_call.py`, or `gemini_tool_call.py` | GUI actions only; no shell/code/file/MCP tools. |
 | `native_computer_gui` | `openai_computer_use.py` | OpenAI native computer-use GUI. Good for model-native comparison, not strict visual-only control. |
 | `paper_faithful_gui_vs_cli` | `gui_vs_cli_chatgpt.py` | Reproduces the gui-vs-cli ChatGPTAgent action structure through pyautogui snippets. |
-| `full_sandbox` | `openai_tool_call.py` or `anthropic_tool_call.py` | GUI plus shell/code/file/search tools. |
-| `no_gui` | `openai_tool_call.py` or `anthropic_tool_call.py` | Programmatic tools only, no screenshots or GUI actions. |
+| `paper_cli_anything` | `scripts/gui_vs_cli_full_workflow_smoke.py` with `gui_vs_cli_cli_*` agents | Paper-style CLI-Anything: no visual input, no GUI actions, CLI agent runs inside the gui-vs-cli task image. Use for gui-vs-cli workflow tasks unless a benchmark-specific CLI-Anything harness is explicitly built. |
+| `programmatic_no_visual` | Tool-call agent with code/shell/files/search tools only | Programmatic baseline: no screenshots and no GUI actions, but not necessarily the paper's CLI-Anything setup. This is the current fair DOMSteer no-visual condition. |
+| `full_sandbox` | `openai_tool_call.py`, `anthropic_tool_call.py`, or `gemini_tool_call.py` | GUI plus shell/code/file/search tools. |
+
+For reporting, keep these four experimental conditions separate:
+
+| Condition | Visual Input | GUI Actions | Programmatic/CLI Access | Current Scope |
+| --- | --- | --- | --- | --- |
+| `gui_only` | Yes | Yes, direct manipulation only | No | DOMSteer, gui-vs-cli, desktop POCs |
+| `cli_anything_no_visual` | No | No | Yes, paper CLI agent inside task image | gui-vs-cli workflow tasks |
+| `programmatic_no_visual` | No | No | Yes, AgentLens code/shell/files/search or benchmark-specific scripts | DOMSteer and data-analysis baselines |
+| `full_sandbox` | Usually yes | Yes | Yes | Mixed-capability upper-bound / agent-company-style condition |
+
+The important rule: do not call DOMSteer `programmatic_no_visual`
+"CLI-Anything" unless we implement a DOMSteer-specific CLI-Anything harness
+with the same constraints as the paper condition.
 
 ## Agent Name Mapping
 
@@ -205,3 +219,16 @@ For a fair label, use:
 - `domsteer_no_gui`: programmatic analysis tools.
 - `domsteer_cli_browser_skill`: only if we intentionally design a CLI skill
   that solves DOMSteer through command-line/browser automation.
+
+Provider target matrix:
+
+| Provider family | `gui_only` | `cli_anything_no_visual` | `programmatic_no_visual` | `full_sandbox` |
+| --- | --- | --- | --- | --- |
+| GPT/OpenAI | AgentLens tool-call or native computer-use | Codex CLI for gui-vs-cli tasks | AgentLens no-GUI or Codex CLI baseline | AgentLens full-sandbox tool-call |
+| Claude/Anthropic | AgentLens tool-call or gui-vs-cli Claude computer agent | Claude Code CLI for gui-vs-cli tasks | AgentLens no-GUI or Claude Code baseline | AgentLens full-sandbox tool-call |
+| Gemini | AgentLens tool-call or gui-vs-cli Gemini computer agent | Not implemented yet unless a Gemini CLI/task runner is selected | AgentLens no-GUI tool-call if tool/function support is sufficient | AgentLens full-sandbox tool-call |
+| GLM/DeepSeek | Planned OpenAI-compatible or provider-specific wrapper | Not implemented | Planned if the model supports tool/function calls or CLI access | Planned |
+
+For cross-provider comparisons, keep the VM setup constant within a task
+family: same Docker image, screen size, start state, seeded files, app launcher,
+and evaluator. Change only the agent/model condition.
