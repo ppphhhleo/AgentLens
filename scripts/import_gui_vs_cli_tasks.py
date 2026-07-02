@@ -37,9 +37,12 @@ def main() -> int:
     _write_jsonl(output / "tasks.jsonl", standard)
     _write_jsonl(output / "tasks_standard.jsonl", standard)
     _write_jsonl(output / "tasks_grounding.jsonl", grounded)
+    pairs = _build_pairs(standard, grounded)
+    _write_jsonl(output / "task_pairs.jsonl", pairs)
 
     print(f"standard={len(standard)} -> {output / 'tasks.jsonl'}")
     print(f"grounded_prompt={len(grounded)} -> {output / 'tasks_grounding.jsonl'}")
+    print(f"pairs={len(pairs)} -> {output / 'task_pairs.jsonl'}")
     return 0
 
 
@@ -55,10 +58,39 @@ def _load_task_dir(
     records: list[dict[str, Any]] = []
     for task_file in sorted(path.glob("*/task.json")):
         record = json.loads(task_file.read_text())
+        task_id = record["id"]
         record["source_type"] = source_type
+        record["paired_task_id"] = task_id
         record["github_task_path"] = f"{github_prefix}/{task_file.parent.name}"
         records.append(record)
     return records
+
+
+def _build_pairs(
+    standard: list[dict[str, Any]],
+    grounded: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    standard_by_id = {record["id"]: record for record in standard}
+    pairs: list[dict[str, Any]] = []
+    for grounded_record in grounded:
+        task_id = grounded_record["id"]
+        standard_record = standard_by_id.get(task_id)
+        if standard_record is None:
+            raise ValueError(f"grounded task has no standard counterpart: {task_id}")
+        pairs.append(
+            {
+                "id": task_id,
+                "app": grounded_record.get("app"),
+                "standard_task_id": task_id,
+                "grounded_task_id": task_id,
+                "standard_github_task_path": standard_record.get("github_task_path"),
+                "grounded_github_task_path": grounded_record.get("github_task_path"),
+                "same_base_task_text": standard_record.get("task")
+                == grounded_record.get("task"),
+                "has_task_grounding": bool(grounded_record.get("task_grounding")),
+            }
+        )
+    return pairs
 
 
 def _write_jsonl(path: Path, records: list[dict[str, Any]]) -> None:

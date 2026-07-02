@@ -78,6 +78,7 @@ Tracked source:
 tasks/gui_vs_cli/tasks.jsonl            # standard tasks, backward-compatible path
 tasks/gui_vs_cli/tasks_standard.jsonl   # standard tasks
 tasks/gui_vs_cli/tasks_grounding.jsonl  # grounded-prompt tasks
+tasks/gui_vs_cli/task_pairs.jsonl       # matched standard/grounded pairs
 ```
 
 Task source type is inferred from `github_task_path`:
@@ -93,6 +94,11 @@ Current imported catalog status:
 | --- | ---: |
 | `standard` | 440 |
 | `grounded_prompt` | 176 |
+
+All 176 grounded-prompt tasks have a corresponding standard task with the same
+`paired_task_id`/`id`; their base `task` text is identical and the grounded
+variant adds `task_grounding`. Use `task_pairs.jsonl` for matched standard vs
+grounded experiments.
 
 Standard task app counts:
 

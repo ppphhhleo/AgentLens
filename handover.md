@@ -59,6 +59,10 @@ For gui-vs-cli tasks, distinguish task source type by `github_task_path`:
   - `tasks/gui_vs_cli/tasks.jsonl`: 440 standard tasks.
   - `tasks/gui_vs_cli/tasks_standard.jsonl`: same 440 standard tasks.
   - `tasks/gui_vs_cli/tasks_grounding.jsonl`: 176 grounded-prompt tasks.
+  - `tasks/gui_vs_cli/task_pairs.jsonl`: 176 standard/grounded matched pairs.
+  - Every grounded-prompt task has a standard counterpart with the same
+    `paired_task_id`; the base `task` text is identical and the grounded
+    variant adds `task_grounding`.
   - Regenerate from the ignored local GitHub checkout with
     `python scripts/import_gui_vs_cli_tasks.py`.
 
