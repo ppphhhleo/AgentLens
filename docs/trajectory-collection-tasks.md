@@ -75,7 +75,9 @@ Within a task family, keep the environment fixed across conditions:
 Tracked source:
 
 ```text
-tasks/gui_vs_cli/tasks.jsonl
+tasks/gui_vs_cli/tasks.jsonl            # standard tasks, backward-compatible path
+tasks/gui_vs_cli/tasks_standard.jsonl   # standard tasks
+tasks/gui_vs_cli/tasks_grounding.jsonl  # grounded-prompt tasks
 ```
 
 Task source type is inferred from `github_task_path`:
@@ -90,9 +92,9 @@ Current imported catalog status:
 | Source Type | Count |
 | --- | ---: |
 | `standard` | 440 |
-| `grounded_prompt` | 0 |
+| `grounded_prompt` | 176 |
 
-App counts:
+Standard task app counts:
 
 | Application | Tasks |
 | --- | ---: |
@@ -114,6 +116,25 @@ App counts:
 | Chrome | 17 |
 | Krita | 17 |
 | draw.io | 15 |
+
+Grounded-prompt task app counts:
+
+| Application | Tasks |
+| --- | ---: |
+| LibreOffice Calc | 26 |
+| FreeCAD | 25 |
+| Audacity | 24 |
+| CloudCompare | 20 |
+| Zotero | 19 |
+| draw.io | 15 |
+| GIMP | 12 |
+| OBS Studio | 9 |
+| Krita | 8 |
+| LibreOffice Impress | 7 |
+| RenderDoc | 5 |
+| Chrome | 4 |
+| Godot 4 | 1 |
+| LibreOffice Writer | 1 |
 
 ## DOMSteer Catalog
 

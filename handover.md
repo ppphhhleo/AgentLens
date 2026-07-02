@@ -55,8 +55,12 @@ For gui-vs-cli tasks, distinguish task source type by `github_task_path`:
 
 - `task_generator/tasks/` -> `standard`.
 - `task_generator/tasks_grounding/` -> `grounded_prompt`.
-- Current imported `tasks/gui_vs_cli/tasks.jsonl` contains 440 standard tasks
-  and no grounded-prompt tasks.
+- Current imported GUI-vs-CLI catalogs:
+  - `tasks/gui_vs_cli/tasks.jsonl`: 440 standard tasks.
+  - `tasks/gui_vs_cli/tasks_standard.jsonl`: same 440 standard tasks.
+  - `tasks/gui_vs_cli/tasks_grounding.jsonl`: 176 grounded-prompt tasks.
+  - Regenerate from the ignored local GitHub checkout with
+    `python scripts/import_gui_vs_cli_tasks.py`.
 
 ## 2026-07-02: New CLI And Claude Opus 4.6 Comparison Work
 
@@ -172,15 +176,20 @@ Policy:
 What changed:
 
 - Added `gui_vs_cli` as a recognized `TaskConfig.benchmark`.
-- Added the full public task catalog:
-  - `tasks/gui_vs_cli/tasks.jsonl`
+- Added the public task catalogs:
+  - `tasks/gui_vs_cli/tasks.jsonl` / `tasks_standard.jsonl`: 440 standard
+    tasks across 18 desktop applications.
+  - `tasks/gui_vs_cli/tasks_grounding.jsonl`: 176 grounded-prompt tasks across
+    14 desktop applications.
 - Removed the earlier hand-written placeholder GUI-vs-CLI task YAML.
 - Added environment backend notes:
   - `environments/README.md`
 
 Status:
 
-- The catalog has 440 task records across 18 desktop applications.
+- The standard catalog has 440 task records across 18 desktop applications.
+- The grounded-prompt catalog has 176 task records across 14 desktop
+  applications.
 - It preserves task text, required seed files, and verifier commands from the
   public GUI-vs-CLI dataset.
 - These tasks are not in an active batch yet.

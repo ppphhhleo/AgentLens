@@ -106,10 +106,12 @@ AgentLens variants are the `agentlens_gui_toolcall_*` ids.
 
 ## GUI-vs-CLI Full Workflow Tasks
 
-AgentLens has imported the GUI-vs-CLI task catalog:
+AgentLens has imported the GUI-vs-CLI task catalogs:
 
 ```text
-tasks/gui_vs_cli/tasks.jsonl
+tasks/gui_vs_cli/tasks.jsonl            # 440 standard tasks
+tasks/gui_vs_cli/tasks_standard.jsonl   # same 440 standard tasks
+tasks/gui_vs_cli/tasks_grounding.jsonl  # 176 grounded-prompt tasks
 ```
 
 The catalog is not enough to run the full paper workflow by itself. Full

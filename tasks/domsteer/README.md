@@ -13,10 +13,11 @@ datavoyager_most_fuel_efficient/task.yaml
 tasks.jsonl
 ```
 
-`tasks.jsonl` is a lightweight catalog in the same spirit as
-`tasks/gui_vs_cli/tasks.jsonl`: one JSON object per task/workflow. It currently
-contains only the eight DOMSteer experiment tasks from the user-study setup:
-four DataVoyager tasks and four TensorFlow Playground tasks.
+`tasks.jsonl` is a lightweight catalog in the same spirit as the
+GUI-vs-CLI JSONL catalogs under `tasks/gui_vs_cli/`: one JSON object per
+task/workflow. It currently contains only the eight DOMSteer experiment tasks
+from the user-study setup: four DataVoyager tasks and four TensorFlow
+Playground tasks.
 
 Important distinctions:
 
