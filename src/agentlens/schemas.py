@@ -15,6 +15,7 @@ class ToolHarnessTier(StrEnum):
     BROWSER_ONLY = "browser_only"
     BROWSER_FILES = "browser_files"
     FULL_SANDBOX = "full_sandbox"
+    NO_GUI_TOOL_ONLY = "no_gui_tool_only"
 
 
 class MemoryScope(StrEnum):
@@ -80,6 +81,39 @@ class ToolHarnessConfig(BaseModel):
     tools: list[str] = Field(default_factory=list)
     prompt_version: str = "v1"
     extra: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_no_gui_tier(self) -> ToolHarnessConfig:
+        if self.tier != ToolHarnessTier.NO_GUI_TOOL_ONLY:
+            return self
+
+        gui_tools = [
+            tool
+            for tool in self.tools
+            if tool.startswith("browser.") or tool.startswith("desktop.")
+        ]
+        if gui_tools:
+            raise ValueError(
+                "tier 'no_gui_tool_only' must not expose browser.* or desktop.* tools: "
+                f"{gui_tools}"
+            )
+
+        input_modes = self.extra.get("input_modes")
+        if not isinstance(input_modes, list) or not input_modes:
+            raise ValueError(
+                "tier 'no_gui_tool_only' must set extra.input_modes to non-visual modes "
+                "such as ['axtree']"
+            )
+
+        visual_modes = sorted(
+            str(mode) for mode in input_modes if str(mode) in {"screenshot", "set_of_marks"}
+        )
+        if visual_modes:
+            raise ValueError(
+                "tier 'no_gui_tool_only' must not expose visual input modes: "
+                f"{visual_modes}"
+            )
+        return self
 
 
 class MemoryHarnessConfig(BaseModel):

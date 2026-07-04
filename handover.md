@@ -210,6 +210,15 @@ LLM-refined phase summaries already exist in
 with `annotation_mode=llm`. Use them for readable phase names and qualitative
 examples, but keep structured metrics as the primary validation evidence.
 
+## 2026-07-04: No-GUI Tier Split
+
+No-GUI/tool-only AgentLens harnesses now use the first-class
+`ToolHarnessTier.NO_GUI_TOOL_ONLY` / YAML `tier: no_gui_tool_only` instead of
+being labeled `full_sandbox`. This is still the same `screenshot_react` runner
+with AIO sandbox code/shell/file/search tools and non-visual model input such
+as `extra.input_modes: [axtree]`; `full_sandbox` is reserved for mixed GUI plus
+programmatic harnesses.
+
 ## 2026-07-02: Current Agent Structures
 
 AgentLens now has five distinct agent structures. Keep these names separate

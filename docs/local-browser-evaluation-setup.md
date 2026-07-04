@@ -176,8 +176,8 @@ Evaluation writes `evaluation_bundle.json` for single trajectories and
 
 ## Sandboxed Browser Runs
 
-Use this only when the harness has `tier: full_sandbox` or
-`extra.browser_source: aio_sandbox`.
+Use this only when the harness has `tier: full_sandbox`,
+`tier: no_gui_tool_only`, or `extra.browser_source: aio_sandbox`.
 
 Prerequisites:
 
