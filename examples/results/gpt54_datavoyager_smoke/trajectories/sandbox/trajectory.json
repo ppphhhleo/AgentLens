@@ -1,0 +1,2954 @@
+{
+  "trajectory_id": "6de24086-2607-4923-adb8-ce834243848b",
+  "experiment_id": "gpt54_datavoyager_smoke",
+  "run_id": "dv_most_fuel__gpt54__sandbox",
+  "seed": 0,
+  "trial": 1,
+  "model": {
+    "id": "gpt54",
+    "provider": "openai",
+    "name": "gpt-5.4",
+    "temperature": 0.0,
+    "vision": true,
+    "context_window": null,
+    "max_output_tokens": 1024,
+    "extra": {
+      "interaction_backend": "tool_call"
+    }
+  },
+  "tool_harness": {
+    "id": "full_sandbox",
+    "runner": "screenshot_react",
+    "tier": "full_sandbox",
+    "tools": [
+      "browser.screenshot",
+      "browser.click",
+      "browser.double_click",
+      "browser.type",
+      "browser.scroll",
+      "browser.wait",
+      "browser.move",
+      "browser.keypress",
+      "browser.drag",
+      "browser.goto",
+      "browser.back",
+      "browser.forward",
+      "browser.reload",
+      "web.openai_search",
+      "code.run_python",
+      "code.shell",
+      "files.read",
+      "files.write",
+      "task.final_answer"
+    ],
+    "prompt_version": "tool_call_v1",
+    "extra": {
+      "browser_source": "aio_sandbox",
+      "sandbox_image": "ghcr.io/agent-infra/sandbox:latest",
+      "sandbox_port": 8080,
+      "sandbox_shm_size": "2g",
+      "sandbox_cap_add": [
+        "SYS_ADMIN"
+      ],
+      "sandbox_security_opt": [
+        "seccomp=unconfined"
+      ],
+      "sandbox_watch_paths": [
+        "/home/gem",
+        "/tmp",
+        "/home/gem/Downloads"
+      ],
+      "headless": true,
+      "settle_ms": 1000,
+      "stealth": true,
+      "viewport": {
+        "width": 1600,
+        "height": 900
+      },
+      "screenshot_source": "browser_viewport",
+      "coordinate_frame": "browser_viewport",
+      "parallel_tool_calls": true,
+      "max_actions_per_round": 5,
+      "model_max_attempts": 6,
+      "model_retry_sleep_s": 2.0,
+      "model_retry_max_sleep_s": 60.0
+    }
+  },
+  "memory_harness": {
+    "id": "no_memory",
+    "kind": "none",
+    "scope": "none",
+    "read_policy": null,
+    "write_policy": null,
+    "max_items": null,
+    "storage": null,
+    "extra": {}
+  },
+  "task": {
+    "id": "datavoyager_most_fuel_efficient",
+    "benchmark": "domsteer",
+    "task_id": "datavoyager.most_fuel_efficient",
+    "goal": "What is the most fuel-efficient car in the dataset?",
+    "start_url": "https://vega.github.io/voyager2/",
+    "capability_required": [
+      "browser_ui",
+      "visual_reasoning",
+      "data_analysis"
+    ],
+    "validator": "final_answer",
+    "expected_answer": "Mazda GLC",
+    "answer_validator": "contains",
+    "extra": {
+      "canonical_task": "datavoyager_most_fuel_efficient",
+      "task_family": "visual_analytics"
+    }
+  },
+  "started_at": "2026-06-29T08:52:44.649176Z",
+  "completed_at": "2026-06-29T08:53:57.581244Z",
+  "events": [
+    {
+      "event_id": "9de1e355-931d-4e99-ab7d-3b6a72d9a44b",
+      "event_type": "session_boundary",
+      "timestamp": "2026-06-29T08:53:12.445454Z",
+      "step_index": 0,
+      "data": {
+        "kind": "agent_turn_start",
+        "turn_index": 1,
+        "max_turns": 1,
+        "user_messages_so_far": []
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "3f92f108-f3f6-462e-88b4-b33e7da17927",
+      "event_type": "screenshot",
+      "timestamp": "2026-06-29T08:53:12.800247Z",
+      "step_index": 0,
+      "data": {
+        "url": "https://vega.github.io/voyager2/",
+        "viewport": {
+          "width": 1600,
+          "height": 900
+        },
+        "goal": "What is the most fuel-efficient car in the dataset?",
+        "kind": "post_action",
+        "screenshot_source": "browser_viewport",
+        "coordinate_frame": "browser_viewport"
+      },
+      "artifact_paths": [
+        "examples/results/gpt54_datavoyager_smoke/trajectories/sandbox/screenshots/step_000.png"
+      ]
+    },
+    {
+      "event_id": "eb865e9a-7e8c-4b6e-a6fe-7a9c0d9c902e",
+      "event_type": "model_message",
+      "timestamp": "2026-06-29T08:53:19.268878Z",
+      "step_index": 1,
+      "data": {
+        "thought": "Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.",
+        "action": {
+          "type": "click",
+          "x": 361.0,
+          "y": 453.0
+        },
+        "actions": [
+          {
+            "type": "click",
+            "x": 361.0,
+            "y": 453.0
+          }
+        ],
+        "tool_name": "browser.click",
+        "tool_names": [
+          "browser.click"
+        ],
+        "round_index": 1,
+        "actions_in_round": 1,
+        "raw_response": "[{\"provider\": \"openai\", \"model\": \"gpt-5.4\", \"tool_name\": \"browser.click\", \"tool_args\": {\"x\": 361, \"y\": 453, \"reasoning\": \"Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.\"}, \"reasoning\": \"Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.\", \"raw_provider_tool_name\": \"browser__click\", \"raw_response\": {\"id\": \"chatcmpl-Dw21uj6JYpD7w4WuVqCVw08FBUEhH\", \"choices\": [{\"finish_reason\": \"tool_calls\", \"index\": 0, \"logprobs\": null, \"message\": {\"content\": null, \"refusal\": null, \"role\": \"assistant\", \"annotations\": [], \"audio\": null, \"function_call\": null, \"tool_calls\": [{\"id\": \"call_8Ww2jwpUBeiiksDYltkr2ssn\", \"function\": {\"arguments\": \"{\\\"x\\\":361,\\\"y\\\":453,\\\"reasoning\\\":\\\"Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.\\\"}\", \"name\": \"browser__click\"}, \"type\": \"function\"}]}}], \"created\": 1782723198, \"model\": \"gpt-5.4-2026-03-05\", \"object\": \"chat.completion\", \"service_tier\": \"default\", \"system_fingerprint\": null, \"usage\": {\"completion_tokens\": 43, \"prompt_tokens\": 3052, \"total_tokens\": 3095, \"completion_tokens_details\": {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\": 0, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\": 0, \"cached_tokens\": 0}}}, \"finish_reason\": \"tool_calls\", \"input_tokens\": 3052, \"output_tokens\": 43}]",
+        "prompt_tokens": 3052,
+        "completion_tokens": 43,
+        "model_meta": {
+          "model": "gpt-5.4-2026-03-05",
+          "finish_reason": "tool_calls",
+          "interaction_backend": "tool_call",
+          "provider_tool_call": {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.click",
+            "tool_args": {
+              "x": 361,
+              "y": 453,
+              "reasoning": "Use DataVoyager's wildcard query input to ask for the most fuel-efficient car."
+            },
+            "reasoning": "Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.",
+            "raw_provider_tool_name": "browser__click",
+            "raw_response": {
+              "id": "chatcmpl-Dw21uj6JYpD7w4WuVqCVw08FBUEhH",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_8Ww2jwpUBeiiksDYltkr2ssn",
+                        "function": {
+                          "arguments": "{\"x\":361,\"y\":453,\"reasoning\":\"Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.\"}",
+                          "name": "browser__click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723198,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 43,
+                "prompt_tokens": 3052,
+                "total_tokens": 3095,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3052,
+            "output_tokens": 43
+          },
+          "provider_tool_calls": [
+            {
+              "provider": "openai",
+              "model": "gpt-5.4",
+              "tool_name": "browser.click",
+              "tool_args": {
+                "x": 361,
+                "y": 453,
+                "reasoning": "Use DataVoyager's wildcard query input to ask for the most fuel-efficient car."
+              },
+              "reasoning": "Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.",
+              "raw_provider_tool_name": "browser__click",
+              "raw_response": {
+                "id": "chatcmpl-Dw21uj6JYpD7w4WuVqCVw08FBUEhH",
+                "choices": [
+                  {
+                    "finish_reason": "tool_calls",
+                    "index": 0,
+                    "logprobs": null,
+                    "message": {
+                      "content": null,
+                      "refusal": null,
+                      "role": "assistant",
+                      "annotations": [],
+                      "audio": null,
+                      "function_call": null,
+                      "tool_calls": [
+                        {
+                          "id": "call_8Ww2jwpUBeiiksDYltkr2ssn",
+                          "function": {
+                            "arguments": "{\"x\":361,\"y\":453,\"reasoning\":\"Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.\"}",
+                            "name": "browser__click"
+                          },
+                          "type": "function"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "created": 1782723198,
+                "model": "gpt-5.4-2026-03-05",
+                "object": "chat.completion",
+                "service_tier": "default",
+                "system_fingerprint": null,
+                "usage": {
+                  "completion_tokens": 43,
+                  "prompt_tokens": 3052,
+                  "total_tokens": 3095,
+                  "completion_tokens_details": {
+                    "accepted_prediction_tokens": 0,
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                    "rejected_prediction_tokens": 0
+                  },
+                  "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0
+                  }
+                }
+              },
+              "finish_reason": "tool_calls",
+              "input_tokens": 3052,
+              "output_tokens": 43
+            }
+          ],
+          "parallel_tool_calls": true
+        },
+        "provider_tool_call": {
+          "provider": "openai",
+          "model": "gpt-5.4",
+          "tool_name": "browser.click",
+          "tool_args": {
+            "x": 361,
+            "y": 453,
+            "reasoning": "Use DataVoyager's wildcard query input to ask for the most fuel-efficient car."
+          },
+          "reasoning": "Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.",
+          "raw_provider_tool_name": "browser__click",
+          "raw_response": {
+            "id": "chatcmpl-Dw21uj6JYpD7w4WuVqCVw08FBUEhH",
+            "choices": [
+              {
+                "finish_reason": "tool_calls",
+                "index": 0,
+                "logprobs": null,
+                "message": {
+                  "content": null,
+                  "refusal": null,
+                  "role": "assistant",
+                  "annotations": [],
+                  "audio": null,
+                  "function_call": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_8Ww2jwpUBeiiksDYltkr2ssn",
+                      "function": {
+                        "arguments": "{\"x\":361,\"y\":453,\"reasoning\":\"Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.\"}",
+                        "name": "browser__click"
+                      },
+                      "type": "function"
+                    }
+                  ]
+                }
+              }
+            ],
+            "created": 1782723198,
+            "model": "gpt-5.4-2026-03-05",
+            "object": "chat.completion",
+            "service_tier": "default",
+            "system_fingerprint": null,
+            "usage": {
+              "completion_tokens": 43,
+              "prompt_tokens": 3052,
+              "total_tokens": 3095,
+              "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0
+              },
+              "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0
+              }
+            }
+          },
+          "finish_reason": "tool_calls",
+          "input_tokens": 3052,
+          "output_tokens": 43
+        },
+        "provider_tool_calls": [
+          {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.click",
+            "tool_args": {
+              "x": 361,
+              "y": 453,
+              "reasoning": "Use DataVoyager's wildcard query input to ask for the most fuel-efficient car."
+            },
+            "reasoning": "Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.",
+            "raw_provider_tool_name": "browser__click",
+            "raw_response": {
+              "id": "chatcmpl-Dw21uj6JYpD7w4WuVqCVw08FBUEhH",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_8Ww2jwpUBeiiksDYltkr2ssn",
+                        "function": {
+                          "arguments": "{\"x\":361,\"y\":453,\"reasoning\":\"Use DataVoyager's wildcard query input to ask for the most fuel-efficient car.\"}",
+                          "name": "browser__click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723198,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 43,
+                "prompt_tokens": 3052,
+                "total_tokens": 3095,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3052,
+            "output_tokens": 43
+          }
+        ],
+        "mock": false
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "dafbefe6-89da-4e6e-9dbc-9351a0f6a227",
+      "event_type": "browser_action",
+      "timestamp": "2026-06-29T08:53:19.342127Z",
+      "step_index": 1,
+      "data": {
+        "round_index": 1,
+        "subaction_index": 1,
+        "actions_in_round": 1,
+        "action": {
+          "type": "click",
+          "x": 361.0,
+          "y": 453.0
+        },
+        "error": null
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "02be902e-a709-4ac7-9f16-4384a09f96c1",
+      "event_type": "screenshot",
+      "timestamp": "2026-06-29T08:53:19.440378Z",
+      "step_index": 1,
+      "data": {
+        "url": "https://vega.github.io/voyager2/",
+        "viewport": {
+          "width": 1600,
+          "height": 900
+        },
+        "goal": "What is the most fuel-efficient car in the dataset?",
+        "kind": "post_action",
+        "screenshot_source": "browser_viewport",
+        "coordinate_frame": "browser_viewport"
+      },
+      "artifact_paths": [
+        "examples/results/gpt54_datavoyager_smoke/trajectories/sandbox/screenshots/step_001.png"
+      ]
+    },
+    {
+      "event_id": "3509c936-0c38-4900-bda8-8a6c5cc00506",
+      "event_type": "model_message",
+      "timestamp": "2026-06-29T08:53:23.319702Z",
+      "step_index": 2,
+      "data": {
+        "thought": "Activate the wildcard input field to type a query about fuel efficiency.",
+        "action": {
+          "type": "double_click",
+          "x": 360.0,
+          "y": 410.0
+        },
+        "actions": [
+          {
+            "type": "double_click",
+            "x": 360.0,
+            "y": 410.0
+          }
+        ],
+        "tool_name": "browser.double_click",
+        "tool_names": [
+          "browser.double_click"
+        ],
+        "round_index": 2,
+        "actions_in_round": 1,
+        "raw_response": "[{\"provider\": \"openai\", \"model\": \"gpt-5.4\", \"tool_name\": \"browser.double_click\", \"tool_args\": {\"x\": 360, \"y\": 410, \"reasoning\": \"Activate the wildcard input field to type a query about fuel efficiency.\"}, \"reasoning\": \"Activate the wildcard input field to type a query about fuel efficiency.\", \"raw_provider_tool_name\": \"browser__double_click\", \"raw_response\": {\"id\": \"chatcmpl-Dw21wMGWDfZgRLOvS5Pp3sLm3qXSg\", \"choices\": [{\"finish_reason\": \"tool_calls\", \"index\": 0, \"logprobs\": null, \"message\": {\"content\": null, \"refusal\": null, \"role\": \"assistant\", \"annotations\": [], \"audio\": null, \"function_call\": null, \"tool_calls\": [{\"id\": \"call_kspX6Qi5EQsySTrhdBoL5UH1\", \"function\": {\"arguments\": \"{\\\"x\\\":360,\\\"y\\\":410,\\\"reasoning\\\":\\\"Activate the wildcard input field to type a query about fuel efficiency.\\\"}\", \"name\": \"browser__double_click\"}, \"type\": \"function\"}]}}], \"created\": 1782723200, \"model\": \"gpt-5.4-2026-03-05\", \"object\": \"chat.completion\", \"service_tier\": \"default\", \"system_fingerprint\": null, \"usage\": {\"completion_tokens\": 40, \"prompt_tokens\": 3103, \"total_tokens\": 3143, \"completion_tokens_details\": {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\": 0, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\": 0, \"cached_tokens\": 0}}}, \"finish_reason\": \"tool_calls\", \"input_tokens\": 3103, \"output_tokens\": 40}]",
+        "prompt_tokens": 3103,
+        "completion_tokens": 40,
+        "model_meta": {
+          "model": "gpt-5.4-2026-03-05",
+          "finish_reason": "tool_calls",
+          "interaction_backend": "tool_call",
+          "provider_tool_call": {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.double_click",
+            "tool_args": {
+              "x": 360,
+              "y": 410,
+              "reasoning": "Activate the wildcard input field to type a query about fuel efficiency."
+            },
+            "reasoning": "Activate the wildcard input field to type a query about fuel efficiency.",
+            "raw_provider_tool_name": "browser__double_click",
+            "raw_response": {
+              "id": "chatcmpl-Dw21wMGWDfZgRLOvS5Pp3sLm3qXSg",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_kspX6Qi5EQsySTrhdBoL5UH1",
+                        "function": {
+                          "arguments": "{\"x\":360,\"y\":410,\"reasoning\":\"Activate the wildcard input field to type a query about fuel efficiency.\"}",
+                          "name": "browser__double_click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723200,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 40,
+                "prompt_tokens": 3103,
+                "total_tokens": 3143,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3103,
+            "output_tokens": 40
+          },
+          "provider_tool_calls": [
+            {
+              "provider": "openai",
+              "model": "gpt-5.4",
+              "tool_name": "browser.double_click",
+              "tool_args": {
+                "x": 360,
+                "y": 410,
+                "reasoning": "Activate the wildcard input field to type a query about fuel efficiency."
+              },
+              "reasoning": "Activate the wildcard input field to type a query about fuel efficiency.",
+              "raw_provider_tool_name": "browser__double_click",
+              "raw_response": {
+                "id": "chatcmpl-Dw21wMGWDfZgRLOvS5Pp3sLm3qXSg",
+                "choices": [
+                  {
+                    "finish_reason": "tool_calls",
+                    "index": 0,
+                    "logprobs": null,
+                    "message": {
+                      "content": null,
+                      "refusal": null,
+                      "role": "assistant",
+                      "annotations": [],
+                      "audio": null,
+                      "function_call": null,
+                      "tool_calls": [
+                        {
+                          "id": "call_kspX6Qi5EQsySTrhdBoL5UH1",
+                          "function": {
+                            "arguments": "{\"x\":360,\"y\":410,\"reasoning\":\"Activate the wildcard input field to type a query about fuel efficiency.\"}",
+                            "name": "browser__double_click"
+                          },
+                          "type": "function"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "created": 1782723200,
+                "model": "gpt-5.4-2026-03-05",
+                "object": "chat.completion",
+                "service_tier": "default",
+                "system_fingerprint": null,
+                "usage": {
+                  "completion_tokens": 40,
+                  "prompt_tokens": 3103,
+                  "total_tokens": 3143,
+                  "completion_tokens_details": {
+                    "accepted_prediction_tokens": 0,
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                    "rejected_prediction_tokens": 0
+                  },
+                  "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0
+                  }
+                }
+              },
+              "finish_reason": "tool_calls",
+              "input_tokens": 3103,
+              "output_tokens": 40
+            }
+          ],
+          "parallel_tool_calls": true
+        },
+        "provider_tool_call": {
+          "provider": "openai",
+          "model": "gpt-5.4",
+          "tool_name": "browser.double_click",
+          "tool_args": {
+            "x": 360,
+            "y": 410,
+            "reasoning": "Activate the wildcard input field to type a query about fuel efficiency."
+          },
+          "reasoning": "Activate the wildcard input field to type a query about fuel efficiency.",
+          "raw_provider_tool_name": "browser__double_click",
+          "raw_response": {
+            "id": "chatcmpl-Dw21wMGWDfZgRLOvS5Pp3sLm3qXSg",
+            "choices": [
+              {
+                "finish_reason": "tool_calls",
+                "index": 0,
+                "logprobs": null,
+                "message": {
+                  "content": null,
+                  "refusal": null,
+                  "role": "assistant",
+                  "annotations": [],
+                  "audio": null,
+                  "function_call": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_kspX6Qi5EQsySTrhdBoL5UH1",
+                      "function": {
+                        "arguments": "{\"x\":360,\"y\":410,\"reasoning\":\"Activate the wildcard input field to type a query about fuel efficiency.\"}",
+                        "name": "browser__double_click"
+                      },
+                      "type": "function"
+                    }
+                  ]
+                }
+              }
+            ],
+            "created": 1782723200,
+            "model": "gpt-5.4-2026-03-05",
+            "object": "chat.completion",
+            "service_tier": "default",
+            "system_fingerprint": null,
+            "usage": {
+              "completion_tokens": 40,
+              "prompt_tokens": 3103,
+              "total_tokens": 3143,
+              "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0
+              },
+              "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0
+              }
+            }
+          },
+          "finish_reason": "tool_calls",
+          "input_tokens": 3103,
+          "output_tokens": 40
+        },
+        "provider_tool_calls": [
+          {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.double_click",
+            "tool_args": {
+              "x": 360,
+              "y": 410,
+              "reasoning": "Activate the wildcard input field to type a query about fuel efficiency."
+            },
+            "reasoning": "Activate the wildcard input field to type a query about fuel efficiency.",
+            "raw_provider_tool_name": "browser__double_click",
+            "raw_response": {
+              "id": "chatcmpl-Dw21wMGWDfZgRLOvS5Pp3sLm3qXSg",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_kspX6Qi5EQsySTrhdBoL5UH1",
+                        "function": {
+                          "arguments": "{\"x\":360,\"y\":410,\"reasoning\":\"Activate the wildcard input field to type a query about fuel efficiency.\"}",
+                          "name": "browser__double_click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723200,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 40,
+                "prompt_tokens": 3103,
+                "total_tokens": 3143,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3103,
+            "output_tokens": 40
+          }
+        ],
+        "mock": false
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "f81b4102-380a-455d-b4a0-8c4476469ebd",
+      "event_type": "browser_action",
+      "timestamp": "2026-06-29T08:53:23.381113Z",
+      "step_index": 2,
+      "data": {
+        "round_index": 2,
+        "subaction_index": 1,
+        "actions_in_round": 1,
+        "action": {
+          "type": "double_click",
+          "x": 360.0,
+          "y": 410.0
+        },
+        "error": null
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "ea7ec61b-1161-41d2-89b7-93d709cbd7d2",
+      "event_type": "screenshot",
+      "timestamp": "2026-06-29T08:53:23.520083Z",
+      "step_index": 2,
+      "data": {
+        "url": "https://vega.github.io/voyager2/",
+        "viewport": {
+          "width": 1600,
+          "height": 900
+        },
+        "goal": "What is the most fuel-efficient car in the dataset?",
+        "kind": "post_action",
+        "screenshot_source": "browser_viewport",
+        "coordinate_frame": "browser_viewport"
+      },
+      "artifact_paths": [
+        "examples/results/gpt54_datavoyager_smoke/trajectories/sandbox/screenshots/step_002.png"
+      ]
+    },
+    {
+      "event_id": "e2771f23-c3e2-4d9a-afac-ebc9ed37962c",
+      "event_type": "model_message",
+      "timestamp": "2026-06-29T08:53:26.187472Z",
+      "step_index": 3,
+      "data": {
+        "thought": "Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.",
+        "action": {
+          "type": "click",
+          "x": 318.0,
+          "y": 410.0
+        },
+        "actions": [
+          {
+            "type": "click",
+            "x": 318.0,
+            "y": 410.0
+          }
+        ],
+        "tool_name": "browser.click",
+        "tool_names": [
+          "browser.click"
+        ],
+        "round_index": 3,
+        "actions_in_round": 1,
+        "raw_response": "[{\"provider\": \"openai\", \"model\": \"gpt-5.4\", \"tool_name\": \"browser.click\", \"tool_args\": {\"x\": 318, \"y\": 410, \"reasoning\": \"Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.\"}, \"reasoning\": \"Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.\", \"raw_provider_tool_name\": \"browser__click\", \"raw_response\": {\"id\": \"chatcmpl-Dw220dTdsTtjrkKz7lrYmjAOYwyMl\", \"choices\": [{\"finish_reason\": \"tool_calls\", \"index\": 0, \"logprobs\": null, \"message\": {\"content\": null, \"refusal\": null, \"role\": \"assistant\", \"annotations\": [], \"audio\": null, \"function_call\": null, \"tool_calls\": [{\"id\": \"call_CPuhIIndY1xED8WVeCjyV7Kv\", \"function\": {\"arguments\": \"{\\\"x\\\":318,\\\"y\\\":410,\\\"reasoning\\\":\\\"Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.\\\"}\", \"name\": \"browser__click\"}, \"type\": \"function\"}]}}], \"created\": 1782723204, \"model\": \"gpt-5.4-2026-03-05\", \"object\": \"chat.completion\", \"service_tier\": \"default\", \"system_fingerprint\": null, \"usage\": {\"completion_tokens\": 48, \"prompt_tokens\": 3155, \"total_tokens\": 3203, \"completion_tokens_details\": {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\": 0, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\": 0, \"cached_tokens\": 0}}}, \"finish_reason\": \"tool_calls\", \"input_tokens\": 3155, \"output_tokens\": 48}]",
+        "prompt_tokens": 3155,
+        "completion_tokens": 48,
+        "model_meta": {
+          "model": "gpt-5.4-2026-03-05",
+          "finish_reason": "tool_calls",
+          "interaction_backend": "tool_call",
+          "provider_tool_call": {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.click",
+            "tool_args": {
+              "x": 318,
+              "y": 410,
+              "reasoning": "Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car."
+            },
+            "reasoning": "Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.",
+            "raw_provider_tool_name": "browser__click",
+            "raw_response": {
+              "id": "chatcmpl-Dw220dTdsTtjrkKz7lrYmjAOYwyMl",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_CPuhIIndY1xED8WVeCjyV7Kv",
+                        "function": {
+                          "arguments": "{\"x\":318,\"y\":410,\"reasoning\":\"Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.\"}",
+                          "name": "browser__click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723204,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 48,
+                "prompt_tokens": 3155,
+                "total_tokens": 3203,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3155,
+            "output_tokens": 48
+          },
+          "provider_tool_calls": [
+            {
+              "provider": "openai",
+              "model": "gpt-5.4",
+              "tool_name": "browser.click",
+              "tool_args": {
+                "x": 318,
+                "y": 410,
+                "reasoning": "Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car."
+              },
+              "reasoning": "Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.",
+              "raw_provider_tool_name": "browser__click",
+              "raw_response": {
+                "id": "chatcmpl-Dw220dTdsTtjrkKz7lrYmjAOYwyMl",
+                "choices": [
+                  {
+                    "finish_reason": "tool_calls",
+                    "index": 0,
+                    "logprobs": null,
+                    "message": {
+                      "content": null,
+                      "refusal": null,
+                      "role": "assistant",
+                      "annotations": [],
+                      "audio": null,
+                      "function_call": null,
+                      "tool_calls": [
+                        {
+                          "id": "call_CPuhIIndY1xED8WVeCjyV7Kv",
+                          "function": {
+                            "arguments": "{\"x\":318,\"y\":410,\"reasoning\":\"Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.\"}",
+                            "name": "browser__click"
+                          },
+                          "type": "function"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "created": 1782723204,
+                "model": "gpt-5.4-2026-03-05",
+                "object": "chat.completion",
+                "service_tier": "default",
+                "system_fingerprint": null,
+                "usage": {
+                  "completion_tokens": 48,
+                  "prompt_tokens": 3155,
+                  "total_tokens": 3203,
+                  "completion_tokens_details": {
+                    "accepted_prediction_tokens": 0,
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                    "rejected_prediction_tokens": 0
+                  },
+                  "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0
+                  }
+                }
+              },
+              "finish_reason": "tool_calls",
+              "input_tokens": 3155,
+              "output_tokens": 48
+            }
+          ],
+          "parallel_tool_calls": true
+        },
+        "provider_tool_call": {
+          "provider": "openai",
+          "model": "gpt-5.4",
+          "tool_name": "browser.click",
+          "tool_args": {
+            "x": 318,
+            "y": 410,
+            "reasoning": "Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car."
+          },
+          "reasoning": "Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.",
+          "raw_provider_tool_name": "browser__click",
+          "raw_response": {
+            "id": "chatcmpl-Dw220dTdsTtjrkKz7lrYmjAOYwyMl",
+            "choices": [
+              {
+                "finish_reason": "tool_calls",
+                "index": 0,
+                "logprobs": null,
+                "message": {
+                  "content": null,
+                  "refusal": null,
+                  "role": "assistant",
+                  "annotations": [],
+                  "audio": null,
+                  "function_call": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_CPuhIIndY1xED8WVeCjyV7Kv",
+                      "function": {
+                        "arguments": "{\"x\":318,\"y\":410,\"reasoning\":\"Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.\"}",
+                        "name": "browser__click"
+                      },
+                      "type": "function"
+                    }
+                  ]
+                }
+              }
+            ],
+            "created": 1782723204,
+            "model": "gpt-5.4-2026-03-05",
+            "object": "chat.completion",
+            "service_tier": "default",
+            "system_fingerprint": null,
+            "usage": {
+              "completion_tokens": 48,
+              "prompt_tokens": 3155,
+              "total_tokens": 3203,
+              "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0
+              },
+              "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0
+              }
+            }
+          },
+          "finish_reason": "tool_calls",
+          "input_tokens": 3155,
+          "output_tokens": 48
+        },
+        "provider_tool_calls": [
+          {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.click",
+            "tool_args": {
+              "x": 318,
+              "y": 410,
+              "reasoning": "Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car."
+            },
+            "reasoning": "Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.",
+            "raw_provider_tool_name": "browser__click",
+            "raw_response": {
+              "id": "chatcmpl-Dw220dTdsTtjrkKz7lrYmjAOYwyMl",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_CPuhIIndY1xED8WVeCjyV7Kv",
+                        "function": {
+                          "arguments": "{\"x\":318,\"y\":410,\"reasoning\":\"Focus the wildcard 'any' input box so I can type a query to identify the most fuel-efficient car.\"}",
+                          "name": "browser__click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723204,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 48,
+                "prompt_tokens": 3155,
+                "total_tokens": 3203,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3155,
+            "output_tokens": 48
+          }
+        ],
+        "mock": false
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "80a1f6c1-e032-4c45-9f34-d04f5fb3a47a",
+      "event_type": "browser_action",
+      "timestamp": "2026-06-29T08:53:26.252914Z",
+      "step_index": 3,
+      "data": {
+        "round_index": 3,
+        "subaction_index": 1,
+        "actions_in_round": 1,
+        "action": {
+          "type": "click",
+          "x": 318.0,
+          "y": 410.0
+        },
+        "error": null
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "cfdcb179-e731-49d2-bce8-ca7fa265ad8c",
+      "event_type": "screenshot",
+      "timestamp": "2026-06-29T08:53:26.377209Z",
+      "step_index": 3,
+      "data": {
+        "url": "https://vega.github.io/voyager2/",
+        "viewport": {
+          "width": 1600,
+          "height": 900
+        },
+        "goal": "What is the most fuel-efficient car in the dataset?",
+        "kind": "post_action",
+        "screenshot_source": "browser_viewport",
+        "coordinate_frame": "browser_viewport"
+      },
+      "artifact_paths": [
+        "examples/results/gpt54_datavoyager_smoke/trajectories/sandbox/screenshots/step_003.png"
+      ]
+    },
+    {
+      "event_id": "a79c4f32-346c-4150-bc92-386a156846f4",
+      "event_type": "model_message",
+      "timestamp": "2026-06-29T08:53:28.414217Z",
+      "step_index": 4,
+      "data": {
+        "thought": "Focus the wildcard input text box to enter a query for fuel efficiency.",
+        "action": {
+          "type": "click",
+          "x": 296.0,
+          "y": 410.0
+        },
+        "actions": [
+          {
+            "type": "click",
+            "x": 296.0,
+            "y": 410.0
+          }
+        ],
+        "tool_name": "browser.click",
+        "tool_names": [
+          "browser.click"
+        ],
+        "round_index": 4,
+        "actions_in_round": 1,
+        "raw_response": "[{\"provider\": \"openai\", \"model\": \"gpt-5.4\", \"tool_name\": \"browser.click\", \"tool_args\": {\"x\": 296, \"y\": 410, \"reasoning\": \"Focus the wildcard input text box to enter a query for fuel efficiency.\"}, \"reasoning\": \"Focus the wildcard input text box to enter a query for fuel efficiency.\", \"raw_provider_tool_name\": \"browser__click\", \"raw_response\": {\"id\": \"chatcmpl-Dw223dPLVO1bbXMoy6QLqftQ73S3U\", \"choices\": [{\"finish_reason\": \"tool_calls\", \"index\": 0, \"logprobs\": null, \"message\": {\"content\": null, \"refusal\": null, \"role\": \"assistant\", \"annotations\": [], \"audio\": null, \"function_call\": null, \"tool_calls\": [{\"id\": \"call_J4yxtonHQeInm4lSjSQ06RQS\", \"function\": {\"arguments\": \"{\\\"x\\\":296,\\\"y\\\":410,\\\"reasoning\\\":\\\"Focus the wildcard input text box to enter a query for fuel efficiency.\\\"}\", \"name\": \"browser__click\"}, \"type\": \"function\"}]}}], \"created\": 1782723207, \"model\": \"gpt-5.4-2026-03-05\", \"object\": \"chat.completion\", \"service_tier\": \"default\", \"system_fingerprint\": null, \"usage\": {\"completion_tokens\": 40, \"prompt_tokens\": 3214, \"total_tokens\": 3254, \"completion_tokens_details\": {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\": 0, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\": 0, \"cached_tokens\": 0}}}, \"finish_reason\": \"tool_calls\", \"input_tokens\": 3214, \"output_tokens\": 40}]",
+        "prompt_tokens": 3214,
+        "completion_tokens": 40,
+        "model_meta": {
+          "model": "gpt-5.4-2026-03-05",
+          "finish_reason": "tool_calls",
+          "interaction_backend": "tool_call",
+          "provider_tool_call": {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.click",
+            "tool_args": {
+              "x": 296,
+              "y": 410,
+              "reasoning": "Focus the wildcard input text box to enter a query for fuel efficiency."
+            },
+            "reasoning": "Focus the wildcard input text box to enter a query for fuel efficiency.",
+            "raw_provider_tool_name": "browser__click",
+            "raw_response": {
+              "id": "chatcmpl-Dw223dPLVO1bbXMoy6QLqftQ73S3U",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_J4yxtonHQeInm4lSjSQ06RQS",
+                        "function": {
+                          "arguments": "{\"x\":296,\"y\":410,\"reasoning\":\"Focus the wildcard input text box to enter a query for fuel efficiency.\"}",
+                          "name": "browser__click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723207,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 40,
+                "prompt_tokens": 3214,
+                "total_tokens": 3254,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3214,
+            "output_tokens": 40
+          },
+          "provider_tool_calls": [
+            {
+              "provider": "openai",
+              "model": "gpt-5.4",
+              "tool_name": "browser.click",
+              "tool_args": {
+                "x": 296,
+                "y": 410,
+                "reasoning": "Focus the wildcard input text box to enter a query for fuel efficiency."
+              },
+              "reasoning": "Focus the wildcard input text box to enter a query for fuel efficiency.",
+              "raw_provider_tool_name": "browser__click",
+              "raw_response": {
+                "id": "chatcmpl-Dw223dPLVO1bbXMoy6QLqftQ73S3U",
+                "choices": [
+                  {
+                    "finish_reason": "tool_calls",
+                    "index": 0,
+                    "logprobs": null,
+                    "message": {
+                      "content": null,
+                      "refusal": null,
+                      "role": "assistant",
+                      "annotations": [],
+                      "audio": null,
+                      "function_call": null,
+                      "tool_calls": [
+                        {
+                          "id": "call_J4yxtonHQeInm4lSjSQ06RQS",
+                          "function": {
+                            "arguments": "{\"x\":296,\"y\":410,\"reasoning\":\"Focus the wildcard input text box to enter a query for fuel efficiency.\"}",
+                            "name": "browser__click"
+                          },
+                          "type": "function"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "created": 1782723207,
+                "model": "gpt-5.4-2026-03-05",
+                "object": "chat.completion",
+                "service_tier": "default",
+                "system_fingerprint": null,
+                "usage": {
+                  "completion_tokens": 40,
+                  "prompt_tokens": 3214,
+                  "total_tokens": 3254,
+                  "completion_tokens_details": {
+                    "accepted_prediction_tokens": 0,
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                    "rejected_prediction_tokens": 0
+                  },
+                  "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0
+                  }
+                }
+              },
+              "finish_reason": "tool_calls",
+              "input_tokens": 3214,
+              "output_tokens": 40
+            }
+          ],
+          "parallel_tool_calls": true
+        },
+        "provider_tool_call": {
+          "provider": "openai",
+          "model": "gpt-5.4",
+          "tool_name": "browser.click",
+          "tool_args": {
+            "x": 296,
+            "y": 410,
+            "reasoning": "Focus the wildcard input text box to enter a query for fuel efficiency."
+          },
+          "reasoning": "Focus the wildcard input text box to enter a query for fuel efficiency.",
+          "raw_provider_tool_name": "browser__click",
+          "raw_response": {
+            "id": "chatcmpl-Dw223dPLVO1bbXMoy6QLqftQ73S3U",
+            "choices": [
+              {
+                "finish_reason": "tool_calls",
+                "index": 0,
+                "logprobs": null,
+                "message": {
+                  "content": null,
+                  "refusal": null,
+                  "role": "assistant",
+                  "annotations": [],
+                  "audio": null,
+                  "function_call": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_J4yxtonHQeInm4lSjSQ06RQS",
+                      "function": {
+                        "arguments": "{\"x\":296,\"y\":410,\"reasoning\":\"Focus the wildcard input text box to enter a query for fuel efficiency.\"}",
+                        "name": "browser__click"
+                      },
+                      "type": "function"
+                    }
+                  ]
+                }
+              }
+            ],
+            "created": 1782723207,
+            "model": "gpt-5.4-2026-03-05",
+            "object": "chat.completion",
+            "service_tier": "default",
+            "system_fingerprint": null,
+            "usage": {
+              "completion_tokens": 40,
+              "prompt_tokens": 3214,
+              "total_tokens": 3254,
+              "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0
+              },
+              "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0
+              }
+            }
+          },
+          "finish_reason": "tool_calls",
+          "input_tokens": 3214,
+          "output_tokens": 40
+        },
+        "provider_tool_calls": [
+          {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.click",
+            "tool_args": {
+              "x": 296,
+              "y": 410,
+              "reasoning": "Focus the wildcard input text box to enter a query for fuel efficiency."
+            },
+            "reasoning": "Focus the wildcard input text box to enter a query for fuel efficiency.",
+            "raw_provider_tool_name": "browser__click",
+            "raw_response": {
+              "id": "chatcmpl-Dw223dPLVO1bbXMoy6QLqftQ73S3U",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_J4yxtonHQeInm4lSjSQ06RQS",
+                        "function": {
+                          "arguments": "{\"x\":296,\"y\":410,\"reasoning\":\"Focus the wildcard input text box to enter a query for fuel efficiency.\"}",
+                          "name": "browser__click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723207,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 40,
+                "prompt_tokens": 3214,
+                "total_tokens": 3254,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3214,
+            "output_tokens": 40
+          }
+        ],
+        "mock": false
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "34e9d072-ab5a-4e7e-9e4b-3a2a6ce1c1ec",
+      "event_type": "browser_action",
+      "timestamp": "2026-06-29T08:53:28.430846Z",
+      "step_index": 4,
+      "data": {
+        "round_index": 4,
+        "subaction_index": 1,
+        "actions_in_round": 1,
+        "action": {
+          "type": "click",
+          "x": 296.0,
+          "y": 410.0
+        },
+        "error": null
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "94969b71-f9e2-4040-983c-4d883c80aa72",
+      "event_type": "screenshot",
+      "timestamp": "2026-06-29T08:53:28.570840Z",
+      "step_index": 4,
+      "data": {
+        "url": "https://vega.github.io/voyager2/",
+        "viewport": {
+          "width": 1600,
+          "height": 900
+        },
+        "goal": "What is the most fuel-efficient car in the dataset?",
+        "kind": "post_action",
+        "screenshot_source": "browser_viewport",
+        "coordinate_frame": "browser_viewport"
+      },
+      "artifact_paths": [
+        "examples/results/gpt54_datavoyager_smoke/trajectories/sandbox/screenshots/step_004.png"
+      ]
+    },
+    {
+      "event_id": "ac4de62d-f13a-4099-8979-bf901130feb0",
+      "event_type": "model_message",
+      "timestamp": "2026-06-29T08:53:30.356566Z",
+      "step_index": 5,
+      "data": {
+        "thought": "Focus the wildcard input box to enter a natural language query.",
+        "action": {
+          "type": "click",
+          "x": 312.0,
+          "y": 409.0
+        },
+        "actions": [
+          {
+            "type": "click",
+            "x": 312.0,
+            "y": 409.0
+          }
+        ],
+        "tool_name": "browser.click",
+        "tool_names": [
+          "browser.click"
+        ],
+        "round_index": 5,
+        "actions_in_round": 1,
+        "raw_response": "[{\"provider\": \"openai\", \"model\": \"gpt-5.4\", \"tool_name\": \"browser.click\", \"tool_args\": {\"x\": 312, \"y\": 409, \"reasoning\": \"Focus the wildcard input box to enter a natural language query.\"}, \"reasoning\": \"Focus the wildcard input box to enter a natural language query.\", \"raw_provider_tool_name\": \"browser__click\", \"raw_response\": {\"id\": \"chatcmpl-Dw225UFu1V4QKk6jXOFtaZFNwZiSr\", \"choices\": [{\"finish_reason\": \"tool_calls\", \"index\": 0, \"logprobs\": null, \"message\": {\"content\": null, \"refusal\": null, \"role\": \"assistant\", \"annotations\": [], \"audio\": null, \"function_call\": null, \"tool_calls\": [{\"id\": \"call_J0zOdLE3wzD902ZDixYIlKYI\", \"function\": {\"arguments\": \"{\\\"x\\\":312,\\\"y\\\":409,\\\"reasoning\\\":\\\"Focus the wildcard input box to enter a natural language query.\\\"}\", \"name\": \"browser__click\"}, \"type\": \"function\"}]}}], \"created\": 1782723209, \"model\": \"gpt-5.4-2026-03-05\", \"object\": \"chat.completion\", \"service_tier\": \"default\", \"system_fingerprint\": null, \"usage\": {\"completion_tokens\": 38, \"prompt_tokens\": 3265, \"total_tokens\": 3303, \"completion_tokens_details\": {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\": 0, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\": 0, \"cached_tokens\": 0}}}, \"finish_reason\": \"tool_calls\", \"input_tokens\": 3265, \"output_tokens\": 38}]",
+        "prompt_tokens": 3265,
+        "completion_tokens": 38,
+        "model_meta": {
+          "model": "gpt-5.4-2026-03-05",
+          "finish_reason": "tool_calls",
+          "interaction_backend": "tool_call",
+          "provider_tool_call": {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.click",
+            "tool_args": {
+              "x": 312,
+              "y": 409,
+              "reasoning": "Focus the wildcard input box to enter a natural language query."
+            },
+            "reasoning": "Focus the wildcard input box to enter a natural language query.",
+            "raw_provider_tool_name": "browser__click",
+            "raw_response": {
+              "id": "chatcmpl-Dw225UFu1V4QKk6jXOFtaZFNwZiSr",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_J0zOdLE3wzD902ZDixYIlKYI",
+                        "function": {
+                          "arguments": "{\"x\":312,\"y\":409,\"reasoning\":\"Focus the wildcard input box to enter a natural language query.\"}",
+                          "name": "browser__click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723209,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 38,
+                "prompt_tokens": 3265,
+                "total_tokens": 3303,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3265,
+            "output_tokens": 38
+          },
+          "provider_tool_calls": [
+            {
+              "provider": "openai",
+              "model": "gpt-5.4",
+              "tool_name": "browser.click",
+              "tool_args": {
+                "x": 312,
+                "y": 409,
+                "reasoning": "Focus the wildcard input box to enter a natural language query."
+              },
+              "reasoning": "Focus the wildcard input box to enter a natural language query.",
+              "raw_provider_tool_name": "browser__click",
+              "raw_response": {
+                "id": "chatcmpl-Dw225UFu1V4QKk6jXOFtaZFNwZiSr",
+                "choices": [
+                  {
+                    "finish_reason": "tool_calls",
+                    "index": 0,
+                    "logprobs": null,
+                    "message": {
+                      "content": null,
+                      "refusal": null,
+                      "role": "assistant",
+                      "annotations": [],
+                      "audio": null,
+                      "function_call": null,
+                      "tool_calls": [
+                        {
+                          "id": "call_J0zOdLE3wzD902ZDixYIlKYI",
+                          "function": {
+                            "arguments": "{\"x\":312,\"y\":409,\"reasoning\":\"Focus the wildcard input box to enter a natural language query.\"}",
+                            "name": "browser__click"
+                          },
+                          "type": "function"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "created": 1782723209,
+                "model": "gpt-5.4-2026-03-05",
+                "object": "chat.completion",
+                "service_tier": "default",
+                "system_fingerprint": null,
+                "usage": {
+                  "completion_tokens": 38,
+                  "prompt_tokens": 3265,
+                  "total_tokens": 3303,
+                  "completion_tokens_details": {
+                    "accepted_prediction_tokens": 0,
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                    "rejected_prediction_tokens": 0
+                  },
+                  "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0
+                  }
+                }
+              },
+              "finish_reason": "tool_calls",
+              "input_tokens": 3265,
+              "output_tokens": 38
+            }
+          ],
+          "parallel_tool_calls": true
+        },
+        "provider_tool_call": {
+          "provider": "openai",
+          "model": "gpt-5.4",
+          "tool_name": "browser.click",
+          "tool_args": {
+            "x": 312,
+            "y": 409,
+            "reasoning": "Focus the wildcard input box to enter a natural language query."
+          },
+          "reasoning": "Focus the wildcard input box to enter a natural language query.",
+          "raw_provider_tool_name": "browser__click",
+          "raw_response": {
+            "id": "chatcmpl-Dw225UFu1V4QKk6jXOFtaZFNwZiSr",
+            "choices": [
+              {
+                "finish_reason": "tool_calls",
+                "index": 0,
+                "logprobs": null,
+                "message": {
+                  "content": null,
+                  "refusal": null,
+                  "role": "assistant",
+                  "annotations": [],
+                  "audio": null,
+                  "function_call": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_J0zOdLE3wzD902ZDixYIlKYI",
+                      "function": {
+                        "arguments": "{\"x\":312,\"y\":409,\"reasoning\":\"Focus the wildcard input box to enter a natural language query.\"}",
+                        "name": "browser__click"
+                      },
+                      "type": "function"
+                    }
+                  ]
+                }
+              }
+            ],
+            "created": 1782723209,
+            "model": "gpt-5.4-2026-03-05",
+            "object": "chat.completion",
+            "service_tier": "default",
+            "system_fingerprint": null,
+            "usage": {
+              "completion_tokens": 38,
+              "prompt_tokens": 3265,
+              "total_tokens": 3303,
+              "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0
+              },
+              "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0
+              }
+            }
+          },
+          "finish_reason": "tool_calls",
+          "input_tokens": 3265,
+          "output_tokens": 38
+        },
+        "provider_tool_calls": [
+          {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.click",
+            "tool_args": {
+              "x": 312,
+              "y": 409,
+              "reasoning": "Focus the wildcard input box to enter a natural language query."
+            },
+            "reasoning": "Focus the wildcard input box to enter a natural language query.",
+            "raw_provider_tool_name": "browser__click",
+            "raw_response": {
+              "id": "chatcmpl-Dw225UFu1V4QKk6jXOFtaZFNwZiSr",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_J0zOdLE3wzD902ZDixYIlKYI",
+                        "function": {
+                          "arguments": "{\"x\":312,\"y\":409,\"reasoning\":\"Focus the wildcard input box to enter a natural language query.\"}",
+                          "name": "browser__click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723209,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 38,
+                "prompt_tokens": 3265,
+                "total_tokens": 3303,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3265,
+            "output_tokens": 38
+          }
+        ],
+        "mock": false
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "7bbb5098-5092-4aa9-86d9-f65d49186cf3",
+      "event_type": "browser_action",
+      "timestamp": "2026-06-29T08:53:30.411077Z",
+      "step_index": 5,
+      "data": {
+        "round_index": 5,
+        "subaction_index": 1,
+        "actions_in_round": 1,
+        "action": {
+          "type": "click",
+          "x": 312.0,
+          "y": 409.0
+        },
+        "error": null
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "4f1faeba-724d-4420-8628-69e3668d9539",
+      "event_type": "screenshot",
+      "timestamp": "2026-06-29T08:53:30.534700Z",
+      "step_index": 5,
+      "data": {
+        "url": "https://vega.github.io/voyager2/",
+        "viewport": {
+          "width": 1600,
+          "height": 900
+        },
+        "goal": "What is the most fuel-efficient car in the dataset?",
+        "kind": "post_action",
+        "screenshot_source": "browser_viewport",
+        "coordinate_frame": "browser_viewport"
+      },
+      "artifact_paths": [
+        "examples/results/gpt54_datavoyager_smoke/trajectories/sandbox/screenshots/step_005.png"
+      ]
+    },
+    {
+      "event_id": "73312c85-70b6-4137-8249-fb0664877841",
+      "event_type": "model_message",
+      "timestamp": "2026-06-29T08:53:32.652672Z",
+      "step_index": 6,
+      "data": {
+        "thought": "Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.",
+        "action": {
+          "type": "click",
+          "x": 337.0,
+          "y": 410.0
+        },
+        "actions": [
+          {
+            "type": "click",
+            "x": 337.0,
+            "y": 410.0
+          }
+        ],
+        "tool_name": "browser.click",
+        "tool_names": [
+          "browser.click"
+        ],
+        "round_index": 6,
+        "actions_in_round": 1,
+        "raw_response": "[{\"provider\": \"openai\", \"model\": \"gpt-5.4\", \"tool_name\": \"browser.click\", \"tool_args\": {\"x\": 337, \"y\": 410, \"reasoning\": \"Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.\"}, \"reasoning\": \"Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.\", \"raw_provider_tool_name\": \"browser__click\", \"raw_response\": {\"id\": \"chatcmpl-Dw227b9kfLImNBTYd5xPpHcGFMZnM\", \"choices\": [{\"finish_reason\": \"tool_calls\", \"index\": 0, \"logprobs\": null, \"message\": {\"content\": null, \"refusal\": null, \"role\": \"assistant\", \"annotations\": [], \"audio\": null, \"function_call\": null, \"tool_calls\": [{\"id\": \"call_SLcCYICkD8B0Py4IFBuDMfgQ\", \"function\": {\"arguments\": \"{\\\"x\\\":337,\\\"y\\\":410,\\\"reasoning\\\":\\\"Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.\\\"}\", \"name\": \"browser__click\"}, \"type\": \"function\"}]}}], \"created\": 1782723211, \"model\": \"gpt-5.4-2026-03-05\", \"object\": \"chat.completion\", \"service_tier\": \"default\", \"system_fingerprint\": null, \"usage\": {\"completion_tokens\": 44, \"prompt_tokens\": 3314, \"total_tokens\": 3358, \"completion_tokens_details\": {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\": 0, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\": 0, \"cached_tokens\": 0}}}, \"finish_reason\": \"tool_calls\", \"input_tokens\": 3314, \"output_tokens\": 44}]",
+        "prompt_tokens": 3314,
+        "completion_tokens": 44,
+        "model_meta": {
+          "model": "gpt-5.4-2026-03-05",
+          "finish_reason": "tool_calls",
+          "interaction_backend": "tool_call",
+          "provider_tool_call": {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.click",
+            "tool_args": {
+              "x": 337,
+              "y": 410,
+              "reasoning": "Focus the wildcard 'any' input field to enter a query or field for fuel efficiency."
+            },
+            "reasoning": "Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.",
+            "raw_provider_tool_name": "browser__click",
+            "raw_response": {
+              "id": "chatcmpl-Dw227b9kfLImNBTYd5xPpHcGFMZnM",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_SLcCYICkD8B0Py4IFBuDMfgQ",
+                        "function": {
+                          "arguments": "{\"x\":337,\"y\":410,\"reasoning\":\"Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.\"}",
+                          "name": "browser__click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723211,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 44,
+                "prompt_tokens": 3314,
+                "total_tokens": 3358,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3314,
+            "output_tokens": 44
+          },
+          "provider_tool_calls": [
+            {
+              "provider": "openai",
+              "model": "gpt-5.4",
+              "tool_name": "browser.click",
+              "tool_args": {
+                "x": 337,
+                "y": 410,
+                "reasoning": "Focus the wildcard 'any' input field to enter a query or field for fuel efficiency."
+              },
+              "reasoning": "Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.",
+              "raw_provider_tool_name": "browser__click",
+              "raw_response": {
+                "id": "chatcmpl-Dw227b9kfLImNBTYd5xPpHcGFMZnM",
+                "choices": [
+                  {
+                    "finish_reason": "tool_calls",
+                    "index": 0,
+                    "logprobs": null,
+                    "message": {
+                      "content": null,
+                      "refusal": null,
+                      "role": "assistant",
+                      "annotations": [],
+                      "audio": null,
+                      "function_call": null,
+                      "tool_calls": [
+                        {
+                          "id": "call_SLcCYICkD8B0Py4IFBuDMfgQ",
+                          "function": {
+                            "arguments": "{\"x\":337,\"y\":410,\"reasoning\":\"Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.\"}",
+                            "name": "browser__click"
+                          },
+                          "type": "function"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "created": 1782723211,
+                "model": "gpt-5.4-2026-03-05",
+                "object": "chat.completion",
+                "service_tier": "default",
+                "system_fingerprint": null,
+                "usage": {
+                  "completion_tokens": 44,
+                  "prompt_tokens": 3314,
+                  "total_tokens": 3358,
+                  "completion_tokens_details": {
+                    "accepted_prediction_tokens": 0,
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                    "rejected_prediction_tokens": 0
+                  },
+                  "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0
+                  }
+                }
+              },
+              "finish_reason": "tool_calls",
+              "input_tokens": 3314,
+              "output_tokens": 44
+            }
+          ],
+          "parallel_tool_calls": true
+        },
+        "provider_tool_call": {
+          "provider": "openai",
+          "model": "gpt-5.4",
+          "tool_name": "browser.click",
+          "tool_args": {
+            "x": 337,
+            "y": 410,
+            "reasoning": "Focus the wildcard 'any' input field to enter a query or field for fuel efficiency."
+          },
+          "reasoning": "Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.",
+          "raw_provider_tool_name": "browser__click",
+          "raw_response": {
+            "id": "chatcmpl-Dw227b9kfLImNBTYd5xPpHcGFMZnM",
+            "choices": [
+              {
+                "finish_reason": "tool_calls",
+                "index": 0,
+                "logprobs": null,
+                "message": {
+                  "content": null,
+                  "refusal": null,
+                  "role": "assistant",
+                  "annotations": [],
+                  "audio": null,
+                  "function_call": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_SLcCYICkD8B0Py4IFBuDMfgQ",
+                      "function": {
+                        "arguments": "{\"x\":337,\"y\":410,\"reasoning\":\"Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.\"}",
+                        "name": "browser__click"
+                      },
+                      "type": "function"
+                    }
+                  ]
+                }
+              }
+            ],
+            "created": 1782723211,
+            "model": "gpt-5.4-2026-03-05",
+            "object": "chat.completion",
+            "service_tier": "default",
+            "system_fingerprint": null,
+            "usage": {
+              "completion_tokens": 44,
+              "prompt_tokens": 3314,
+              "total_tokens": 3358,
+              "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0
+              },
+              "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0
+              }
+            }
+          },
+          "finish_reason": "tool_calls",
+          "input_tokens": 3314,
+          "output_tokens": 44
+        },
+        "provider_tool_calls": [
+          {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.click",
+            "tool_args": {
+              "x": 337,
+              "y": 410,
+              "reasoning": "Focus the wildcard 'any' input field to enter a query or field for fuel efficiency."
+            },
+            "reasoning": "Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.",
+            "raw_provider_tool_name": "browser__click",
+            "raw_response": {
+              "id": "chatcmpl-Dw227b9kfLImNBTYd5xPpHcGFMZnM",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_SLcCYICkD8B0Py4IFBuDMfgQ",
+                        "function": {
+                          "arguments": "{\"x\":337,\"y\":410,\"reasoning\":\"Focus the wildcard 'any' input field to enter a query or field for fuel efficiency.\"}",
+                          "name": "browser__click"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723211,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 44,
+                "prompt_tokens": 3314,
+                "total_tokens": 3358,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3314,
+            "output_tokens": 44
+          }
+        ],
+        "mock": false
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "e45c6ce7-44e2-47ae-8095-d9c55a212ff2",
+      "event_type": "browser_action",
+      "timestamp": "2026-06-29T08:53:32.692185Z",
+      "step_index": 6,
+      "data": {
+        "round_index": 6,
+        "subaction_index": 1,
+        "actions_in_round": 1,
+        "action": {
+          "type": "click",
+          "x": 337.0,
+          "y": 410.0
+        },
+        "error": null
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "ada5b8e8-8a16-457b-954f-f4b8b9a60d8a",
+      "event_type": "screenshot",
+      "timestamp": "2026-06-29T08:53:32.802650Z",
+      "step_index": 6,
+      "data": {
+        "url": "https://vega.github.io/voyager2/",
+        "viewport": {
+          "width": 1600,
+          "height": 900
+        },
+        "goal": "What is the most fuel-efficient car in the dataset?",
+        "kind": "post_action",
+        "screenshot_source": "browser_viewport",
+        "coordinate_frame": "browser_viewport"
+      },
+      "artifact_paths": [
+        "examples/results/gpt54_datavoyager_smoke/trajectories/sandbox/screenshots/step_006.png"
+      ]
+    },
+    {
+      "event_id": "50a26175-4a0a-4c5e-b014-425bf33611ed",
+      "event_type": "model_message",
+      "timestamp": "2026-06-29T08:53:38.031753Z",
+      "step_index": 7,
+      "data": {
+        "thought": "Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.",
+        "action": {
+          "type": "shell",
+          "cmd": "python - <<'PY'\nimport pandas as pd\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\ndf=pd.read_json(url)\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\nPY"
+        },
+        "actions": [
+          {
+            "type": "shell",
+            "cmd": "python - <<'PY'\nimport pandas as pd\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\ndf=pd.read_json(url)\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\nPY"
+          },
+          {
+            "type": "screenshot"
+          }
+        ],
+        "tool_name": "code.shell",
+        "tool_names": [
+          "code.shell",
+          "browser.screenshot"
+        ],
+        "round_index": 7,
+        "actions_in_round": 2,
+        "raw_response": "[{\"provider\": \"openai\", \"model\": \"gpt-5.4\", \"tool_name\": \"code.shell\", \"tool_args\": {\"cmd\": \"python - <<'PY'\\nimport pandas as pd\\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\\ndf=pd.read_json(url)\\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\\nPY\", \"reasoning\": \"Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.\"}, \"reasoning\": \"Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.\", \"raw_provider_tool_name\": \"code__shell\", \"raw_response\": {\"id\": \"chatcmpl-Dw22CtS6gZ0yr7xF1AHc7uJmTwc81\", \"choices\": [{\"finish_reason\": \"tool_calls\", \"index\": 0, \"logprobs\": null, \"message\": {\"content\": null, \"refusal\": null, \"role\": \"assistant\", \"annotations\": [], \"audio\": null, \"function_call\": null, \"tool_calls\": [{\"id\": \"call_0rbKgFWxvpEJGlvt2NGjy3CX\", \"function\": {\"arguments\": \"{\\\"cmd\\\": \\\"python - <<'PY'\\\\nimport pandas as pd\\\\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\\\\ndf=pd.read_json(url)\\\\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\\\\nPY\\\", \\\"reasoning\\\": \\\"Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.\\\"}\", \"name\": \"code__shell\"}, \"type\": \"function\"}, {\"id\": \"call_V8v8jMIiJOjLWdai90s2Rdm7\", \"function\": {\"arguments\": \"{\\\"reasoning\\\": \\\"Capture current UI state while dataset is inspected externally.\\\"}\", \"name\": \"browser__screenshot\"}, \"type\": \"function\"}]}}], \"created\": 1782723216, \"model\": \"gpt-5.4-2026-03-05\", \"object\": \"chat.completion\", \"service_tier\": \"default\", \"system_fingerprint\": null, \"usage\": {\"completion_tokens\": 155, \"prompt_tokens\": 3369, \"total_tokens\": 3524, \"completion_tokens_details\": {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\": 0, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\": 0, \"cached_tokens\": 0}}}, \"finish_reason\": \"tool_calls\", \"input_tokens\": 3369, \"output_tokens\": 155}, {\"provider\": \"openai\", \"model\": \"gpt-5.4\", \"tool_name\": \"browser.screenshot\", \"tool_args\": {\"reasoning\": \"Capture current UI state while dataset is inspected externally.\"}, \"reasoning\": \"Capture current UI state while dataset is inspected externally.\", \"raw_provider_tool_name\": \"browser__screenshot\", \"raw_response\": {\"id\": \"chatcmpl-Dw22CtS6gZ0yr7xF1AHc7uJmTwc81\", \"choices\": [{\"finish_reason\": \"tool_calls\", \"index\": 0, \"logprobs\": null, \"message\": {\"content\": null, \"refusal\": null, \"role\": \"assistant\", \"annotations\": [], \"audio\": null, \"function_call\": null, \"tool_calls\": [{\"id\": \"call_0rbKgFWxvpEJGlvt2NGjy3CX\", \"function\": {\"arguments\": \"{\\\"cmd\\\": \\\"python - <<'PY'\\\\nimport pandas as pd\\\\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\\\\ndf=pd.read_json(url)\\\\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\\\\nPY\\\", \\\"reasoning\\\": \\\"Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.\\\"}\", \"name\": \"code__shell\"}, \"type\": \"function\"}, {\"id\": \"call_V8v8jMIiJOjLWdai90s2Rdm7\", \"function\": {\"arguments\": \"{\\\"reasoning\\\": \\\"Capture current UI state while dataset is inspected externally.\\\"}\", \"name\": \"browser__screenshot\"}, \"type\": \"function\"}]}}], \"created\": 1782723216, \"model\": \"gpt-5.4-2026-03-05\", \"object\": \"chat.completion\", \"service_tier\": \"default\", \"system_fingerprint\": null, \"usage\": {\"completion_tokens\": 155, \"prompt_tokens\": 3369, \"total_tokens\": 3524, \"completion_tokens_details\": {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\": 0, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\": 0, \"cached_tokens\": 0}}}, \"finish_reason\": \"tool_calls\", \"input_tokens\": 3369, \"output_tokens\": 155}]",
+        "prompt_tokens": 3369,
+        "completion_tokens": 155,
+        "model_meta": {
+          "model": "gpt-5.4-2026-03-05",
+          "finish_reason": "tool_calls",
+          "interaction_backend": "tool_call",
+          "provider_tool_call": {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "code.shell",
+            "tool_args": {
+              "cmd": "python - <<'PY'\nimport pandas as pd\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\ndf=pd.read_json(url)\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\nPY",
+              "reasoning": "Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name."
+            },
+            "reasoning": "Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.",
+            "raw_provider_tool_name": "code__shell",
+            "raw_response": {
+              "id": "chatcmpl-Dw22CtS6gZ0yr7xF1AHc7uJmTwc81",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_0rbKgFWxvpEJGlvt2NGjy3CX",
+                        "function": {
+                          "arguments": "{\"cmd\": \"python - <<'PY'\\nimport pandas as pd\\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\\ndf=pd.read_json(url)\\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\\nPY\", \"reasoning\": \"Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.\"}",
+                          "name": "code__shell"
+                        },
+                        "type": "function"
+                      },
+                      {
+                        "id": "call_V8v8jMIiJOjLWdai90s2Rdm7",
+                        "function": {
+                          "arguments": "{\"reasoning\": \"Capture current UI state while dataset is inspected externally.\"}",
+                          "name": "browser__screenshot"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723216,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 155,
+                "prompt_tokens": 3369,
+                "total_tokens": 3524,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3369,
+            "output_tokens": 155
+          },
+          "provider_tool_calls": [
+            {
+              "provider": "openai",
+              "model": "gpt-5.4",
+              "tool_name": "code.shell",
+              "tool_args": {
+                "cmd": "python - <<'PY'\nimport pandas as pd\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\ndf=pd.read_json(url)\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\nPY",
+                "reasoning": "Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name."
+              },
+              "reasoning": "Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.",
+              "raw_provider_tool_name": "code__shell",
+              "raw_response": {
+                "id": "chatcmpl-Dw22CtS6gZ0yr7xF1AHc7uJmTwc81",
+                "choices": [
+                  {
+                    "finish_reason": "tool_calls",
+                    "index": 0,
+                    "logprobs": null,
+                    "message": {
+                      "content": null,
+                      "refusal": null,
+                      "role": "assistant",
+                      "annotations": [],
+                      "audio": null,
+                      "function_call": null,
+                      "tool_calls": [
+                        {
+                          "id": "call_0rbKgFWxvpEJGlvt2NGjy3CX",
+                          "function": {
+                            "arguments": "{\"cmd\": \"python - <<'PY'\\nimport pandas as pd\\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\\ndf=pd.read_json(url)\\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\\nPY\", \"reasoning\": \"Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.\"}",
+                            "name": "code__shell"
+                          },
+                          "type": "function"
+                        },
+                        {
+                          "id": "call_V8v8jMIiJOjLWdai90s2Rdm7",
+                          "function": {
+                            "arguments": "{\"reasoning\": \"Capture current UI state while dataset is inspected externally.\"}",
+                            "name": "browser__screenshot"
+                          },
+                          "type": "function"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "created": 1782723216,
+                "model": "gpt-5.4-2026-03-05",
+                "object": "chat.completion",
+                "service_tier": "default",
+                "system_fingerprint": null,
+                "usage": {
+                  "completion_tokens": 155,
+                  "prompt_tokens": 3369,
+                  "total_tokens": 3524,
+                  "completion_tokens_details": {
+                    "accepted_prediction_tokens": 0,
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                    "rejected_prediction_tokens": 0
+                  },
+                  "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0
+                  }
+                }
+              },
+              "finish_reason": "tool_calls",
+              "input_tokens": 3369,
+              "output_tokens": 155
+            },
+            {
+              "provider": "openai",
+              "model": "gpt-5.4",
+              "tool_name": "browser.screenshot",
+              "tool_args": {
+                "reasoning": "Capture current UI state while dataset is inspected externally."
+              },
+              "reasoning": "Capture current UI state while dataset is inspected externally.",
+              "raw_provider_tool_name": "browser__screenshot",
+              "raw_response": {
+                "id": "chatcmpl-Dw22CtS6gZ0yr7xF1AHc7uJmTwc81",
+                "choices": [
+                  {
+                    "finish_reason": "tool_calls",
+                    "index": 0,
+                    "logprobs": null,
+                    "message": {
+                      "content": null,
+                      "refusal": null,
+                      "role": "assistant",
+                      "annotations": [],
+                      "audio": null,
+                      "function_call": null,
+                      "tool_calls": [
+                        {
+                          "id": "call_0rbKgFWxvpEJGlvt2NGjy3CX",
+                          "function": {
+                            "arguments": "{\"cmd\": \"python - <<'PY'\\nimport pandas as pd\\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\\ndf=pd.read_json(url)\\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\\nPY\", \"reasoning\": \"Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.\"}",
+                            "name": "code__shell"
+                          },
+                          "type": "function"
+                        },
+                        {
+                          "id": "call_V8v8jMIiJOjLWdai90s2Rdm7",
+                          "function": {
+                            "arguments": "{\"reasoning\": \"Capture current UI state while dataset is inspected externally.\"}",
+                            "name": "browser__screenshot"
+                          },
+                          "type": "function"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "created": 1782723216,
+                "model": "gpt-5.4-2026-03-05",
+                "object": "chat.completion",
+                "service_tier": "default",
+                "system_fingerprint": null,
+                "usage": {
+                  "completion_tokens": 155,
+                  "prompt_tokens": 3369,
+                  "total_tokens": 3524,
+                  "completion_tokens_details": {
+                    "accepted_prediction_tokens": 0,
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                    "rejected_prediction_tokens": 0
+                  },
+                  "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0
+                  }
+                }
+              },
+              "finish_reason": "tool_calls",
+              "input_tokens": 3369,
+              "output_tokens": 155
+            }
+          ],
+          "parallel_tool_calls": true
+        },
+        "provider_tool_call": {
+          "provider": "openai",
+          "model": "gpt-5.4",
+          "tool_name": "code.shell",
+          "tool_args": {
+            "cmd": "python - <<'PY'\nimport pandas as pd\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\ndf=pd.read_json(url)\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\nPY",
+            "reasoning": "Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name."
+          },
+          "reasoning": "Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.",
+          "raw_provider_tool_name": "code__shell",
+          "raw_response": {
+            "id": "chatcmpl-Dw22CtS6gZ0yr7xF1AHc7uJmTwc81",
+            "choices": [
+              {
+                "finish_reason": "tool_calls",
+                "index": 0,
+                "logprobs": null,
+                "message": {
+                  "content": null,
+                  "refusal": null,
+                  "role": "assistant",
+                  "annotations": [],
+                  "audio": null,
+                  "function_call": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_0rbKgFWxvpEJGlvt2NGjy3CX",
+                      "function": {
+                        "arguments": "{\"cmd\": \"python - <<'PY'\\nimport pandas as pd\\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\\ndf=pd.read_json(url)\\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\\nPY\", \"reasoning\": \"Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.\"}",
+                        "name": "code__shell"
+                      },
+                      "type": "function"
+                    },
+                    {
+                      "id": "call_V8v8jMIiJOjLWdai90s2Rdm7",
+                      "function": {
+                        "arguments": "{\"reasoning\": \"Capture current UI state while dataset is inspected externally.\"}",
+                        "name": "browser__screenshot"
+                      },
+                      "type": "function"
+                    }
+                  ]
+                }
+              }
+            ],
+            "created": 1782723216,
+            "model": "gpt-5.4-2026-03-05",
+            "object": "chat.completion",
+            "service_tier": "default",
+            "system_fingerprint": null,
+            "usage": {
+              "completion_tokens": 155,
+              "prompt_tokens": 3369,
+              "total_tokens": 3524,
+              "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0
+              },
+              "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0
+              }
+            }
+          },
+          "finish_reason": "tool_calls",
+          "input_tokens": 3369,
+          "output_tokens": 155
+        },
+        "provider_tool_calls": [
+          {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "code.shell",
+            "tool_args": {
+              "cmd": "python - <<'PY'\nimport pandas as pd\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\ndf=pd.read_json(url)\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\nPY",
+              "reasoning": "Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name."
+            },
+            "reasoning": "Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.",
+            "raw_provider_tool_name": "code__shell",
+            "raw_response": {
+              "id": "chatcmpl-Dw22CtS6gZ0yr7xF1AHc7uJmTwc81",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_0rbKgFWxvpEJGlvt2NGjy3CX",
+                        "function": {
+                          "arguments": "{\"cmd\": \"python - <<'PY'\\nimport pandas as pd\\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\\ndf=pd.read_json(url)\\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\\nPY\", \"reasoning\": \"Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.\"}",
+                          "name": "code__shell"
+                        },
+                        "type": "function"
+                      },
+                      {
+                        "id": "call_V8v8jMIiJOjLWdai90s2Rdm7",
+                        "function": {
+                          "arguments": "{\"reasoning\": \"Capture current UI state while dataset is inspected externally.\"}",
+                          "name": "browser__screenshot"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723216,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 155,
+                "prompt_tokens": 3369,
+                "total_tokens": 3524,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3369,
+            "output_tokens": 155
+          },
+          {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "browser.screenshot",
+            "tool_args": {
+              "reasoning": "Capture current UI state while dataset is inspected externally."
+            },
+            "reasoning": "Capture current UI state while dataset is inspected externally.",
+            "raw_provider_tool_name": "browser__screenshot",
+            "raw_response": {
+              "id": "chatcmpl-Dw22CtS6gZ0yr7xF1AHc7uJmTwc81",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_0rbKgFWxvpEJGlvt2NGjy3CX",
+                        "function": {
+                          "arguments": "{\"cmd\": \"python - <<'PY'\\nimport pandas as pd\\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\\ndf=pd.read_json(url)\\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\\nPY\", \"reasoning\": \"Directly inspect the Vega cars dataset to find the maximum MPG and corresponding car name.\"}",
+                          "name": "code__shell"
+                        },
+                        "type": "function"
+                      },
+                      {
+                        "id": "call_V8v8jMIiJOjLWdai90s2Rdm7",
+                        "function": {
+                          "arguments": "{\"reasoning\": \"Capture current UI state while dataset is inspected externally.\"}",
+                          "name": "browser__screenshot"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723216,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 155,
+                "prompt_tokens": 3369,
+                "total_tokens": 3524,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3369,
+            "output_tokens": 155
+          }
+        ],
+        "mock": false
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "167939b6-a261-4767-ba51-2584677d33d3",
+      "event_type": "tool_call",
+      "timestamp": "2026-06-29T08:53:50.015803Z",
+      "step_index": 7,
+      "data": {
+        "round_index": 7,
+        "subaction_index": 1,
+        "actions_in_round": 2,
+        "tool_name": "code.shell",
+        "action": {
+          "type": "shell",
+          "cmd": "python - <<'PY'\nimport pandas as pd\nurl='https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.json'\ndf=pd.read_json(url)\nprint(df[['Name','Miles_per_Gallon']].sort_values('Miles_per_Gallon', ascending=False).head(10).to_string(index=False))\nPY"
+        },
+        "ok": true,
+        "output": "                           Name  Miles_per_Gallon\n                      mazda glc              46.6\n            honda civic 1500 gl              44.6\n           vw rabbit c (diesel)              44.3\n                      vw pickup              44.0\n             vw dasher (diesel)              43.4\nvolkswagen rabbit custom diesel              43.1\n                      vw rabbit              41.5\n           renault lecar deluxe              40.9\n                     datsun 210              40.8\n                 datsun b210 gx              39.4\n",
+        "error": "",
+        "extra": {
+          "exit_code": 0,
+          "backend": "docker_exec",
+          "sdk_error": "ApiError()"
+        },
+        "artifact_diff": {
+          "created": [],
+          "modified": [],
+          "deleted": [],
+          "truncated": false,
+          "before_count": 610,
+          "after_count": 610
+        }
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "eed87087-93b8-4d9b-89f7-115b70b88342",
+      "event_type": "model_message",
+      "timestamp": "2026-06-29T08:53:56.251326Z",
+      "step_index": 8,
+      "data": {
+        "thought": "Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.",
+        "action": {
+          "type": "final_answer",
+          "answer": "mazda glc"
+        },
+        "actions": [
+          {
+            "type": "final_answer",
+            "answer": "mazda glc"
+          }
+        ],
+        "tool_name": "task.final_answer",
+        "tool_names": [
+          "task.final_answer"
+        ],
+        "round_index": 8,
+        "actions_in_round": 1,
+        "raw_response": "[{\"provider\": \"openai\", \"model\": \"gpt-5.4\", \"tool_name\": \"task.final_answer\", \"tool_args\": {\"answer\": \"mazda glc\", \"reasoning\": \"Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.\"}, \"reasoning\": \"Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.\", \"raw_provider_tool_name\": \"task__final_answer\", \"raw_response\": {\"id\": \"chatcmpl-Dw22Vl1N8dzqs34YUqIuhpbikyf7v\", \"choices\": [{\"finish_reason\": \"tool_calls\", \"index\": 0, \"logprobs\": null, \"message\": {\"content\": null, \"refusal\": null, \"role\": \"assistant\", \"annotations\": [], \"audio\": null, \"function_call\": null, \"tool_calls\": [{\"id\": \"call_X3j9arWbO6nwi4hb5W0bVOFK\", \"function\": {\"arguments\": \"{\\\"answer\\\":\\\"mazda glc\\\",\\\"reasoning\\\":\\\"Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.\\\"}\", \"name\": \"task__final_answer\"}, \"type\": \"function\"}]}}], \"created\": 1782723235, \"model\": \"gpt-5.4-2026-03-05\", \"object\": \"chat.completion\", \"service_tier\": \"default\", \"system_fingerprint\": null, \"usage\": {\"completion_tokens\": 50, \"prompt_tokens\": 3642, \"total_tokens\": 3692, \"completion_tokens_details\": {\"accepted_prediction_tokens\": 0, \"audio_tokens\": 0, \"reasoning_tokens\": 0, \"rejected_prediction_tokens\": 0}, \"prompt_tokens_details\": {\"audio_tokens\": 0, \"cached_tokens\": 0}}}, \"finish_reason\": \"tool_calls\", \"input_tokens\": 3642, \"output_tokens\": 50}]",
+        "prompt_tokens": 3642,
+        "completion_tokens": 50,
+        "model_meta": {
+          "model": "gpt-5.4-2026-03-05",
+          "finish_reason": "tool_calls",
+          "interaction_backend": "tool_call",
+          "provider_tool_call": {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "task.final_answer",
+            "tool_args": {
+              "answer": "mazda glc",
+              "reasoning": "Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc."
+            },
+            "reasoning": "Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.",
+            "raw_provider_tool_name": "task__final_answer",
+            "raw_response": {
+              "id": "chatcmpl-Dw22Vl1N8dzqs34YUqIuhpbikyf7v",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_X3j9arWbO6nwi4hb5W0bVOFK",
+                        "function": {
+                          "arguments": "{\"answer\":\"mazda glc\",\"reasoning\":\"Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.\"}",
+                          "name": "task__final_answer"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723235,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 50,
+                "prompt_tokens": 3642,
+                "total_tokens": 3692,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3642,
+            "output_tokens": 50
+          },
+          "provider_tool_calls": [
+            {
+              "provider": "openai",
+              "model": "gpt-5.4",
+              "tool_name": "task.final_answer",
+              "tool_args": {
+                "answer": "mazda glc",
+                "reasoning": "Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc."
+              },
+              "reasoning": "Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.",
+              "raw_provider_tool_name": "task__final_answer",
+              "raw_response": {
+                "id": "chatcmpl-Dw22Vl1N8dzqs34YUqIuhpbikyf7v",
+                "choices": [
+                  {
+                    "finish_reason": "tool_calls",
+                    "index": 0,
+                    "logprobs": null,
+                    "message": {
+                      "content": null,
+                      "refusal": null,
+                      "role": "assistant",
+                      "annotations": [],
+                      "audio": null,
+                      "function_call": null,
+                      "tool_calls": [
+                        {
+                          "id": "call_X3j9arWbO6nwi4hb5W0bVOFK",
+                          "function": {
+                            "arguments": "{\"answer\":\"mazda glc\",\"reasoning\":\"Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.\"}",
+                            "name": "task__final_answer"
+                          },
+                          "type": "function"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "created": 1782723235,
+                "model": "gpt-5.4-2026-03-05",
+                "object": "chat.completion",
+                "service_tier": "default",
+                "system_fingerprint": null,
+                "usage": {
+                  "completion_tokens": 50,
+                  "prompt_tokens": 3642,
+                  "total_tokens": 3692,
+                  "completion_tokens_details": {
+                    "accepted_prediction_tokens": 0,
+                    "audio_tokens": 0,
+                    "reasoning_tokens": 0,
+                    "rejected_prediction_tokens": 0
+                  },
+                  "prompt_tokens_details": {
+                    "audio_tokens": 0,
+                    "cached_tokens": 0
+                  }
+                }
+              },
+              "finish_reason": "tool_calls",
+              "input_tokens": 3642,
+              "output_tokens": 50
+            }
+          ],
+          "parallel_tool_calls": true
+        },
+        "provider_tool_call": {
+          "provider": "openai",
+          "model": "gpt-5.4",
+          "tool_name": "task.final_answer",
+          "tool_args": {
+            "answer": "mazda glc",
+            "reasoning": "Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc."
+          },
+          "reasoning": "Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.",
+          "raw_provider_tool_name": "task__final_answer",
+          "raw_response": {
+            "id": "chatcmpl-Dw22Vl1N8dzqs34YUqIuhpbikyf7v",
+            "choices": [
+              {
+                "finish_reason": "tool_calls",
+                "index": 0,
+                "logprobs": null,
+                "message": {
+                  "content": null,
+                  "refusal": null,
+                  "role": "assistant",
+                  "annotations": [],
+                  "audio": null,
+                  "function_call": null,
+                  "tool_calls": [
+                    {
+                      "id": "call_X3j9arWbO6nwi4hb5W0bVOFK",
+                      "function": {
+                        "arguments": "{\"answer\":\"mazda glc\",\"reasoning\":\"Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.\"}",
+                        "name": "task__final_answer"
+                      },
+                      "type": "function"
+                    }
+                  ]
+                }
+              }
+            ],
+            "created": 1782723235,
+            "model": "gpt-5.4-2026-03-05",
+            "object": "chat.completion",
+            "service_tier": "default",
+            "system_fingerprint": null,
+            "usage": {
+              "completion_tokens": 50,
+              "prompt_tokens": 3642,
+              "total_tokens": 3692,
+              "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0
+              },
+              "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0
+              }
+            }
+          },
+          "finish_reason": "tool_calls",
+          "input_tokens": 3642,
+          "output_tokens": 50
+        },
+        "provider_tool_calls": [
+          {
+            "provider": "openai",
+            "model": "gpt-5.4",
+            "tool_name": "task.final_answer",
+            "tool_args": {
+              "answer": "mazda glc",
+              "reasoning": "Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc."
+            },
+            "reasoning": "Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.",
+            "raw_provider_tool_name": "task__final_answer",
+            "raw_response": {
+              "id": "chatcmpl-Dw22Vl1N8dzqs34YUqIuhpbikyf7v",
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "content": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "annotations": [],
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_X3j9arWbO6nwi4hb5W0bVOFK",
+                        "function": {
+                          "arguments": "{\"answer\":\"mazda glc\",\"reasoning\":\"Computed directly from the Vega cars dataset: highest Miles_per_Gallon is 46.6 for mazda glc.\"}",
+                          "name": "task__final_answer"
+                        },
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1782723235,
+              "model": "gpt-5.4-2026-03-05",
+              "object": "chat.completion",
+              "service_tier": "default",
+              "system_fingerprint": null,
+              "usage": {
+                "completion_tokens": 50,
+                "prompt_tokens": 3642,
+                "total_tokens": 3692,
+                "completion_tokens_details": {
+                  "accepted_prediction_tokens": 0,
+                  "audio_tokens": 0,
+                  "reasoning_tokens": 0,
+                  "rejected_prediction_tokens": 0
+                },
+                "prompt_tokens_details": {
+                  "audio_tokens": 0,
+                  "cached_tokens": 0
+                }
+              }
+            },
+            "finish_reason": "tool_calls",
+            "input_tokens": 3642,
+            "output_tokens": 50
+          }
+        ],
+        "mock": false
+      },
+      "artifact_paths": []
+    },
+    {
+      "event_id": "eec6c6fc-6ccb-46ca-a7ae-f0b22b8f89d0",
+      "event_type": "validation_event",
+      "timestamp": "2026-06-29T08:53:57.581189Z",
+      "step_index": 1,
+      "data": {
+        "success": true,
+        "score": 1.0,
+        "message": "contains match",
+        "answer": "mazda glc",
+        "expected_answer": "Mazda GLC",
+        "answer_validator": "contains",
+        "final_url": "https://vega.github.io/voyager2/",
+        "user_intervention": null
+      },
+      "artifact_paths": []
+    }
+  ],
+  "metrics": {
+    "success": true,
+    "score": 1.0,
+    "duration_ms": 72932,
+    "steps": 8,
+    "tokens_input": 26114,
+    "tokens_output": 458,
+    "cost_usd": null,
+    "tool_calls": 7,
+    "extra": {
+      "browser_actions": 6,
+      "io_tool_calls": 1,
+      "max_actions_per_round": 5,
+      "screenshot_source": "browser_viewport",
+      "coordinate_frame": "browser_viewport"
+    }
+  },
+  "raw_result_path": null,
+  "artifact_dir": "examples/results/gpt54_datavoyager_smoke/trajectories/sandbox"
+}

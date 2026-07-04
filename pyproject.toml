@@ -4,17 +4,19 @@ version = "0.1.0"
 description = "MVP for evaluating browser agent harnesses and trajectories."
 requires-python = ">=3.12"
 dependencies = [
-  "agent-sandbox>=0.0.30",
-  "agentlab>=0.4.2",
-  "anthropic>=0.60",
-  "browsergym>=0.14.3",
-  "openai>=1.50",
-  "pandas>=2.2",
-  "pydantic>=2.7",
-  "python-dotenv>=1.0",
-  "pyyaml>=6.0",
-  "tf-playwright-stealth>=1.2",
-  "typer>=0.12",
+    "agent-sandbox>=0.0.30",
+    "agentlab>=0.4.2",
+    "anthropic>=0.60",
+    "browsergym>=0.14.3",
+    "google-genai>=1.0",
+    "openai>=1.50",
+    "pandas>=2.2",
+    "pydantic>=2.7",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+    "tf-playwright-stealth>=1.2",
+    "typer>=0.12",
+    "websocket-client>=1.8",
 ]
 
 [project.optional-dependencies]

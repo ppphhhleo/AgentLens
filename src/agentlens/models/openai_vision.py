@@ -1,3 +1,11 @@
+"""Legacy OpenAI screenshot-to-JSON-action backend.
+
+New collection should generally use `openai_tool_call.py` for controlled tool
+tiers, `openai_computer_use.py` for native OpenAI computer-use, or
+`gui_vs_cli_chatgpt.py` for the gui-vs-cli paper structure. This module is kept
+for backward compatibility with older configs and reports.
+"""
+
 from __future__ import annotations
 
 import base64

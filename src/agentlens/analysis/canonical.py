@@ -30,9 +30,14 @@ ACTION_PHASES = {
     "desktop_screenshot": "observe",
     "desktop_wait": "observe",
     "desktop_click": "gui_manipulate",
+    "desktop_double_click": "gui_manipulate",
+    "desktop_scroll": "inspect_or_orient",
+    "desktop_move": "observe",
+    "desktop_drag": "gui_manipulate",
     "desktop_type": "gui_manipulate",
     "desktop_keypress": "gui_manipulate",
     "desktop_launch_app": "programmatic_work",
+    "desktop_pyautogui": "gui_manipulate",
     "desktop_shell": "programmatic_work",
 }
 
@@ -171,14 +176,23 @@ def action_to_text(action: dict[str, Any]) -> str:
         tool_name = action.get("mcp_tool") or "mcp.unknown"
         args = action.get("mcp_args") or {}
         return f"{tool_name}: {json.dumps(args, ensure_ascii=False, sort_keys=True)}"
-    if action_type == "desktop_click":
-        return f"desktop_click: x={action.get('x')} y={action.get('y')}"
+    if action_type in {"desktop_click", "desktop_double_click", "desktop_move"}:
+        return f"{action_type}: x={action.get('x')} y={action.get('y')}"
+    if action_type == "desktop_drag":
+        return f"desktop_drag: {action.get('path') or []}"
+    if action_type == "desktop_scroll":
+        return f"desktop_scroll: dx={action.get('scroll_x')} dy={action.get('scroll_y')}"
     if action_type == "desktop_type":
         return f"desktop_type: {action.get('text') or ''}".strip()
     if action_type == "desktop_keypress":
         return f"desktop_keypress: {action.get('keys') or []}"
     if action_type == "desktop_launch_app":
         return f"desktop_launch_app: {action.get('app') or ''}".strip()
+    if action_type == "desktop_pyautogui":
+        code = " ".join(str(action.get("code") or "").split())
+        if len(code) > 160:
+            code = code[:157] + "..."
+        return f"desktop_pyautogui: {code}".strip()
     if action_type == "desktop_shell":
         return f"desktop_shell: {action.get('cmd') or ''}".strip()
     if action_type in {"desktop_screenshot", "desktop_wait"}:

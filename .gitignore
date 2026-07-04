@@ -30,9 +30,14 @@ htmlcov/
 .vscode/
 
 # AgentLens / AgentLab outputs
-agentlens_results/
-agentlab_results/
-results/
-traces/
-videos/
-screenshots/
+/agentlens_results/
+/agentlab_results/
+/runs/
+/results/
+/traces/
+/videos/
+/screenshots/
+
+# Downloaded external datasets
+/data/external/
+/third_party/gui-vs-cli/

@@ -27,9 +27,14 @@ ComputerActionType = Literal[
     "mcp_tool",
     "desktop_screenshot",
     "desktop_click",
+    "desktop_double_click",
+    "desktop_scroll",
+    "desktop_move",
+    "desktop_drag",
     "desktop_type",
     "desktop_keypress",
     "desktop_launch_app",
+    "desktop_pyautogui",
     "desktop_shell",
     "desktop_wait",
     "final_answer",
@@ -127,12 +132,20 @@ class ComputerAction(BaseModel):
             raise ValueError("action 'type' requires text")
         if self.type == "desktop_click" and (self.x is None or self.y is None):
             raise ValueError("action 'desktop_click' requires x and y")
+        if self.type == "desktop_double_click" and (self.x is None or self.y is None):
+            raise ValueError("action 'desktop_double_click' requires x and y")
+        if self.type == "desktop_move" and (self.x is None or self.y is None):
+            raise ValueError("action 'desktop_move' requires x and y")
+        if self.type == "desktop_drag" and len(self.path) < 2:
+            raise ValueError("action 'desktop_drag' requires at least two path points")
         if self.type == "desktop_type" and self.text is None:
             raise ValueError("action 'desktop_type' requires text")
         if self.type == "desktop_keypress" and not self.keys:
             raise ValueError("action 'desktop_keypress' requires keys")
         if self.type == "desktop_launch_app" and not self.app:
             raise ValueError("action 'desktop_launch_app' requires app")
+        if self.type == "desktop_pyautogui" and not self.code:
+            raise ValueError("action 'desktop_pyautogui' requires code")
         if self.type == "keypress" and not self.keys:
             raise ValueError("action 'keypress' requires keys")
         if self.type == "drag" and len(self.path) < 2:

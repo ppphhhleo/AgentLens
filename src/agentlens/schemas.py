@@ -150,6 +150,7 @@ class TaskConfig(BaseModel):
         "the_agent_company",
         "cocoabench",
         "workflow_gym",
+        "gui_vs_cli",
         "custom",
     ]
     task_id: str
@@ -184,7 +185,7 @@ class RunConfig(BaseModel):
     seeds: list[int] = Field(default_factory=lambda: [0])
     trials: int = 1
     max_steps: int | None = None
-    output_dir: Path = Path("agentlens_results")
+    output_dir: Path = Path("runs")
     tags: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -204,6 +205,7 @@ class ExperimentConfig(BaseModel):
     tool_harnesses: list[ToolHarnessConfig]
     memory_harnesses: list[MemoryHarnessConfig]
     user_harnesses: list[UserHarnessConfig] = Field(default_factory=list)
+    task_files: list[Path] = Field(default_factory=list)
     tasks: list[TaskConfig]
     runs: list[RunConfig]
 
@@ -291,4 +293,30 @@ def load_experiment_config(path: Path) -> ExperimentConfig:
     if not isinstance(data, dict):
         raise ValueError(f"expected mapping at top level of {path}")
 
+    task_files = data.get("task_files") or []
+    if task_files:
+        tasks = list(data.get("tasks") or [])
+        for task_file in task_files:
+            task_path = _resolve_include_path(Path(task_file), config_path=path)
+            with task_path.open("r", encoding="utf-8") as file:
+                task_data = yaml.safe_load(file)
+            if isinstance(task_data, list):
+                tasks.extend(task_data)
+            elif isinstance(task_data, dict):
+                tasks.append(task_data)
+            else:
+                raise ValueError(f"expected task mapping or list in {task_path}")
+        data = {**data, "tasks": tasks}
+
     return ExperimentConfig.model_validate(data)
+
+
+def _resolve_include_path(include_path: Path, *, config_path: Path) -> Path:
+    if include_path.is_absolute() and include_path.exists():
+        return include_path
+    if include_path.exists():
+        return include_path
+    candidate = config_path.parent / include_path
+    if candidate.exists():
+        return candidate
+    raise FileNotFoundError(f"could not resolve include path '{include_path}' from {config_path}")

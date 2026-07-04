@@ -633,11 +633,14 @@ class ScreenshotReactAdapter:
         )
 
     def _write_trajectory(self, trajectory: Trajectory) -> Path:
+        from agentlens.reports.trajectory_viewer import write_trajectory_viewer
+
         if trajectory.artifact_dir is None:
             raise ValueError("trajectory artifact_dir is required")
         trajectory.artifact_dir.mkdir(parents=True, exist_ok=True)
         path = trajectory.artifact_dir / "trajectory.json"
         path.write_text(trajectory.model_dump_json(indent=2), encoding="utf-8")
+        write_trajectory_viewer(path)
         return path
 
     def _validate_supported(

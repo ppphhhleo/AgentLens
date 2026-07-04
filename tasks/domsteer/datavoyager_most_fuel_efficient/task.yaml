@@ -1,0 +1,15 @@
+id: datavoyager_most_fuel_efficient
+benchmark: domsteer
+task_id: datavoyager.most_fuel_efficient
+goal: What is the most fuel-efficient car in the dataset?
+start_url: https://vega.github.io/voyager2/
+capability_required:
+  - browser_ui
+  - visual_reasoning
+  - data_analysis
+validator: final_answer
+expected_answer: Mazda GLC
+answer_validator: contains
+extra:
+  canonical_task: datavoyager_most_fuel_efficient
+  task_family: visual_analytics

@@ -1,82 +1,63 @@
-# Acting and Evaluating Pipeline
+# Evaluation And Post-Analysis Plan
 
-AgentLens now separates task execution from post-hoc evaluation.
+AgentLens keeps four layers separate:
 
-## Acting
+1. `acting`: model loop, harness tier, tool calls, screenshots, artifacts.
+2. `outcome`: finish status, final answer, score, validator result.
+3. `trajectory`: process-level counts, errors, loops, actions, observations.
+4. `analysis`: Wang-style workflow aggregation and Act-onomy-style behavioral
+   tagging/summarization.
 
-Acting adapters collect trajectories:
-
-- `screenshot_react`: browser and sandbox browser tasks
-- `desktop_react`: desktop-app tasks inside the sandbox virtual computer
-
-Each trajectory should preserve:
-
-- screenshots or desktop screenshots
-- model messages and provider tool calls
-- executed tool calls
-- final answer and validation event
-
-## Evaluating
-
-Evaluation happens after trajectory and outcome collection:
+## Current Smoke Path
 
 ```bash
-agentlens evaluate-trajectory path/to/trajectory.json \
-  --output-dir agentlens_results/evaluations/example \
-  --config configs/experiments/domsteer_datavoyager_matrix.yaml
+.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml --dry-run
 ```
 
-The output is `evaluation_bundle.json` with:
+Fresh trajectories are written under:
 
-- `acting`: model, tool harness, memory harness
-- `evaluating.outcome`: recorded outcome and optional current validator result
-- `evaluating.trajectory`: process-level counts and flags
-- `evaluating.methods.wang`: Wang-style workflow segmentation features
-- `evaluating.methods.actonomy`: Act-onomy-style behavior/profile features
-
-Batch mode:
-
-```bash
-agentlens evaluate-batch agentlens_results/domsteer_datavoyager_matrix \
-  --output-dir agentlens_results/evaluations/domsteer_matrix \
-  --config configs/experiments/domsteer_datavoyager_matrix.yaml
+```text
+runs/gpt54_datavoyager_smoke/raw/<timestamp>/trajectories/<run_id>/
 ```
 
-## Desktop POC
+Published examples are curated separately:
 
-`configs/experiments/workflow_desktop_poc.yaml` defines a Unity smoke task using
-`desktop_react`. The sandbox image is replaceable through:
-
-```yaml
-tool_harnesses:
-  - id: ubuntu_desktop
-    extra:
-      sandbox_image: agentlens/desktop-poc:latest
+```text
+examples/results/gpt54_datavoyager_smoke/
 ```
 
-Build the generic image:
+## Outcome Evaluation
 
-```bash
-docker build -t agentlens/desktop-poc:latest docker/desktop-poc
-```
+For the current DataVoyager smoke task:
 
-Or run the repeatable preparation script, which validates the config, ensures a
-usable desktop image tag exists, verifies desktop tools, and writes a dry-run
-plan:
+| Field | Value |
+| --- | --- |
+| Validator | `final_answer` |
+| Expected answer | `Mazda GLC` |
+| Match rule | `contains` |
 
-```bash
-scripts/prepare_workflow_desktop_poc.sh
-```
+Outcome evaluation is necessary but not enough. It tells whether a trajectory
+finished the task, but it does not explain why the run succeeded, failed, or
+used a different strategy.
 
-If the project source is synced without its own virtualenv, point the script at
-an existing AgentLens executable. The script prepends the current checkout's
-`src` directory to `PYTHONPATH`, so shared virtualenvs still use the synced
-source:
+## Trajectory Analysis
 
-```bash
-AGENTLENS_CLI=/home/ubuntu/AgentLens/.venv/bin/agentlens \
-  scripts/prepare_workflow_desktop_poc.sh
-```
+Use the same raw trajectory as input to multiple post-hoc methods:
 
-For real Workflow-GYM app tasks, extend that image with Unity, Blender, or the
-target desktop application.
+| Method | Input | Output | Purpose |
+| --- | --- | --- | --- |
+| Wang-style workflow aggregation | screenshots, tool calls, actions, observations | workflow segments / phases | Coarse process structure and stage comparison. |
+| Act-onomy-style behavior coding | per-turn observation/thought/action/tool data | cognitive/action labels plus phase summaries | Behavioral profile and codebook-driven comparison. |
+
+These methods should remain post-hoc. They should not mutate the raw trajectory.
+
+## Near-Term Checks
+
+- Verify each trajectory records raw provider tool calls and executed tool
+  results.
+- Keep screenshots in trajectory folders and use one compact
+  `trajectory_viewer.html` per trajectory.
+- Do not generate or publish summary-level duplicate trajectory viewers.
+- Do not enable intervention during collection unless explicitly requested.
+- Add new benchmark tasks only after the task catalog records harness fit,
+  expected answer or artifact, and evaluator design.

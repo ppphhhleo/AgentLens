@@ -331,6 +331,71 @@ def default_tool_registry() -> ToolRegistry:
                 ),
             ),
             ToolSpec(
+                name="desktop.double_click",
+                action_type="desktop_double_click",
+                executor_family="desktop",
+                description="Double-click a point on the virtual desktop screen.",
+                parameters=_object_schema(
+                    {
+                        "x": {"type": "number", "description": "Screen x coordinate."},
+                        "y": {"type": "number", "description": "Screen y coordinate."},
+                        "button": {"type": "string", "enum": ["left", "right", "middle"]},
+                    },
+                    required=["x", "y"],
+                ),
+            ),
+            ToolSpec(
+                name="desktop.scroll",
+                action_type="desktop_scroll",
+                executor_family="desktop",
+                description="Scroll at the current cursor position or a desktop screen coordinate.",
+                parameters=_object_schema(
+                    {
+                        "x": {"type": "number", "description": "Optional screen x coordinate."},
+                        "y": {"type": "number", "description": "Optional screen y coordinate."},
+                        "scroll_x": {"type": "number", "description": "Horizontal scroll delta."},
+                        "scroll_y": {"type": "number", "description": "Vertical scroll delta."},
+                    },
+                ),
+            ),
+            ToolSpec(
+                name="desktop.move",
+                action_type="desktop_move",
+                executor_family="desktop",
+                description="Move the mouse cursor to a point on the virtual desktop screen.",
+                parameters=_object_schema(
+                    {
+                        "x": {"type": "number", "description": "Screen x coordinate."},
+                        "y": {"type": "number", "description": "Screen y coordinate."},
+                    },
+                    required=["x", "y"],
+                ),
+            ),
+            ToolSpec(
+                name="desktop.drag",
+                action_type="desktop_drag",
+                executor_family="desktop",
+                description="Drag through a sequence of desktop screen coordinates.",
+                parameters=_object_schema(
+                    {
+                        "path": {
+                            "type": "array",
+                            "minItems": 2,
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "x": {"type": "number"},
+                                    "y": {"type": "number"},
+                                },
+                                "required": ["x", "y"],
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
+                    required=["path"],
+                ),
+            ),
+            ToolSpec(
                 name="desktop.type",
                 action_type="desktop_type",
                 executor_family="desktop",
@@ -358,6 +423,16 @@ def default_tool_registry() -> ToolRegistry:
                 parameters=_object_schema(
                     {"app": {"type": "string", "description": "Application command, e.g. blender or weka."}},
                     required=["app"],
+                ),
+            ),
+            ToolSpec(
+                name="desktop.pyautogui",
+                action_type="desktop_pyautogui",
+                executor_family="desktop",
+                description="Execute pyautogui code in the virtual desktop. Use only for paper-faithful GUI agent adapters.",
+                parameters=_object_schema(
+                    {"code": {"type": "string", "description": "Python pyautogui code body to execute."}},
+                    required=["code"],
                 ),
             ),
             ToolSpec(
@@ -652,6 +727,101 @@ class AnthropicToolAdapter:
         return decisions
 
 
+class GeminiToolAdapter:
+    provider = "gemini"
+
+    def __init__(self, registry: ToolRegistry, addressing_modes: list[str] | None = None) -> None:
+        self.registry = registry
+        self.addressing_modes = list(addressing_modes or ["coordinate"])
+        self._provider_to_canonical: dict[str, str] = {}
+
+    def tool_payloads(self, specs: list[ToolSpec]) -> list[Any]:
+        from google.genai import types
+
+        declarations = []
+        self._provider_to_canonical = {}
+        for spec in specs:
+            provider_name = _provider_tool_name(spec.name)
+            self._provider_to_canonical[provider_name] = spec.name
+            parameters = _provider_visible_schema(
+                spec,
+                _with_reasoning(spec.parameters),
+                addressing_modes=self.addressing_modes,
+            )
+            parameters = _gemini_compatible_schema(parameters)
+            declarations.append(
+                types.FunctionDeclaration(
+                    name=provider_name,
+                    description=spec.description,
+                    parameters_json_schema=parameters,
+                )
+            )
+        return [types.Tool(function_declarations=declarations)] if declarations else []
+
+    def parse_decision(self, response: Any, *, model: str) -> ToolCallDecision:
+        return self.parse_decisions(response, model=model)[0]
+
+    def parse_decisions(self, response: Any, *, model: str) -> list[ToolCallDecision]:
+        candidates = list(getattr(response, "candidates", None) or [])
+        if not candidates:
+            raise ValueError("Gemini response had no candidates")
+
+        candidate = candidates[0]
+        content = getattr(candidate, "content", None)
+        parts = list(getattr(content, "parts", None) or [])
+        text = "\n".join(str(getattr(part, "text", "") or "") for part in parts).strip()
+        function_calls = [
+            getattr(part, "function_call", None) or getattr(part, "functionCall", None)
+            for part in parts
+        ]
+        function_calls = [call for call in function_calls if call is not None]
+        usage = getattr(response, "usage_metadata", None) or getattr(response, "usageMetadata", None)
+
+        if not function_calls:
+            if text and "task.final_answer" in set(self._provider_to_canonical.values()):
+                return [
+                    ToolCallDecision(
+                        provider=self.provider,
+                        model=model,
+                        tool_name="task.final_answer",
+                        tool_args={"answer": text},
+                        reasoning=text,
+                        raw_provider_tool_name=None,
+                        raw_response=_safe_model_dump(response),
+                        finish_reason=str(getattr(candidate, "finish_reason", "") or ""),
+                        input_tokens=getattr(usage, "prompt_token_count", None),
+                        output_tokens=getattr(usage, "candidates_token_count", None),
+                    )
+                ]
+            raise ValueError("Gemini model did not return a function call")
+
+        decisions: list[ToolCallDecision] = []
+        for call in function_calls:
+            provider_name = str(getattr(call, "name", ""))
+            canonical_name = self._provider_to_canonical.get(provider_name)
+            if canonical_name is None:
+                raise ValueError(f"unknown Gemini function call: {provider_name}")
+            raw_args = getattr(call, "args", None) or {}
+            if not isinstance(raw_args, dict):
+                raise ValueError(f"Gemini function args were not an object: {raw_args!r}")
+            reasoning = str(raw_args.get("reasoning") or text or "")
+            decisions.append(
+                ToolCallDecision(
+                    provider=self.provider,
+                    model=model,
+                    tool_name=canonical_name,
+                    tool_args=dict(raw_args),
+                    reasoning=reasoning,
+                    raw_provider_tool_name=provider_name,
+                    raw_response=_safe_model_dump(response),
+                    finish_reason=str(getattr(candidate, "finish_reason", "") or ""),
+                    input_tokens=getattr(usage, "prompt_token_count", None),
+                    output_tokens=getattr(usage, "candidates_token_count", None),
+                )
+            )
+        return decisions
+
+
 def _provider_tool_name(name: str) -> str:
     return name.replace(".", "__")
 
@@ -678,6 +848,13 @@ def _openai_compatible_schema(parameters: dict[str, Any]) -> dict[str, Any]:
     Runtime tool gating and action validation still enforce executable actions.
     """
 
+    updated = json.loads(json.dumps(parameters))
+    for key in ("oneOf", "anyOf", "allOf", "not", "const"):
+        updated.pop(key, None)
+    return updated
+
+
+def _gemini_compatible_schema(parameters: dict[str, Any]) -> dict[str, Any]:
     updated = json.loads(json.dumps(parameters))
     for key in ("oneOf", "anyOf", "allOf", "not", "const"):
         updated.pop(key, None)

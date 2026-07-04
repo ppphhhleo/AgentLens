@@ -1,89 +1,184 @@
 # Trajectory Collection Task Catalog
 
-This file is the working catalog for agent trajectory collection. It organizes
-tasks by benchmark, task type, and application, and records which harness modes
-are appropriate.
+This catalog tracks trajectory-collection tasks by benchmark, type, and
+application. Runnable task definitions live under `tasks/`; runnable experiment
+matrices live under `configs/batches/`.
 
-Use `docs/task-registry.md` for compact implementation status. Use
-`docs/trajectory-data-layout.md` for raw/processed data storage conventions.
-Use `handover.md` for milestones and replacement-sensitive decisions.
+Current active batch:
 
-## Harness Modes
+```text
+configs/batches/domsteer_t1_t3_gpt54_claude_smoke.yaml
+```
 
-| Mode | Meaning | Best For |
+Agent structures and tool-tier definitions:
+
+```text
+docs/agent-structures-and-tool-tiers.md
+```
+
+Current active tasks:
+
+```text
+tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml
+tasks/domsteer/datavoyager_origin_horsepower_range/task.yaml
+tasks/domsteer/datavoyager_europe_hp_gt_100_four_cyl/task.yaml
+```
+
+Task catalogs:
+
+```text
+tasks/domsteer/tasks.jsonl
+tasks/gui_vs_cli/tasks.jsonl
+```
+
+## Harness Tiers
+
+| Tier | Meaning | Main Use |
 | --- | --- | --- |
-| `browser_only` | Browser screenshot/actions only; no code/file tools. | Web visual analytics where the browser UI is the task surface. |
-| `full_sandbox` | Browser/desktop plus code, shell, and file tools inside the virtual computer. | Mixed GUI + programmatic workflows; TAC-style tasks; desktop app tasks with artifact checks. |
-| `desktop_gui_only` | Desktop screenshot/click/type/keypress/wait/launch app; no shell/code/file tools. | Human-like desktop app interaction comparisons. |
-| `desktop_no_gui_tool_only` | Shell/code/files/artifact inspection; no screenshots or GUI actions. | Programmatic ablations and evaluator-style task solving. |
-| `no_gui_tool_only` | Browser/desktop not visible; code/file/API tools only. | Web/data tasks that can be solved from data or artifacts without visual interaction. |
+| `browser_only` | Browser screenshot plus browser actions only. | Web GUI behavior and visual analytics trajectories. |
+| `full_sandbox` | Browser GUI plus code, shell, web search, and file tools in the sandbox. | Mixed GUI/programmatic workflows and workplace-style tasks. |
+| `desktop_gui_only` | Virtual desktop screenshot plus mouse/keyboard actions, without shell/code tools. | Human-like desktop application behavior comparisons. |
+| `desktop_no_gui_tool_only` | Programmatic app/file tools without screenshots or GUI actions. | Desktop task ablations when a batch/API mode exists. |
+| `no_gui_tool_only` | Code, shell, search, and file tools only. | Programmatic baselines for data tasks. |
 
-Not every task should run in every mode. The goal is to keep the harness matrix
-meaningful: GUI modes for interface behavior, no-GUI modes for programmatic
-ablations and evaluator baselines.
+For analysis and reporting, distinguish four broader experimental conditions:
 
-## Ready After Tested
+| Condition | Meaning | Use |
+| --- | --- | --- |
+| `gui_only` | The agent sees screenshots and can use only direct manipulation tools. | Main visual/GUI behavior comparison. |
+| `cli_anything_no_visual` | The agent has no screenshots and no GUI actions; it uses the gui-vs-cli paper's CLI-Anything style runner inside the task image. | Use for gui-vs-cli workflow tasks. Do not apply this label to DOMSteer unless a DOMSteer-specific CLI-Anything harness is built. |
+| `programmatic_no_visual` | The agent has no screenshots and no GUI actions, but uses AgentLens no-GUI tools or benchmark-specific scripts. | DOMSteer and data-analysis baselines. |
+| `full_sandbox` | The agent can use both GUI and programmatic tools. | Upper-bound / occupational-style mixed capability setting. |
 
-These tasks are ready for trajectory collection now. Some are still smoke tasks,
-but their harnesses have produced trajectories.
+Within a task family, keep the environment fixed across conditions:
 
-| Benchmark | Type | Application | Task ID | Config | Harness Coverage | Evaluator | Status / Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_most_fuel_efficient` | `configs/experiments/domsteer_datavoyager_matrix.yaml`; `configs/experiments/capture_first_domsteer_agentcompany.yaml` | `browser_only`, `full_sandbox`, `no_gui_tool_only` | `contains`, expected `Mazda GLC` | Ready. Previously produced successful sandbox trajectory. |
-| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_europe_100hp_4cyl_count` | `configs/experiments/domsteer_datavoyager_matrix.yaml` | `browser_only`, `full_sandbox`, `no_gui_tool_only` | `number_exact`, expected `10` | Ready in matrix config. |
-| TheAgentCompany-style smoke | Workplace data analysis / browser + code + file I/O | Example page + Python + shell + files | `the_agent_company_io_capture_smoke` | `configs/experiments/capture_first_domsteer_agentcompany.yaml` | `full_sandbox`; possible future `no_gui_tool_only` | `exact`, expected `revenue total 60` | Ready as TAC-shaped smoke. This is not full TheAgentCompany integration. |
-| Workflow-GYM-style proxy | Desktop data analysis | Weka | `workflowgym_weka_iris_smoke` | `configs/experiments/workflow_desktop_apps_poc.yaml` | `full_sandbox`/desktop; future `desktop_gui_only`, `desktop_no_gui_tool_only` | `manual_pending`, expected `done` | Ready as desktop smoke; local and AWS smoke completed. |
-| Workflow-GYM-style proxy | Visual-spatial / complex desktop interface | Blender | `workflowgym_blender_cube_smoke` | `configs/experiments/workflow_desktop_apps_poc.yaml` | `full_sandbox`/desktop; future `desktop_gui_only`, `desktop_no_gui_tool_only` | `manual_pending`, expected `done` | Ready as desktop smoke; local and AWS smoke completed. |
+- same Docker image or VM base image
+- same screen size and coordinate frame
+- same start URL/app launcher
+- same seed files and mounted paths
+- same evaluator and expected-answer/artifact rule
 
-## Configured But Needs Clean Current Run
+## Ready Or Smoke-Tested
 
-These are configured or registered, but should not yet be treated as tested
-collection tasks in the current matrix.
-
-| Benchmark | Type | Application | Task ID | Target Harness Coverage | Evaluator | What Is Missing |
-| --- | --- | --- | --- | --- | --- | --- |
-| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_horsepower_range_by_origin` | `browser_only`, `full_sandbox`, `no_gui_tool_only` | `exact`, expected `USA` | Add to active matrix and confirm clean runs. |
-| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_8_cylinder_origin` | `browser_only`, `full_sandbox`, `no_gui_tool_only` | `exact`, expected `USA` | Add to active matrix and confirm clean runs. |
-| Workflow-GYM-style proxy | Visual-spatial desktop GUI smoke | Unity | `workflowgym_unity_scene_smoke` | `desktop_gui_only`, `full_sandbox` | `manual_pending` | Current generic desktop image does not install Unity; use only for harness smoke until an image exists. |
-
-## Candidate Tasks Not Ready Yet
-
-These are the next useful trajectory-collection targets, but they need task
-design, images/data, and/or evaluators before collection.
-
-| Benchmark | Type | Application | Candidate Task | Target Harness Coverage | Missing |
+| Benchmark | Type | Application | Task ID | Current Status | Evaluator |
 | --- | --- | --- | --- | --- | --- |
-| TheAgentCompany | Workplace analytics / enterprise workflow | Browser + code + docs/files | Real TAC task from the benchmark environment | `full_sandbox`; selected `no_gui_tool_only` ablations if artifacts/data are accessible | Real TAC environment/container and task adapter. |
-| Workflow-GYM-style proxy | Desktop data analysis | Weka | Run J48/RandomForest on Iris and report accuracy or confusion matrix | `desktop_gui_only`, `full_sandbox`, `desktop_no_gui_tool_only` | Concrete objective and artifact/state evaluator. |
-| Workflow-GYM-style proxy | Visual-spatial / artifact creation | Blender | Create named cube/material/camera scene and save `.blend` | `desktop_gui_only`, `full_sandbox`, `desktop_no_gui_tool_only` | Blender Python evaluator. |
-| Workflow-GYM-style proxy | Spatial visual analytics | QGIS | Load shapefile, compute/export statistic, create path/selection | `desktop_gui_only`, `full_sandbox`, `desktop_no_gui_tool_only` | QGIS image, sample data, evaluator. |
-| Workflow-GYM-style proxy | Visual data workflow / dashboard | KNIME | Build node workflow and generate chart/dashboard component | `desktop_gui_only`, `full_sandbox`; limited no-GUI if batch mode works | KNIME image, sample data, evaluator. |
-| Workflow-GYM-style proxy | CAD / visual-spatial analysis | FreeCAD | Create object with dimensions and compute volume/surface area | `desktop_gui_only`, `full_sandbox`, `desktop_no_gui_tool_only` | FreeCAD image and geometry evaluator. |
-| Workflow-GYM | Visual-spatial GUI workflow | Unity | Create or modify a scene/project | `desktop_gui_only`, `full_sandbox`; limited batch-mode no-GUI if available | Reliable Unity image, licensing/login, evaluator. |
+| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_most_fuel_efficient` | In 30-run GPT-5.4/Claude smoke batch. | `final_answer`, contains `Mazda GLC` |
+| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_origin_horsepower_range` | In 30-run GPT-5.4/Claude smoke batch. | `final_answer`, contains `USA` |
+| DOMSteer | Visual analytics / data analysis | DataVoyager | `datavoyager_europe_hp_gt_100_four_cyl` | In 30-run GPT-5.4/Claude smoke batch. | `final_answer`, exact number `10` |
+| TheAgentCompany-style | Workplace analytics / browser + code + files | Browser/files/Python | TAC-shaped local smoke | Not active in current config; next integration target. | Task-specific artifact or answer check |
+| GUI-vs-CLI | Desktop applications | 18 apps | `tasks/gui_vs_cli/tasks.jsonl` | Full 440-task metadata list imported; not active in current config. | Original verifier commands preserved, bridge pending |
+| Workflow-GYM-style | Desktop data analysis | Weka | Weka Iris smoke | Not active in current config. | Mock/manual until artifact evaluator exists |
+| Workflow-GYM-style | Desktop visual/spatial authoring | Blender | Blender cube smoke | Not active in current config. | Mock/manual until artifact evaluator exists |
 
-## Workflow-GYM Harness Compatibility
+## GUI-vs-CLI Imported Catalog
 
-Workflow-GYM-style desktop tasks should support multiple harness modes when
-the application makes it meaningful:
+Tracked source:
 
-| Application | `desktop_gui_only` | `full_sandbox` | `desktop_no_gui_tool_only` | Notes |
-| --- | --- | --- | --- | --- |
-| Weka | Yes | Yes | Yes | No-GUI can use Weka CLI or Python/sklearn over the dataset. |
-| Blender | Yes | Yes | Yes | No-GUI can use `blender --background --python ...`. |
-| QGIS | Yes | Yes | Partial | No-GUI possible with `ogrinfo`, `geopandas`, or `qgis_process` if installed. |
-| KNIME | Yes | Yes | Partial | No-GUI depends on KNIME batch execution and workflow artifacts. |
-| FreeCAD | Yes | Yes | Yes | No-GUI can use FreeCAD Python APIs for geometry creation/checking. |
-| Unity | Partial | Partial | Partial | Depends on Unity image, licensing, and batch-mode support. |
+```text
+tasks/gui_vs_cli/tasks.jsonl            # standard tasks, backward-compatible path
+tasks/gui_vs_cli/tasks_standard.jsonl   # standard tasks
+tasks/gui_vs_cli/tasks_grounding.jsonl  # grounded-prompt tasks
+tasks/gui_vs_cli/task_pairs.jsonl       # matched standard/grounded pairs
+```
 
-## Immediate Collection Plan
+Task source type is inferred from `github_task_path`:
 
-1. Collect DOMSteer/DataVoyager trajectories for the two ready tasks across
-   `browser_only`, `full_sandbox`, and `no_gui_tool_only` using
-   `configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml`.
-2. Keep `the_agent_company_io_capture_smoke` in the collection set as the
-   workplace code/file I/O smoke task.
-3. Rerun Weka and Blender smoke after the `desktop.launch_app` update, locally
-   and on AWS, to confirm no foreground shell blocking.
-4. Add the two remaining DataVoyager tasks after clean matrix confirmation.
-5. Promote Weka and Blender from smoke tasks to real evaluable tasks by adding
-   concrete objectives and artifact/state evaluators.
+| Prefix | Source Type | Meaning |
+| --- | --- | --- |
+| `task_generator/tasks/` | `standard` | Standard gui-vs-cli task prompt. |
+| `task_generator/tasks_grounding/` | `grounded_prompt` | Grounded-prompt variant; keep separate from standard tasks when sampling or reporting. |
+
+Current imported catalog status:
+
+| Source Type | Count |
+| --- | ---: |
+| `standard` | 440 |
+| `grounded_prompt` | 176 |
+
+All 176 grounded-prompt tasks have a corresponding standard task with the same
+`paired_task_id`/`id`; their base `task` text is identical and the grounded
+variant adds `task_grounding`. Use `task_pairs.jsonl` for matched standard vs
+grounded experiments.
+
+Standard task app counts:
+
+| Application | Tasks |
+| --- | ---: |
+| RenderDoc | 41 |
+| LibreOffice Writer | 39 |
+| LibreOffice Calc | 36 |
+| LibreOffice Impress | 32 |
+| FreeCAD | 26 |
+| Zotero | 26 |
+| MuseScore 3 | 25 |
+| Audacity | 24 |
+| CloudCompare | 23 |
+| Obsidian | 23 |
+| Shotcut | 20 |
+| Zoom | 20 |
+| GIMP | 19 |
+| Godot 4 | 19 |
+| OBS Studio | 18 |
+| Chrome | 17 |
+| Krita | 17 |
+| draw.io | 15 |
+
+Grounded-prompt task app counts:
+
+| Application | Tasks |
+| --- | ---: |
+| LibreOffice Calc | 26 |
+| FreeCAD | 25 |
+| Audacity | 24 |
+| CloudCompare | 20 |
+| Zotero | 19 |
+| draw.io | 15 |
+| GIMP | 12 |
+| OBS Studio | 9 |
+| Krita | 8 |
+| LibreOffice Impress | 7 |
+| RenderDoc | 5 |
+| Chrome | 4 |
+| Godot 4 | 1 |
+| LibreOffice Writer | 1 |
+
+## DOMSteer Catalog
+
+Tracked source:
+
+```text
+tasks/domsteer/tasks.jsonl
+```
+
+The catalog currently has the eight DOMSteer experiment tasks from the
+user-study setup:
+
+| Record Type | Count | Use |
+| --- | ---: | --- |
+| `experiment_task` | 8 | T1-T3 are answer-verifiable; T4-T8 keep verifier pending because no exact answer is provided. |
+
+Applications covered:
+
+| Application | Records |
+| --- | ---: |
+| DataVoyager 2 | 4 |
+| TensorFlow Playground | 4 |
+
+## Candidate Tasks
+
+| Benchmark | Type | Application | Candidate Task | Harness Fit | Missing |
+| --- | --- | --- | --- | --- | --- |
+| DOMSteer | Visual analytics | DataVoyager | 8-cylinder car characteristics | `browser_only`, `full_sandbox`, `no_gui_tool_only` | Needs interpretation rubric. |
+| DOMSteer | Interactive ML | TensorFlow Playground | Discretize, misclassification, regression/classification design tasks | `browser_only`, `full_sandbox`; no-GUI is weak unless DOM/state tools are added. | Reproducible initial state and rubric/state evaluator. |
+| TheAgentCompany | Occupational workplace analytics | Browser + docs + shell/code | Real benchmark task | Mostly `full_sandbox`; no-GUI ablations where artifacts are accessible. | Real task adapter, data mount, evaluator. |
+| GUI-vs-CLI | Desktop data/spreadsheet analysis | LibreOffice Calc | Budget multi-sheet workbook setup | `desktop_gui_only`, `full_sandbox`, possible CLI/no-GUI with skills. | Runnable image, seed `budget.xlsx`, verifier bridge. |
+| GUI-vs-CLI | Desktop visual/spatial workflows | FreeCAD / CloudCompare / GIMP | Geometry, point-cloud, and image-editing tasks | `desktop_gui_only`, `full_sandbox`, possible CLI/no-GUI with app-specific skills. | Select subset, import assets, verifier bridge. |
+| Workflow-GYM | Visual/spatial desktop GUI workflow | Unity | Scene/project creation or modification | `desktop_gui_only`, `full_sandbox`; possible batch-mode no-GUI. | Reliable image, licensing/login, launch command, evaluator. |
+| Workflow-GYM | Visual/spatial desktop GUI workflow | Blender | Create scene and save `.blend` artifact | `desktop_gui_only`, `full_sandbox`, `desktop_no_gui_tool_only`. | Concrete objective and Blender Python evaluator. |
+| Workflow-GYM | Data analysis desktop GUI | Weka | Run model and report accuracy/confusion matrix | `desktop_gui_only`, `full_sandbox`, `desktop_no_gui_tool_only`. | Dataset, concrete answer, artifact/state evaluator. |
+
+## Collection Rule
+
+Add tasks back one at a time. Each task should have a task file, clear harness
+fit, expected answer or artifact, evaluator design, and run ID naming convention
+before larger batch collection.
