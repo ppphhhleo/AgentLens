@@ -656,12 +656,14 @@ class ScreenshotReactAdapter:
                 f"run '{run_id}' uses runner '{tool_harness.runner}', "
                 "expected 'screenshot_react'"
             )
-        # Tier: browser_only is the historical default; browser_files /
-        # full_sandbox are now valid when browser_source=aio_sandbox.
+        # Tier: browser_only is the historical default; browser_files,
+        # full_sandbox, and no_gui_tool_only are valid with the sandbox-backed
+        # screenshot_react runner. The tool allow-list controls actual access.
         allowed_tiers = {
             ToolHarnessTier.BROWSER_ONLY,
             ToolHarnessTier.BROWSER_FILES,
             ToolHarnessTier.FULL_SANDBOX,
+            ToolHarnessTier.NO_GUI_TOOL_ONLY,
         }
         if tool_harness.tier not in allowed_tiers:
             raise ValueError(

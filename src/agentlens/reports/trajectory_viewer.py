@@ -658,6 +658,7 @@ def _render_trajectory(traj: dict[str, Any], *, idx: int, output_path: Path) -> 
 
 def _harness_display(tool_harness: dict[str, Any]) -> tuple[str, str]:
     harness_id = str(tool_harness.get("id") or "")
+    tier = str(tool_harness.get("tier") or "")
     tools = [str(tool) for tool in tool_harness.get("tools") or []]
 
     if harness_id == "browser_only":
@@ -670,12 +671,12 @@ def _harness_display(tool_harness: dict[str, Any]) -> tuple[str, str]:
             "GUI-only",
             "click, double click, move, drag, scroll, type, keypress, wait, final_answer",
         )
-    if harness_id == "full_sandbox":
+    if harness_id == "full_sandbox" or tier == "full_sandbox":
         return (
             "Full sandbox",
             "GUI actions + web search, Python, shell, files, final_answer",
         )
-    if harness_id == "no_gui_tool_only":
+    if harness_id == "no_gui_tool_only" or tier == "no_gui_tool_only":
         return (
             "No-GUI/tool-only",
             "web search, Python, shell, files, final_answer",
@@ -691,7 +692,7 @@ def _harness_display(tool_harness: dict[str, Any]) -> tuple[str, str]:
             "click, double click, move, drag, scroll, type, keypress, wait, final_answer",
         )
 
-    mode = str(tool_harness.get("tier") or harness_id or "unknown")
+    mode = tier or harness_id or "unknown"
     if tools:
         labels = [_display_tool_name(tool) for tool in tools]
         return mode, ", ".join(labels)

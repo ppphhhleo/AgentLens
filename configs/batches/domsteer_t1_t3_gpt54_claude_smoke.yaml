@@ -132,7 +132,7 @@ tool_harnesses:
 
   - id: no_gui_tool_only
     runner: screenshot_react
-    tier: full_sandbox
+    tier: no_gui_tool_only
     tools:
       - web.openai_search
       - code.run_python
