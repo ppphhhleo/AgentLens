@@ -29,6 +29,7 @@ class ToolSpec:
             for key, value in args.items()
             if key not in {"reasoning"} and value is not None
         }
+        action_args = _normalize_action_args(self.action_type, action_args)
         if self.executor_family == "mcp":
             return ComputerAction.from_raw(
                 {"type": "mcp_tool", "mcp_tool": self.name, "mcp_args": action_args}
@@ -62,6 +63,76 @@ class ToolCallDecision:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
         }
+
+
+def _normalize_action_args(action_type: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Tolerate small provider formatting slips before strict action parsing.
+
+    Some tool-call models occasionally put a coordinate pair into one field,
+    e.g. {"x": "352, 107"}, despite the registered schema asking for separate
+    numeric x/y values. Store canonical numeric coordinates in trajectories
+    while keeping strict validation for genuinely missing targets.
+    """
+
+    if action_type in {
+        "click",
+        "double_click",
+        "move",
+        "scroll",
+        "desktop_click",
+        "desktop_double_click",
+        "desktop_move",
+        "desktop_scroll",
+    }:
+        args = dict(args)
+        _normalize_xy_fields(args)
+    return args
+
+
+def _normalize_xy_fields(args: dict[str, Any]) -> None:
+    pair = _parse_coordinate_pair(args.get("x"))
+    if pair is not None:
+        args["x"] = pair[0]
+        args["y"] = _coerce_number(args["y"]) if _has_numeric_value(args.get("y")) else pair[1]
+    else:
+        if "x" in args:
+            args["x"] = _coerce_number(args["x"])
+        if "y" in args:
+            args["y"] = _coerce_number(args["y"])
+
+
+def _parse_coordinate_pair(value: Any) -> tuple[float, float] | None:
+    if isinstance(value, str):
+        cleaned = value.strip().strip("()[]")
+        for sep in (",", " "):
+            parts = [part for part in cleaned.replace(",", " ").split() if part]
+            if len(parts) >= 2:
+                x = _coerce_number(parts[0])
+                y = _coerce_number(parts[1])
+                if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+                    return float(x), float(y)
+            if sep == " ":
+                break
+    if isinstance(value, (list, tuple)) and len(value) >= 2:
+        x = _coerce_number(value[0])
+        y = _coerce_number(value[1])
+        if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+            return float(x), float(y)
+    return None
+
+
+def _has_numeric_value(value: Any) -> bool:
+    return isinstance(_coerce_number(value), (int, float))
+
+
+def _coerce_number(value: Any) -> Any:
+    if isinstance(value, str):
+        stripped = value.strip()
+        try:
+            return float(stripped)
+        except ValueError:
+            return value
+    return value
 
 
 class ProviderToolAdapter(Protocol):
