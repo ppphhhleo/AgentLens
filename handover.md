@@ -7,6 +7,66 @@ commands. Longer-term planning lives in:
 - `docs/agent-structures-and-tool-tiers.md`
 - `docs/acting-evaluating-pipeline.md`
 
+## 2026-07-07: Grounded-vs-Standard Prompt Support
+
+Implemented first-class GUI-vs-CLI task-source selection in
+`scripts/gui_vs_cli_full_workflow_smoke.py`.
+
+- Task entries may now set `source_type: standard` or
+  `source_type: grounded_prompt`.
+- `standard` loads from `task_generator/tasks/<id>/task.json` or
+  `tasks/gui_vs_cli/tasks_standard.jsonl`.
+- `grounded_prompt` loads from
+  `task_generator/tasks_grounding/<id>/task.json` or
+  `tasks/gui_vs_cli/tasks_grounding.jsonl`.
+- For grounded-prompt runs, the agent receives `task_grounding` as the task
+  text. The same environment files and verifier specs are preserved.
+- Result directories now use:
+  `{paired_task_id}__standard__{agent_id}` or
+  `{paired_task_id}__grounded__{agent_id}`.
+- Each result directory writes `case_metadata.json` with `task_id`,
+  `paired_task_id`, `source_type`, `github_task_path`, app/category, agent,
+  model, and family.
+
+New smoke config:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_smoke.yaml \
+  --agent agentlens_gui_toolcall_gpt54
+```
+
+Single paired-task smoke:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_smoke.yaml \
+  --agent agentlens_gui_toolcall_gpt54 \
+  --task gimp_add_alpha_transparent
+```
+
+The initial paired config covers:
+
+- GIMP image editing: `gimp_add_alpha_transparent`
+- draw.io diagram editing: `drawio_aws_cloud_arch`
+- Godot 4 game/editor workflow: `godot4_full_enemy_controller`
+- LibreOffice Calc data/spreadsheet analysis:
+  `calc_3d_quarterly_consolidation`
+- LibreOffice Impress presentation editing:
+  `impress_add_entry_animations_to_bullets`
+- Chrome information seeking: `chrome_multi_tab_wikipedia`
+
+Current limitation: this config uses the strict GUI tool-call agent. The
+gui-vs-cli desktop bridge can execute desktop GUI actions today, but it should
+not yet be treated as a clean `full_sandbox` condition because shell/file/code
+tool outputs are not integrated into the desktop observation loop with the same
+quality as the main AgentLens batch harness.
+
+LLM-refined phase summaries already exist in
+`src/agentlens/analysis/llm_refinement.py` and are enabled by method analysis
+with `annotation_mode=llm`. Use them for readable phase names and qualitative
+examples, but keep structured metrics as the primary validation evidence.
+
 ## 2026-07-02: Current Agent Structures
 
 AgentLens now has five distinct agent structures. Keep these names separate

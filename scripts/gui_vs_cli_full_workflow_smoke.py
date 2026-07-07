@@ -67,7 +67,7 @@ def main() -> int:
 
     results = []
     for task_ref in selected_tasks:
-        task = _load_task(task_ref["id"])
+        task = _load_task(task_ref)
         app = task_ref.get("app") or task.get("app")
         for agent_ref in selected_agents:
             result = _run_one(
@@ -112,18 +112,66 @@ def _select(items: list[dict[str, Any]], ids: list[str] | None) -> list[dict[str
     return selected
 
 
-def _load_task(task_id: str) -> dict[str, Any]:
-    full_task = THIRD_PARTY_GUI_VS_CLI / "task_generator" / "tasks" / task_id / "task.json"
+def _load_task(task_ref: dict[str, Any]) -> dict[str, Any]:
+    task_id = task_ref["id"]
+    source_type = _task_source_type(task_ref)
+    source_dir = "tasks_grounding" if source_type == "grounded_prompt" else "tasks"
+    full_task = THIRD_PARTY_GUI_VS_CLI / "task_generator" / source_dir / task_id / "task.json"
     if full_task.exists():
-        return json.loads(full_task.read_text())
-    catalog = REPO_ROOT / "tasks" / "gui_vs_cli" / "tasks.jsonl"
+        task = json.loads(full_task.read_text())
+        task.setdefault("id", task_id)
+        task["source_type"] = source_type
+        task["paired_task_id"] = task_ref.get("paired_task_id") or task_id
+        task["github_task_path"] = f"task_generator/{source_dir}/{task_id}"
+        return _task_with_effective_prompt(task, source_type)
+
+    catalog_name = (
+        "tasks_grounding.jsonl" if source_type == "grounded_prompt" else "tasks_standard.jsonl"
+    )
+    catalog = REPO_ROOT / "tasks" / "gui_vs_cli" / catalog_name
     for line in catalog.read_text().splitlines():
         if not line.strip():
             continue
         record = json.loads(line)
         if record.get("id") == task_id:
-            return record
-    raise FileNotFoundError(f"GUI-vs-CLI task not found: {task_id}")
+            record["source_type"] = source_type
+            record["paired_task_id"] = (
+                task_ref.get("paired_task_id") or record.get("paired_task_id") or task_id
+            )
+            return _task_with_effective_prompt(record, source_type)
+    raise FileNotFoundError(f"GUI-vs-CLI task not found: {task_id} ({source_type})")
+
+
+def _task_source_type(task_ref: dict[str, Any]) -> str:
+    source_type = task_ref.get("source_type") or task_ref.get("task_source") or "standard"
+    aliases = {
+        "grounded": "grounded_prompt",
+        "grounding": "grounded_prompt",
+        "tasks_grounding": "grounded_prompt",
+        "standard_prompt": "standard",
+        "tasks": "standard",
+    }
+    source_type = aliases.get(str(source_type), str(source_type))
+    if source_type not in {"standard", "grounded_prompt"}:
+        raise ValueError(
+            f"unsupported GUI-vs-CLI source_type {source_type!r}; "
+            "expected 'standard' or 'grounded_prompt'"
+        )
+    return source_type
+
+
+def _task_with_effective_prompt(task: dict[str, Any], source_type: str) -> dict[str, Any]:
+    task = dict(task)
+    original_task_text = task.get("task", "")
+    effective_task_text = original_task_text
+    if source_type == "grounded_prompt":
+        effective_task_text = task.get("task_grounding") or original_task_text
+    task["standard_task_text"] = original_task_text
+    task["effective_task_text"] = effective_task_text
+    task["task"] = effective_task_text
+    task["source_type"] = source_type
+    task.setdefault("paired_task_id", task.get("id"))
+    return task
 
 
 def _run_one(
@@ -142,10 +190,29 @@ def _run_one(
 
     agent_id = agent_ref["id"]
     task_id = task_ref["id"]
-    case_dir = run_dir / f"{task_id}__{agent_id}"
+    source_type = task.get("source_type") or _task_source_type(task_ref)
+    paired_task_id = task.get("paired_task_id") or task_id
+    source_slug = "grounded" if source_type == "grounded_prompt" else "standard"
+    case_dir = run_dir / f"{paired_task_id}__{source_slug}__{agent_id}"
     case_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"\n=== {task_id} / {agent_id} / {app} ===")
+    case_metadata = {
+        "task_id": task_id,
+        "paired_task_id": paired_task_id,
+        "source_type": source_type,
+        "github_task_path": task.get("github_task_path"),
+        "app": app,
+        "category": task_ref.get("category"),
+        "agent": agent_id,
+        "model": agent_ref.get("model"),
+        "family": agent_ref.get("family"),
+    }
+    (case_dir / "case_metadata.json").write_text(
+        json.dumps(case_metadata, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    print(f"\n=== {paired_task_id} / {source_slug} / {agent_id} / {app} ===")
     if _is_paper_style_cli_agent(agent_ref):
         return _run_cli_one(
             config=config,
@@ -178,6 +245,9 @@ def _run_one(
             result = {
                 "ok": True,
                 "task_id": task_id,
+                "paired_task_id": paired_task_id,
+                "source_type": source_type,
+                "github_task_path": task.get("github_task_path"),
                 "app": app,
                 "agent": agent_id,
                 "ready_check_only": True,
@@ -204,6 +274,9 @@ def _run_one(
         result = {
             "ok": passed == total and total > 0,
             "task_id": task_id,
+            "paired_task_id": paired_task_id,
+            "source_type": source_type,
+            "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
             "checks_passed": passed,
@@ -219,6 +292,9 @@ def _run_one(
         result = {
             "ok": False,
             "task_id": task_id,
+            "paired_task_id": paired_task_id,
+            "source_type": source_type,
+            "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
             "error": str(exc),
@@ -269,6 +345,8 @@ def _run_cli_one(
         )
 
     agent_id = agent_ref["id"]
+    source_type = task.get("source_type", "standard")
+    paired_task_id = task.get("paired_task_id") or task_id
     started_at = time.time()
     session = None
     try:
@@ -292,6 +370,9 @@ def _run_cli_one(
             result = {
                 "ok": binary_check["ok"],
                 "task_id": task_id,
+                "paired_task_id": paired_task_id,
+                "source_type": source_type,
+                "github_task_path": task.get("github_task_path"),
                 "app": app,
                 "agent": agent_id,
                 "family": "paper_style_cli",
@@ -308,6 +389,9 @@ def _run_cli_one(
             result = {
                 "ok": False,
                 "task_id": task_id,
+                "paired_task_id": paired_task_id,
+                "source_type": source_type,
+                "github_task_path": task.get("github_task_path"),
                 "app": app,
                 "agent": agent_id,
                 "family": "paper_style_cli",
@@ -342,6 +426,9 @@ def _run_cli_one(
         result = {
             "ok": passed == total and total > 0,
             "task_id": task_id,
+            "paired_task_id": paired_task_id,
+            "source_type": source_type,
+            "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
             "family": "paper_style_cli",
@@ -364,6 +451,9 @@ def _run_cli_one(
         result = {
             "ok": False,
             "task_id": task_id,
+            "paired_task_id": paired_task_id,
+            "source_type": source_type,
+            "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
             "family": "paper_style_cli",

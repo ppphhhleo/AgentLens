@@ -57,3 +57,26 @@ Recommended paired run naming:
 {paired_task_id}__standard__{agent_id}
 {paired_task_id}__grounded__{agent_id}
 ```
+
+Grounded-vs-standard smoke config:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_smoke.yaml \
+  --agent agentlens_gui_toolcall_gpt54
+```
+
+For a single paired task smoke:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_smoke.yaml \
+  --agent agentlens_gui_toolcall_gpt54 \
+  --task gimp_add_alpha_transparent
+```
+
+The runner accepts task entries with `source_type: standard` or
+`source_type: grounded_prompt`. For grounded-prompt runs, the agent receives
+`task_grounding` as the task text while the environment and verifier still use
+the same task record. Each result directory includes `case_metadata.json` with
+`source_type`, `paired_task_id`, and `github_task_path`.
