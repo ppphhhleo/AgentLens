@@ -89,6 +89,47 @@ def _normalize_action_args(action_type: str, args: dict[str, Any]) -> dict[str, 
     return args
 
 
+def _resolve_provider_tool_call(
+    provider_name: str,
+    args: dict[str, Any],
+    provider_to_canonical: dict[str, str],
+) -> tuple[str | None, dict[str, Any]]:
+    """Resolve model-emitted provider tool names to canonical AgentLens tools.
+
+    Providers are only given names generated from registered tools, e.g.
+    `desktop.click` -> `desktop__click`. Some models still invent intuitive
+    variants such as `desktop__right_click`. Keep the canonical registry small
+    and recover these aliases at parse time.
+    """
+
+    canonical_name = provider_to_canonical.get(provider_name)
+    if canonical_name is not None:
+        return canonical_name, args
+
+    alias = _provider_tool_alias(provider_name)
+    if alias is None:
+        return None, args
+
+    alias_provider_name, alias_args = alias
+    canonical_name = provider_to_canonical.get(alias_provider_name)
+    if canonical_name is None:
+        return None, args
+
+    resolved_args = dict(args)
+    resolved_args.update(alias_args)
+    return canonical_name, resolved_args
+
+
+def _provider_tool_alias(provider_name: str) -> tuple[str, dict[str, Any]] | None:
+    aliases = {
+        "browser__right_click": ("browser__click", {"button": "right"}),
+        "desktop__right_click": ("desktop__click", {"button": "right"}),
+        "browser__middle_click": ("browser__click", {"button": "middle"}),
+        "desktop__middle_click": ("desktop__click", {"button": "middle"}),
+    }
+    return aliases.get(provider_name)
+
+
 def _normalize_xy_fields(args: dict[str, Any]) -> None:
     pair = _parse_coordinate_pair(args.get("x"))
     if pair is not None:
@@ -684,15 +725,19 @@ class OpenAIToolAdapter:
         for call in tool_calls:
             function = call.function
             provider_name = function.name
-            canonical_name = self._provider_to_canonical.get(provider_name)
-            if canonical_name is None:
-                raise ValueError(f"unknown provider tool call: {provider_name}")
             try:
                 args = json.loads(function.arguments or "{}")
             except json.JSONDecodeError as exc:
                 raise ValueError(
                     f"tool call arguments were not valid JSON: {exc}; raw={function.arguments!r}"
                 ) from exc
+            canonical_name, args = _resolve_provider_tool_call(
+                provider_name,
+                args,
+                self._provider_to_canonical,
+            )
+            if canonical_name is None:
+                raise ValueError(f"unknown provider tool call: {provider_name}")
             reasoning = str(args.get("reasoning") or (getattr(message, "content", None) or "") or "")
             decisions.append(
                 ToolCallDecision(
@@ -774,12 +819,16 @@ class AnthropicToolAdapter:
         decisions: list[ToolCallDecision] = []
         for tool_block in tool_blocks:
             provider_name = str(getattr(tool_block, "name", ""))
-            canonical_name = self._provider_to_canonical.get(provider_name)
-            if canonical_name is None:
-                raise ValueError(f"unknown provider tool call: {provider_name}")
             raw_input = getattr(tool_block, "input", None) or {}
             if not isinstance(raw_input, dict):
                 raise ValueError(f"tool_use input was not an object: {raw_input!r}")
+            canonical_name, raw_input = _resolve_provider_tool_call(
+                provider_name,
+                dict(raw_input),
+                self._provider_to_canonical,
+            )
+            if canonical_name is None:
+                raise ValueError(f"unknown provider tool call: {provider_name}")
             reasoning = str(raw_input.get("reasoning") or text or "")
             decisions.append(
                 ToolCallDecision(
@@ -869,12 +918,16 @@ class GeminiToolAdapter:
         decisions: list[ToolCallDecision] = []
         for call in function_calls:
             provider_name = str(getattr(call, "name", ""))
-            canonical_name = self._provider_to_canonical.get(provider_name)
-            if canonical_name is None:
-                raise ValueError(f"unknown Gemini function call: {provider_name}")
             raw_args = getattr(call, "args", None) or {}
             if not isinstance(raw_args, dict):
                 raise ValueError(f"Gemini function args were not an object: {raw_args!r}")
+            canonical_name, raw_args = _resolve_provider_tool_call(
+                provider_name,
+                dict(raw_args),
+                self._provider_to_canonical,
+            )
+            if canonical_name is None:
+                raise ValueError(f"unknown Gemini function call: {provider_name}")
             reasoning = str(raw_args.get("reasoning") or text or "")
             decisions.append(
                 ToolCallDecision(

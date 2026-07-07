@@ -44,6 +44,36 @@ def test_anthropic_tool_use_response_maps_to_canonical_tool() -> None:
     assert decision.output_tokens == 8
 
 
+def test_anthropic_right_click_alias_maps_to_desktop_click() -> None:
+    registry = default_tool_registry()
+    adapter = AnthropicToolAdapter(registry)
+    adapter.tool_payloads([registry.get("desktop.click")])
+    response = SimpleNamespace(
+        content=[
+            SimpleNamespace(type="text", text="I should open the context menu."),
+            SimpleNamespace(
+                type="tool_use",
+                name="desktop__right_click",
+                input={"x": "352, 107", "reasoning": "Open the context menu."},
+            ),
+        ],
+        stop_reason="tool_use",
+        usage=SimpleNamespace(input_tokens=12, output_tokens=8),
+        model_dump=lambda mode="json": {"id": "msg_right_click"},
+    )
+
+    decision = adapter.parse_decision(response, model="claude-test")
+    action = registry.to_action(decision)
+
+    assert decision.tool_name == "desktop.click"
+    assert decision.raw_provider_tool_name == "desktop__right_click"
+    assert decision.tool_args["button"] == "right"
+    assert action.type == "desktop_click"
+    assert action.button == "right"
+    assert action.x == 352
+    assert action.y == 107
+
+
 def test_anthropic_text_response_can_fallback_to_final_answer() -> None:
     registry = default_tool_registry()
     adapter = AnthropicToolAdapter(registry)
