@@ -11,7 +11,7 @@ docker_platform: linux/amd64
 docker_shm_size: 2g
 docker_ready_timeout: 180
 screen_size: [1920, 1080]
-max_steps: 80
+max_steps: 500
 output_dir: runs/gui_vs_cli_grounded_vs_standard_smoke
 
 agents:
