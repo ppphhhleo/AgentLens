@@ -1,9 +1,10 @@
 # High-Delta Standard/Grounded GUI-vs-CLI Task Pairs
 
-This note identifies matched GUI-vs-CLI task pairs where the grounded prompt is
+This note identifies matched task pairs where the grounded prompt is
 meaningfully different from the standard prompt. Use this list when the
 experiment is specifically about whether procedural grounding changes behavior,
-not just task success.
+not just task success. It covers the GUI-vs-CLI catalog and the active DOMSteer
+DataVoyager standard/grounded tasks.
 
 Source catalogs:
 
@@ -11,6 +12,8 @@ Source catalogs:
 tasks/gui_vs_cli/tasks_standard.jsonl
 tasks/gui_vs_cli/tasks_grounding.jsonl
 tasks/gui_vs_cli/task_pairs.jsonl
+tasks/domsteer/tasks.jsonl
+tasks/domsteer/*/task.yaml
 ```
 
 Prompt-delta strength:
@@ -36,7 +39,32 @@ chrome_multi_tab_wikipedia
 Do not treat these as unused high-delta candidates. They remain useful for
 comparisons against already-collected Opus/GPT runs.
 
+Already-run or ready DOMSteer DataVoyager pairs:
+
+```text
+datavoyager_most_fuel_efficient
+datavoyager_origin_horsepower_range
+datavoyager_europe_hp_gt_100_four_cyl
+```
+
+Each of these has a standard task YAML and a sibling `_grounded` YAML:
+
+```text
+tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml
+tasks/domsteer/datavoyager_most_fuel_efficient_grounded/task.yaml
+tasks/domsteer/datavoyager_origin_horsepower_range/task.yaml
+tasks/domsteer/datavoyager_origin_horsepower_range_grounded/task.yaml
+tasks/domsteer/datavoyager_europe_hp_gt_100_four_cyl/task.yaml
+tasks/domsteer/datavoyager_europe_hp_gt_100_four_cyl_grounded/task.yaml
+```
+
+These are still recommended for near-term GPT/Opus comparison runs because they
+are answer-verifiable visual analytics tasks. Treat them as the core DOMSteer
+subset until T4-T8 get rubrics or state evaluators.
+
 ## Recommended Next Candidates
+
+### GUI-vs-CLI
 
 | Task ID | App | Category | Delta | Why it is useful | Caveat |
 | --- | --- | --- | ---: | --- | --- |
@@ -52,6 +80,18 @@ comparisons against already-collected Opus/GPT runs.
 | `krita_wrap_around_and_mirror` | Krita | image/design editing | 2 | Grounded adds menu/shortcut and settings-location hints. | More configuration than artifact creation. |
 | `obs_create_scene_collection` | OBS Studio | visual media setup | 2 | Grounded expands scene/source creation and names acceptable source variants. | OBS GUI may have startup dialogs. |
 | `zotero_gap_import_ris_file` | Zotero | information management | 2 | Grounded adds File > Import procedure and import-dialog guidance. | Not visual analytics, but useful occupational workflow. |
+
+### DOMSteer
+
+| Task ID | App | Category | Delta | Why it is useful | Caveat |
+| --- | --- | --- | ---: | --- | --- |
+| `datavoyager_most_fuel_efficient` | DataVoyager 2 | visual analytics | 2 | Grounded prompt can encourage encoding MPG and comparing car names without giving the answer. | Verify the prompt does not reveal `Mazda GLC`. |
+| `datavoyager_origin_horsepower_range` | DataVoyager 2 | visual analytics | 2 | Grounded prompt can specify using origin and horsepower range while preserving computation burden. | Verify the prompt does not reveal `USA`. |
+| `datavoyager_europe_hp_gt_100_four_cyl` | DataVoyager 2 | visual analytics | 2 | Grounded prompt can specify filtering Origin/Cylinders/Horsepower and counting rows. | Verify the prompt does not reveal `10`. |
+
+DOMSteer T4-T8 are cataloged in `tasks/domsteer/tasks.jsonl`, but they are not
+recommended for immediate grounded-vs-standard quantitative comparisons because
+their verifiers are still `manual_pending`.
 
 ## Lower-Priority But Relevant
 
@@ -73,4 +113,3 @@ For early grounded-vs-standard behavior tests:
 4. Keep standard and grounded variants matched by `paired_task_id`.
 5. Keep the model, agent style, screen size, verifier, and Docker image fixed
    within each pair.
-

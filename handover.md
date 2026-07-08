@@ -15,12 +15,14 @@ Grounded-vs-standard task selection is now documented in:
 tasks/gui_vs_cli/high_delta_prompt_pairs.md
 ```
 
-Use this file before expanding grounded-vs-standard runs. The key finding is
-that the `grounded_prompt` label alone is not enough for behavior-analysis
-claims: many GUI-vs-CLI grounded prompts are near-identical to their standard
-prompts, especially in Calc/Chrome. For prompt-effect experiments, prefer
-Level `2` or `3` pairs where the grounded prompt adds concrete procedure,
-menu paths, object locations, or exact interaction sequences.
+Use this file before expanding grounded-vs-standard runs. It now covers both
+GUI-vs-CLI and the active DOMSteer DataVoyager standard/grounded tasks. The key
+finding is that the `grounded_prompt` label alone is not enough for
+behavior-analysis claims: many GUI-vs-CLI grounded prompts are near-identical
+to their standard prompts, especially in Calc/Chrome. For prompt-effect
+experiments, prefer Level `2` or `3` pairs where the grounded prompt adds
+concrete procedure, menu paths, object locations, or exact interaction
+sequences.
 
 Already-run GUI-vs-CLI pilot pairs remain:
 
@@ -33,7 +35,19 @@ impress_add_entry_animations_to_bullets
 chrome_multi_tab_wikipedia
 ```
 
-Recommended next high-delta candidates include:
+Already-run or ready DOMSteer DataVoyager pairs:
+
+```text
+datavoyager_most_fuel_efficient
+datavoyager_origin_horsepower_range
+datavoyager_europe_hp_gt_100_four_cyl
+```
+
+These three DOMSteer pairs should remain in the near-term GPT/Opus comparison
+set because they are answer-verifiable visual analytics tasks with standard and
+grounded YAMLs. T4-T8 are cataloged but verifier-pending.
+
+Recommended next high-delta GUI-vs-CLI candidates include:
 
 ```text
 gimp_rotate_180_tiff_export
