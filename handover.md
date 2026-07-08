@@ -7,6 +7,149 @@ commands. Longer-term planning lives in:
 - `docs/agent-structures-and-tool-tiers.md`
 - `docs/acting-evaluating-pipeline.md`
 
+## 2026-07-09: Readable Trajectory Storage Names
+
+Future trajectory case folders now use metadata-rich names instead of opaque
+`{run_id}_seed{seed}_trial{trial}` names where the runner has task/model
+metadata. The timestamp remains the batch/snapshot parent folder; the case
+folder now follows:
+
+```text
+trajectories/{app_or_family}__{task_name}__{prompt_style}__{model_id}__{harness_or_agent}__seed{seed}__trial{trial}/
+```
+
+The shared helper is `src/agentlens/trajectory_paths.py`. It is wired into the
+main AgentLens adapters and into `scripts/gui_vs_cli_full_workflow_smoke.py`
+and `scripts/domsteer_cli_comparison.py`. Existing old run folders are not
+renamed in place; curated indexes should keep pointing to those historical
+paths.
+
+## 2026-07-09: GPT-5.5 Follow-Up Collection Commands
+
+The next GPT comparison should mirror the Opus 4.8 collection but use a cleaner
+task subset. Use GPT-5.5 for:
+
+- GUI-vs-CLI five-task subset: GIMP, draw.io, Godot 4, LibreOffice Calc, and
+  Chrome. Do not include Impress by default; it is a known looping/noisy target
+  for strict GUI-only.
+- DOMSteer DataVoyager T1-T3: standard and grounded prompts.
+- Agent styles: AgentLens strict GUI-only tool-call and gui-vs-cli paper-style
+  ChatGPT computer-use agent.
+
+Configs:
+
+```text
+configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml
+configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml
+```
+
+The configs currently use model name `gpt-5.5`. If the API exposes a different
+alias, update only the `model:` / `name:` fields in those configs before
+running.
+
+Local/AWS dry checks:
+
+```bash
+cd /home/ubuntu/AgentLens-grounded
+set -a; . ./.env; set +a
+
+PYTHONPATH=src python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml \
+  --ready-check-only
+
+PYTHONPATH=src python -m agentlens.cli run \
+  configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml \
+  --dry-run \
+  --output runs/gpt55_domsteer_dry_run_plan.json
+```
+
+Run GUI-vs-CLI five-task trajectories. Running the two agents separately makes
+monitoring and restart easier:
+
+```bash
+tmux new -s agentlens_gpt55_five_task_agentlens
+cd /home/ubuntu/AgentLens-grounded
+set -a; . ./.env; set +a
+PYTHONPATH=src python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml \
+  --agent agentlens_gui_toolcall_gpt55 \
+  --max-steps 150
+```
+
+```bash
+tmux new -s agentlens_gpt55_five_task_chatgpt
+cd /home/ubuntu/AgentLens-grounded
+set -a; . ./.env; set +a
+PYTHONPATH=src python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml \
+  --agent gui_vs_cli_chatgpt_gpt55 \
+  --max-steps 150
+```
+
+Run DOMSteer T1-T3:
+
+```bash
+tmux new -s agentlens_gpt55_domsteer
+cd /home/ubuntu/AgentLens-grounded
+set -a; . ./.env; set +a
+PYTHONPATH=src python -m agentlens.cli run \
+  configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml \
+  --execute \
+  --log-actions
+```
+
+Sync JSON artifacts back first; screenshots can be synced later or served from
+AWS because they are large:
+
+```bash
+rsync -av --include='*/' --include='*.json' --include='*.yaml' --include='*.html' --exclude='*' \
+  ubuntu@ec2-34-218-248-219.us-west-2.compute.amazonaws.com:/home/ubuntu/AgentLens-grounded/runs/gui_vs_cli_grounded_vs_standard_gpt55_five_task_gui_comparison/ \
+  /Users/pan00342/Documents/Projects/AgentLens/runs/gui_vs_cli_grounded_vs_standard_gpt55_five_task_gui_comparison/
+
+rsync -av --include='*/' --include='*.json' --include='*.yaml' --include='*.html' --exclude='*' \
+  ubuntu@ec2-34-218-248-219.us-west-2.compute.amazonaws.com:/home/ubuntu/AgentLens-grounded/runs/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison/ \
+  /Users/pan00342/Documents/Projects/AgentLens/runs/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison/
+```
+
+## 2026-07-08: DOMSteer Opus 4.8 Standard/Grounded GUI Comparison
+
+Active batch:
+
+```bash
+PYTHONPATH=src python -m agentlens.cli run \
+  configs/batches/domsteer_t1_t3_opus48_standard_grounded_gui_comparison.yaml \
+  --execute --log-actions
+```
+
+AWS:
+
+- Host: `ubuntu@ec2-34-218-248-219.us-west-2.compute.amazonaws.com`
+- Repo: `/home/ubuntu/AgentLens-grounded`
+- tmux: `agentlens_domsteer_opus48`
+- Run root:
+  `runs/domsteer_t1_t3_opus48_standard_grounded_gui_comparison/raw/2026-07-08_09-55-22/`
+
+This batch compares T1-T3 DOMSteer standard vs grounded prompts for:
+
+- `agentlens_gui_toolcall`: strict AgentLens GUI-only registered tools.
+- `gui_vs_cli_claude`: paper-style Claude computer-use agent converted to
+  `desktop_pyautogui` actions.
+
+Important interpretation: the paper-style Claude computer-use path is much
+slower and noisier than the strict AgentLens GUI-only path. It often emits
+low-level actions such as separate key down/up, mouse down/move/up, waits, and
+browser-chrome interactions. Treat its step counts as paper-style computer
+agent granularity, not as equivalent to AgentLens full-sandbox or strict
+GUI-only step counts.
+
+Compatibility fixes made for future runs:
+
+- `third_party/gui-vs-cli/agents/claude_agent.py` ignores unexpected `text`
+  fields on `left_click_drag`.
+- `cursor_position` from Claude computer-use is treated as a no-op wait because
+  the current AgentLens bridge returns screenshots, not cursor-coordinate tool
+  results.
+
 ## 2026-07-07: Grounded-vs-Standard Prompt Support
 
 Implemented first-class GUI-vs-CLI task-source selection in

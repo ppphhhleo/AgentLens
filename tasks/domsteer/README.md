@@ -10,6 +10,11 @@ Tracked files:
 
 ```text
 datavoyager_most_fuel_efficient/task.yaml
+datavoyager_most_fuel_efficient_grounded/task.yaml
+datavoyager_origin_horsepower_range/task.yaml
+datavoyager_origin_horsepower_range_grounded/task.yaml
+datavoyager_europe_hp_gt_100_four_cyl/task.yaml
+datavoyager_europe_hp_gt_100_four_cyl_grounded/task.yaml
 tasks.jsonl
 ```
 
@@ -25,6 +30,10 @@ Important distinctions:
 - T1-T3 have deterministic final-answer validators.
 - T4-T8 keep `answer_validator: manual_pending` because the paper does not
   provide exact final answers and the tasks require rubrics or state evaluators.
+- T1-T3 now have two runnable prompt variants:
+  - the original task YAMLs keep the standard, goal-only prompt;
+  - the sibling `_grounded` task YAMLs use procedure-grounded prompts that
+    identify relevant fields and workflow checks without revealing the answer.
 
 Do not assume every DOMSteer task is automatically executable. For active agent
 runs, create a task YAML with a concrete `start_url`, expected answer or rubric,

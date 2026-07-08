@@ -1,0 +1,105 @@
+id: gui_vs_cli_grounded_vs_standard_gpt55_five_task_gui_comparison
+description: >
+  Paired standard-vs-grounded GUI-vs-CLI run using GPT-5.5 over the five-task
+  pilot subset. Runs two GUI agent styles: AgentLens strict registered-tool
+  GUI-only and the gui-vs-cli paper-style ChatGPT computer-use agent.
+
+env_backend: docker
+docker_image: agentlens-gui-vs-cli-runtime:latest
+docker_platform: linux/amd64
+docker_shm_size: 2g
+docker_ready_timeout: 180
+screen_size: [1920, 1080]
+max_steps: 150
+output_dir: runs/gui_vs_cli_grounded_vs_standard_gpt55_five_task_gui_comparison
+
+agents:
+  - id: agentlens_gui_toolcall_gpt55
+    provider: openai
+    model: gpt-5.5
+    interaction_backend: tool_call
+    prompt_policy: gui_screen_only
+    family: agentlens_strict_gui_toolcall
+    max_output_tokens: 4096
+    tools:
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.triple_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+    extra:
+      input_modes: [screenshot]
+      max_actions_per_round: 5
+      parallel_tool_calls: true
+      screen_size: [1920, 1080]
+
+  - id: gui_vs_cli_chatgpt_gpt55
+    provider: openai
+    model: gpt-5.5
+    interaction_backend: gui_vs_cli_chatgpt
+    prompt_policy: gui_screen_only
+    family: paper_style_gui_vs_cli
+    max_output_tokens: 4096
+    extra:
+      api_backend: openai
+      screen_size: [1920, 1080]
+      max_steps: 150
+      platform: ubuntu
+      computer_environment: linux
+
+tasks:
+  - id: gimp_add_alpha_transparent
+    source_type: standard
+    app: gimp
+    category: image_editing
+
+  - id: gimp_add_alpha_transparent
+    source_type: grounded_prompt
+    app: gimp
+    category: image_editing
+
+  - id: drawio_aws_cloud_arch
+    source_type: standard
+    app: drawio
+    category: diagram_editing
+
+  - id: drawio_aws_cloud_arch
+    source_type: grounded_prompt
+    app: drawio
+    category: diagram_editing
+
+  - id: godot4_full_enemy_controller
+    source_type: standard
+    app: godot4
+    category: game_editor
+
+  - id: godot4_full_enemy_controller
+    source_type: grounded_prompt
+    app: godot4
+    category: game_editor
+
+  - id: calc_3d_quarterly_consolidation
+    source_type: standard
+    app: libreoffice_calc
+    category: spreadsheet_analysis
+
+  - id: calc_3d_quarterly_consolidation
+    source_type: grounded_prompt
+    app: libreoffice_calc
+    category: spreadsheet_analysis
+
+  - id: chrome_multi_tab_wikipedia
+    source_type: standard
+    app: chrome
+    category: information_seeking
+
+  - id: chrome_multi_tab_wikipedia
+    source_type: grounded_prompt
+    app: chrome
+    category: information_seeking

@@ -1,0 +1,25 @@
+id: datavoyager_most_fuel_efficient_grounded
+benchmark: domsteer
+task_id: datavoyager.most_fuel_efficient
+goal: >
+  Use DataVoyager to analyze the cars dataset and identify the car with the
+  highest fuel efficiency. In the Encodings panel, add Miles_per_Gallon to a
+  quantitative encoding so the values can be compared, and add the car
+  name/model field to an encoding or view detail that lets you read the
+  associated car name. Sort or inspect the resulting view to find the maximum
+  Miles_per_Gallon value, verify the associated car name, and then return only
+  that car name.
+start_url: https://vega.github.io/voyager2/
+capability_required:
+  - browser_ui
+  - visual_reasoning
+  - data_analysis
+validator: final_answer
+expected_answer: Mazda GLC
+answer_validator: contains
+extra:
+  canonical_task: datavoyager_most_fuel_efficient
+  standard_task_id: datavoyager_most_fuel_efficient
+  grounded_task_id: datavoyager_most_fuel_efficient_grounded
+  prompt_variant: grounded_procedure
+  task_family: visual_analytics
