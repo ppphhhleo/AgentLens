@@ -7,6 +7,52 @@ commands. Longer-term planning lives in:
 - `docs/agent-structures-and-tool-tiers.md`
 - `docs/acting-evaluating-pipeline.md`
 
+## 2026-07-09: High-Delta Grounded Prompt Candidate List
+
+Grounded-vs-standard task selection is now documented in:
+
+```text
+tasks/gui_vs_cli/high_delta_prompt_pairs.md
+```
+
+Use this file before expanding grounded-vs-standard runs. The key finding is
+that the `grounded_prompt` label alone is not enough for behavior-analysis
+claims: many GUI-vs-CLI grounded prompts are near-identical to their standard
+prompts, especially in Calc/Chrome. For prompt-effect experiments, prefer
+Level `2` or `3` pairs where the grounded prompt adds concrete procedure,
+menu paths, object locations, or exact interaction sequences.
+
+Already-run GUI-vs-CLI pilot pairs remain:
+
+```text
+gimp_add_alpha_transparent
+drawio_aws_cloud_arch
+godot4_full_enemy_controller
+calc_3d_quarterly_consolidation
+impress_add_entry_animations_to_bullets
+chrome_multi_tab_wikipedia
+```
+
+Recommended next high-delta candidates include:
+
+```text
+gimp_rotate_180_tiff_export
+gimp_fill_bucket_background
+drawio_restyle_erd
+drawio_fix_and_color_workflow
+calc_text_parse_contacts
+cloudcompare_gap_csf_ground_filter
+cloudcompare_obj_to_mesh_xyz_asc
+freecad_export_multi_format
+freecad_create_parametric_box
+krita_wrap_around_and_mirror
+obs_create_scene_collection
+zotero_gap_import_ris_file
+```
+
+Avoid using draw.io as a primary next result until the draw.io harness failures
+are diagnosed. Impress is lower priority because recent runs were slow/noisy.
+
 ## 2026-07-09: Readable Trajectory Storage Names
 
 Future trajectory case folders now use metadata-rich names instead of opaque
