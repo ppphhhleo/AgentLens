@@ -34,6 +34,16 @@ This writes:
 tasks/gui_vs_cli/grounded_task_browser.html
 ```
 
+Curated high-delta standard/grounded candidates:
+
+```text
+tasks/gui_vs_cli/high_delta_prompt_pairs.md
+```
+
+Use this curated list when the goal is to test whether procedural grounding
+changes behavior. Many grounded-prompt records add only minor text, so the
+`grounded_prompt` label alone is not enough for prompt-effect claims.
+
 AgentLens should treat these records as follows:
 
 - `task` is the natural-language task text given to the agent.
