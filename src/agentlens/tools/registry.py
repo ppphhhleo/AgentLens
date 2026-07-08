@@ -81,11 +81,15 @@ def _normalize_action_args(action_type: str, args: dict[str, Any]) -> dict[str, 
         "scroll",
         "desktop_click",
         "desktop_double_click",
+        "desktop_triple_click",
         "desktop_move",
         "desktop_scroll",
     }:
         args = dict(args)
         _normalize_xy_fields(args)
+    if action_type in {"keypress", "desktop_keypress"} and isinstance(args.get("keys"), str):
+        args = dict(args)
+        args["keys"] = [args["keys"]]
     return args
 
 
@@ -447,6 +451,20 @@ def default_tool_registry() -> ToolRegistry:
                 action_type="desktop_double_click",
                 executor_family="desktop",
                 description="Double-click a point on the virtual desktop screen.",
+                parameters=_object_schema(
+                    {
+                        "x": {"type": "number", "description": "Screen x coordinate."},
+                        "y": {"type": "number", "description": "Screen y coordinate."},
+                        "button": {"type": "string", "enum": ["left", "right", "middle"]},
+                    },
+                    required=["x", "y"],
+                ),
+            ),
+            ToolSpec(
+                name="desktop.triple_click",
+                action_type="desktop_triple_click",
+                executor_family="desktop",
+                description="Triple-click a point on the virtual desktop screen.",
                 parameters=_object_schema(
                     {
                         "x": {"type": "number", "description": "Screen x coordinate."},

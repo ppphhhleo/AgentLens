@@ -74,6 +74,55 @@ def test_anthropic_right_click_alias_maps_to_desktop_click() -> None:
     assert action.y == 107
 
 
+def test_anthropic_keypress_string_normalizes_to_key_list() -> None:
+    registry = default_tool_registry()
+    adapter = AnthropicToolAdapter(registry)
+    adapter.tool_payloads([registry.get("desktop.keypress")])
+    response = SimpleNamespace(
+        content=[
+            SimpleNamespace(
+                type="tool_use",
+                name="desktop__keypress",
+                input={"keys": "Delete", "reasoning": "Remove selected content."},
+            ),
+        ],
+        stop_reason="tool_use",
+        usage=SimpleNamespace(input_tokens=12, output_tokens=8),
+        model_dump=lambda mode="json": {"id": "msg_keypress"},
+    )
+
+    decision = adapter.parse_decision(response, model="claude-test")
+    action = registry.to_action(decision)
+
+    assert action.type == "desktop_keypress"
+    assert action.keys == ["Delete"]
+
+
+def test_anthropic_triple_click_maps_to_desktop_action() -> None:
+    registry = default_tool_registry()
+    adapter = AnthropicToolAdapter(registry)
+    adapter.tool_payloads([registry.get("desktop.triple_click")])
+    response = SimpleNamespace(
+        content=[
+            SimpleNamespace(
+                type="tool_use",
+                name="desktop__triple_click",
+                input={"x": "120, 240", "reasoning": "Select the line."},
+            ),
+        ],
+        stop_reason="tool_use",
+        usage=SimpleNamespace(input_tokens=12, output_tokens=8),
+        model_dump=lambda mode="json": {"id": "msg_triple_click"},
+    )
+
+    decision = adapter.parse_decision(response, model="claude-test")
+    action = registry.to_action(decision)
+
+    assert action.type == "desktop_triple_click"
+    assert action.x == 120
+    assert action.y == 240
+
+
 def test_anthropic_text_response_can_fallback_to_final_answer() -> None:
     registry = default_tool_registry()
     adapter = AnthropicToolAdapter(registry)

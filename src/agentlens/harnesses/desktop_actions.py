@@ -89,6 +89,14 @@ def execute_desktop_action(sandbox, action: ComputerAction) -> tuple[str, str]:
         )
         result = sandbox.shell(cmd, timeout_sec=10)
         return result.output, _desktop_tool_error(result, "xdotool")
+    if action.type == "desktop_triple_click":
+        button = {"left": 1, "middle": 2, "right": 3}.get(action.button, 1)
+        cmd = (
+            f"xdotool mousemove {float(action.x or 0):.0f} {float(action.y or 0):.0f} "
+            f"click --repeat 3 --delay 120 {button}"
+        )
+        result = sandbox.shell(cmd, timeout_sec=10)
+        return result.output, _desktop_tool_error(result, "xdotool")
     if action.type == "desktop_move":
         cmd = f"xdotool mousemove {float(action.x or 0):.0f} {float(action.y or 0):.0f}"
         result = sandbox.shell(cmd, timeout_sec=10)
@@ -117,6 +125,8 @@ def format_desktop_action(action: ComputerAction) -> str:
         return f"desktop_click x={action.x} y={action.y} button={action.button}"
     if action.type == "desktop_double_click":
         return f"desktop_double_click x={action.x} y={action.y} button={action.button}"
+    if action.type == "desktop_triple_click":
+        return f"desktop_triple_click x={action.x} y={action.y} button={action.button}"
     if action.type == "desktop_move":
         return f"desktop_move x={action.x} y={action.y}"
     if action.type == "desktop_scroll":

@@ -104,6 +104,30 @@ In short: `gui_vs_cli_*` means "paper-style gui-vs-cli agent structure"; it
 does not mean AgentLens strict GUI-only tool registration. The strict
 AgentLens variants are the `agentlens_gui_toolcall_*` ids.
 
+## Full Sandbox vs Paper-Style Computer Agent
+
+Do not treat `full_sandbox`, strict GUI-only, and paper-style computer agents
+as interchangeable conditions.
+
+| Condition | Agent path | What the model can use | Action granularity |
+| --- | --- | --- | --- |
+| AgentLens strict GUI-only | `agentlens_gui_toolcall_*` | Only the registered direct-manipulation tools and `task.final_answer`. | Usually one model round can emit one or more structured AgentLens actions. |
+| AgentLens full sandbox | `agentlens_*_toolcall` with the full-sandbox tool harness | GUI tools plus programmatic tools such as shell, Python, files, and search. | Structured AgentLens actions from an explicit tool allow-list. |
+| Paper-style computer agent | `gui_vs_cli_chatgpt`, `gui_vs_cli_claude`, `gui_vs_cli_gemini` | Provider-native computer/desktop interface from the gui-vs-cli paper agents. | Often low-level pyautogui snippets, for example separate key down/up, mouse down/move/up, and waits. |
+
+The paper-style agents are useful for faithful comparison with the gui-vs-cli
+paper, but they are not the same as AgentLens full sandbox. They convert
+provider-native computer actions into `desktop_pyautogui` code and run that
+code in the desktop. This makes the trajectory useful, but it also means step
+counts are not directly comparable with AgentLens strict GUI-only runs.
+
+Known adapter compatibility notes:
+
+- `left_click_drag` may include an unexpected `text` field from newer Claude
+  computer-use responses; the adapter ignores it.
+- `cursor_position` is treated as a no-op wait in AgentLens because the current
+  bridge returns the next screenshot, not a cursor-coordinate tool result.
+
 ## GUI-vs-CLI Full Workflow Tasks
 
 AgentLens has imported the GUI-vs-CLI task catalogs:

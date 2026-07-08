@@ -28,6 +28,7 @@ ComputerActionType = Literal[
     "desktop_screenshot",
     "desktop_click",
     "desktop_double_click",
+    "desktop_triple_click",
     "desktop_scroll",
     "desktop_move",
     "desktop_drag",
@@ -134,6 +135,8 @@ class ComputerAction(BaseModel):
             raise ValueError("action 'desktop_click' requires x and y")
         if self.type == "desktop_double_click" and (self.x is None or self.y is None):
             raise ValueError("action 'desktop_double_click' requires x and y")
+        if self.type == "desktop_triple_click" and (self.x is None or self.y is None):
+            raise ValueError("action 'desktop_triple_click' requires x and y")
         if self.type == "desktop_move" and (self.x is None or self.y is None):
             raise ValueError("action 'desktop_move' requires x and y")
         if self.type == "desktop_drag" and len(self.path) < 2:
