@@ -23,6 +23,7 @@ from agentlens.schemas import (
     UserActionType,
     UserHarnessConfig,
 )
+from agentlens.trajectory_paths import trajectory_case_slug
 from agentlens.validators.answers import validate_answer
 
 MOCK_MODEL_NAME = "mock_screenshot_react"
@@ -626,11 +627,7 @@ class ScreenshotReactAdapter:
         return total if seen else None
 
     def _trajectory_dir(self, plan: ScreenshotReactRunPlan) -> Path:
-        return (
-            plan.output_dir
-            / "trajectories"
-            / f"{plan.run_id}_seed{plan.seed}_trial{plan.trial}"
-        )
+        return plan.output_dir / "trajectories" / trajectory_case_slug(plan)
 
     def _write_trajectory(self, trajectory: Trajectory) -> Path:
         from agentlens.reports.trajectory_viewer import write_trajectory_viewer

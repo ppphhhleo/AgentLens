@@ -22,6 +22,8 @@ from typing import Any
 
 import yaml
 
+from agentlens.trajectory_paths import gui_vs_cli_case_slug
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 THIRD_PARTY_GUI_VS_CLI = REPO_ROOT / "third_party" / "gui-vs-cli"
 
@@ -193,7 +195,13 @@ def _run_one(
     source_type = task.get("source_type") or _task_source_type(task_ref)
     paired_task_id = task.get("paired_task_id") or task_id
     source_slug = "grounded" if source_type == "grounded_prompt" else "standard"
-    case_dir = run_dir / f"{paired_task_id}__{source_slug}__{agent_id}"
+    case_dir = run_dir / "trajectories" / gui_vs_cli_case_slug(
+        app=app,
+        task_id=str(paired_task_id),
+        prompt_style=source_slug,
+        model=str(agent_ref.get("model") or ""),
+        agent_id=str(agent_id),
+    )
     case_dir.mkdir(parents=True, exist_ok=True)
 
     case_metadata = {
@@ -264,6 +272,8 @@ def _run_one(
             case_dir=case_dir,
             max_steps=max_steps,
         )
+        agent_done = _trajectory_has_final_answer(trajectory)
+        max_steps_reached = len(trajectory) >= max_steps and not agent_done
         passed, total, details = verify_task(
             session.sandbox,
             app,
@@ -279,6 +289,10 @@ def _run_one(
             "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
+            "agent_done": agent_done,
+            "agent_steps": len(trajectory),
+            "max_steps": max_steps,
+            "max_steps_reached": max_steps_reached,
             "checks_passed": passed,
             "checks_total": total,
             "score": passed / total if total else 0.0,
@@ -300,6 +314,7 @@ def _run_one(
             "error": str(exc),
             "elapsed_seconds": round(time.time() - started_at, 1),
         }
+        _promote_partial_trajectory(case_dir, result)
         (case_dir / "result.json").write_text(json.dumps(result, indent=2, default=str))
         print(f"ERROR: {exc}")
         return result
@@ -611,6 +626,7 @@ def _run_agent_loop(
 
     screenshots_dir = case_dir / "screenshots"
     screenshots_dir.mkdir(exist_ok=True)
+    partial_path = case_dir / "trajectory_partial.json"
     model = _build_agentlens_model(agent_ref)
     history: list[ModelStep] = []
     trajectory: list[dict[str, Any]] = []
@@ -657,10 +673,62 @@ def _run_agent_loop(
             if not ok:
                 break
         trajectory.append(step_record)
+        _write_partial_trajectory(
+            partial_path,
+            trajectory=trajectory,
+            max_steps=max_steps,
+            status="running",
+        )
         if done:
             break
         time.sleep(0.5)
+    final_status = "completed" if _trajectory_has_final_answer(trajectory) else "max_steps_reached"
+    _write_partial_trajectory(
+        partial_path,
+        trajectory=trajectory,
+        max_steps=max_steps,
+        status=final_status,
+    )
     return trajectory
+
+
+def _trajectory_has_final_answer(trajectory: list[dict[str, Any]]) -> bool:
+    return any("final_answer" in step for step in trajectory)
+
+
+def _write_partial_trajectory(
+    path: Path,
+    *,
+    trajectory: list[dict[str, Any]],
+    max_steps: int,
+    status: str,
+) -> None:
+    payload = {
+        "status": status,
+        "steps": len(trajectory),
+        "max_steps": max_steps,
+        "trajectory": trajectory,
+    }
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _promote_partial_trajectory(case_dir: Path, result: dict[str, Any]) -> None:
+    final_path = case_dir / "trajectory.json"
+    if final_path.exists():
+        return
+    partial_path = case_dir / "trajectory_partial.json"
+    if partial_path.exists():
+        try:
+            payload = json.loads(partial_path.read_text(encoding="utf-8"))
+        except Exception:
+            payload = {"trajectory": []}
+    else:
+        payload = {"trajectory": []}
+    payload["status"] = "error"
+    payload["result"] = result
+    final_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
 
 
 def _build_agentlens_model(agent_ref: dict[str, Any]):
@@ -735,12 +803,20 @@ def _desktop_action_to_pyautogui(action: Any) -> str:
         if len(points) < 2:
             return ""
         first = points[0]
-        lines = [f"pyautogui.moveTo({int(first['x'])}, {int(first['y'])})", "pyautogui.mouseDown()"]
+        first_x, first_y = _point_xy(first)
+        lines = [f"pyautogui.moveTo({int(first_x)}, {int(first_y)})", "pyautogui.mouseDown()"]
         for point in points[1:]:
-            lines.append(f"pyautogui.moveTo({int(point['x'])}, {int(point['y'])}, duration=0.1)")
+            x, y = _point_xy(point)
+            lines.append(f"pyautogui.moveTo({int(x)}, {int(y)}, duration=0.1)")
         lines.append("pyautogui.mouseUp()")
         return "\n".join(lines)
     return ""
+
+
+def _point_xy(point: Any) -> tuple[float, float]:
+    if isinstance(point, dict):
+        return float(point["x"]), float(point["y"])
+    return float(point.x), float(point.y)
 
 
 def _normalize_pyautogui_keys(keys: list[Any]) -> list[str]:

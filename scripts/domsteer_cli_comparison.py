@@ -22,6 +22,8 @@ from typing import Any
 
 import yaml
 
+from agentlens.trajectory_paths import gui_vs_cli_case_slug
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 THIRD_PARTY_GUI_VS_CLI = REPO_ROOT / "third_party" / "gui-vs-cli"
 
@@ -150,7 +152,17 @@ def _run_case(
     if provider not in {"claude", "codex"}:
         raise ValueError(f"unsupported CLI provider: {provider!r}")
 
-    case_dir = run_dir / "trajectories" / f"{task_id}__{agent_id}"
+    task_extra = task.get("extra") if isinstance(task.get("extra"), dict) else {}
+    prompt_style = str(task_extra.get("prompt_variant") or "standard")
+    if prompt_style == "grounded_procedure":
+        prompt_style = "grounded"
+    case_dir = run_dir / "trajectories" / gui_vs_cli_case_slug(
+        app=str(task.get("benchmark") or task_extra.get("task_family") or "domsteer"),
+        task_id=str(task_extra.get("canonical_task") or task_id),
+        prompt_style=prompt_style,
+        model=str(agent.get("model") or agent.get("id") or ""),
+        agent_id=str(agent_id),
+    )
     case_dir.mkdir(parents=True, exist_ok=True)
     started_at = datetime.now(timezone.utc)
     session = None

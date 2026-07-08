@@ -53,6 +53,7 @@ from agentlens.schemas import (
     TrajectoryEvent,
     TrajectoryEventType,
 )
+from agentlens.trajectory_paths import trajectory_case_slug
 
 
 class CocoaBenchRunPlan(BaseModel):
@@ -311,11 +312,7 @@ class CocoaBenchAdapter:
         )
 
     def _trajectory_dir(self, plan: CocoaBenchRunPlan) -> Path:
-        return (
-            plan.output_dir
-            / "trajectories"
-            / f"{plan.run_id}_seed{plan.seed}_trial{plan.trial}"
-        )
+        return plan.output_dir / "trajectories" / trajectory_case_slug(plan)
 
     def _log(self, log_action: Callable[[str], None] | None, message: str) -> None:
         if log_action is not None:
