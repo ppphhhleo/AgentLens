@@ -7,6 +7,35 @@ commands. Longer-term planning lives in:
 - `docs/agent-structures-and-tool-tiers.md`
 - `docs/acting-evaluating-pipeline.md`
 
+## 2026-07-09: Brief Analysis Hints
+
+Current curated local analysis files are under `runs/curated/`, but `/runs/`
+is ignored and should not be pushed. Keep EDA figures/reports local unless the
+user explicitly asks to publish selected summary artifacts.
+
+For early results, prioritize simple comparisons before deep annotation:
+
+- Performance by prompt style: standard vs grounded, stratified by task and
+  agent type. Do not pool weak prompt-delta pairs with high-delta pairs without
+  flagging the difference.
+- Performance by agent style: AgentLens strict GUI-only vs gui-vs-cli
+  paper-style computer agent, with model held fixed when possible.
+- Task sensitivity: report per-task results because prompt grounding appears
+  task-dependent and draw.io/Impress have known harness/runtime noise.
+- Effort proxies: steps, screenshots, elapsed time, tool calls, and max-step
+  termination. Compare these only within the same agent style because
+  paper-style computer agents emit lower-level actions.
+- Behavior annotation: once `behaviors.csv` is updated, treat behavior episodes
+  as explanatory signals, not final ground truth. Useful first plots are
+  behavior share/count by agent type, prompt style, task, and success.
+- Segment/workflow analysis: use Wang-style segments and Act-onomy tags to
+  inspect where challenge/recovery patterns occur; keep LLM-refined summaries
+  as qualitative examples rather than the main quantitative claim.
+
+Current defensible early claim shape: grounded prompts and tool/agent condition
+can change behavior and effort, but evidence should be stated as pilot-level
+until missing cells are filled and noisy tasks are diagnosed.
+
 ## 2026-07-09: High-Delta Grounded Prompt Candidate List
 
 Grounded-vs-standard task selection is now documented in:
