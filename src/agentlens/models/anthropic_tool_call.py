@@ -32,7 +32,7 @@ class AnthropicToolCallModel:
             client_kwargs["base_url"] = os.environ["ANTHROPIC_BASE_URL"]
         self.client = anthropic.Anthropic(**client_kwargs)
         self.model_name = config.name
-        self.temperature = config.temperature
+        self.temperature = config.temperature if (config.extra or {}).get("send_temperature") else None
         self.max_output_tokens = config.max_output_tokens or 1024
         self.input_modes = list((config.extra or {}).get("input_modes", ["screenshot"]))
         self.addressing_modes = list((config.extra or {}).get("addressing_modes", ["coordinate"]))
@@ -72,15 +72,17 @@ class AnthropicToolCallModel:
             observation=observation,
             history=history,
         )
-        response = self.client.messages.create(
-            model=self.model_name,
-            system=system_prompt,
-            messages=messages,
-            tools=self.tools,
-            tool_choice={"type": "auto"},
-            max_tokens=self.max_output_tokens,
-            temperature=self.temperature,
-        )
+        kwargs: dict[str, Any] = {
+            "model": self.model_name,
+            "system": system_prompt,
+            "messages": messages,
+            "tools": self.tools,
+            "tool_choice": {"type": "auto"},
+            "max_tokens": self.max_output_tokens,
+        }
+        if self.temperature is not None:
+            kwargs["temperature"] = self.temperature
+        response = self.client.messages.create(**kwargs)
         decisions = self.provider_adapter.parse_decisions(response, model=self.model_name)
         actions = [self.registry.to_action(decision) for decision in decisions]
         primary = decisions[0]

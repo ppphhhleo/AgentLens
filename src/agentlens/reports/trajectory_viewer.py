@@ -365,6 +365,7 @@ def _render_page(
     .action-pyautogui_keypress {{ --kind-color: #d97706; }}
     .action-pyautogui_hotkey {{ --kind-color: #d97706; }}
     .action-pyautogui_screenshot {{ --kind-color: #94a3b8; }}
+    .action-pyautogui_gui {{ --kind-color: #0f766e; }}
     .action-pyautogui_script {{ --kind-color: #475569; }}
     .round-index {{
       position: sticky;
@@ -1126,7 +1127,14 @@ def _pyautogui_call_details(code: str) -> str:
         if owner_name == "pyautogui" and name in {"typewrite", "write"}:
             if node.args:
                 return "text=" + _ast_value(node.args[0])
-        if owner_name == "pyautogui" and name in {"moveTo", "moveRel", "dragTo", "dragRel"}:
+        if owner_name == "pyautogui" and name in {
+            "moveTo",
+            "moveRel",
+            "dragTo",
+            "dragRel",
+            "mouseDown",
+            "mouseUp",
+        }:
             return "target=" + ", ".join(_ast_value(arg) for arg in node.args)
         if owner_name == "pyautogui" and name in {"click", "doubleClick"}:
             pieces = [_ast_value(arg) for arg in node.args]
@@ -1165,7 +1173,12 @@ def _pyautogui_kind(code: str) -> str:
         return "type"
     if "pyautogui.doubleClick" in code:
         return "double_click"
-    if "pyautogui.dragTo" in code or "pyautogui.dragRel" in code:
+    if (
+        "pyautogui.dragTo" in code
+        or "pyautogui.dragRel" in code
+        or "pyautogui.mouseDown" in code
+        or "pyautogui.mouseUp" in code
+    ):
         return "drag"
     if "pyautogui.click" in code:
         return "click"
@@ -1175,6 +1188,8 @@ def _pyautogui_kind(code: str) -> str:
         return "move"
     if "pyautogui.screenshot" in code:
         return "screenshot"
+    if "pyautogui." in code:
+        return "gui"
     return "script"
 
 

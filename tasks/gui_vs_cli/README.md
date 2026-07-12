@@ -34,6 +34,16 @@ This writes:
 tasks/gui_vs_cli/grounded_task_browser.html
 ```
 
+Curated high-delta standard/grounded candidates:
+
+```text
+tasks/gui_vs_cli/high_delta_prompt_pairs.md
+```
+
+Use this curated list when the goal is to test whether procedural grounding
+changes behavior. Many grounded-prompt records add only minor text, so the
+`grounded_prompt` label alone is not enough for prompt-effect claims.
+
 AgentLens should treat these records as follows:
 
 - `task` is the natural-language task text given to the agent.
@@ -57,3 +67,26 @@ Recommended paired run naming:
 {paired_task_id}__standard__{agent_id}
 {paired_task_id}__grounded__{agent_id}
 ```
+
+Grounded-vs-standard smoke config:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_smoke.yaml \
+  --agent agentlens_gui_toolcall_gpt54
+```
+
+For a single paired task smoke:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_smoke.yaml \
+  --agent agentlens_gui_toolcall_gpt54 \
+  --task gimp_add_alpha_transparent
+```
+
+The runner accepts task entries with `source_type: standard` or
+`source_type: grounded_prompt`. For grounded-prompt runs, the agent receives
+`task_grounding` as the task text while the environment and verifier still use
+the same task record. Each result directory includes `case_metadata.json` with
+`source_type`, `paired_task_id`, and `github_task_path`.

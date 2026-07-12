@@ -77,6 +77,39 @@ def test_openai_adapter_parses_multiple_tool_calls() -> None:
     assert decisions[1].tool_args["ms"] == 500
 
 
+def test_openai_adapter_maps_right_click_alias() -> None:
+    registry = default_tool_registry()
+    adapter = OpenAIToolAdapter(registry)
+    adapter.tool_payloads([registry.get("desktop.click")])
+    response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                finish_reason="tool_calls",
+                message=SimpleNamespace(
+                    content="",
+                    tool_calls=[
+                        SimpleNamespace(
+                            function=SimpleNamespace(
+                                name="desktop__right_click",
+                                arguments='{"x": 10, "y": 20, "reasoning": "open menu"}',
+                            )
+                        ),
+                    ],
+                ),
+            )
+        ],
+        usage=SimpleNamespace(prompt_tokens=11, completion_tokens=7),
+    )
+
+    decision = adapter.parse_decision(response, model="test-model")
+    action = registry.to_action(decision)
+
+    assert decision.tool_name == "desktop.click"
+    assert decision.tool_args["button"] == "right"
+    assert action.type == "desktop_click"
+    assert action.button == "right"
+
+
 def test_model_step_action_list_defaults_to_primary_action() -> None:
     action = ComputerAction(type="wait", ms=100)
     assert ModelStep(thought="", action=action).action_list() == [action]

@@ -13,4 +13,15 @@ answer_validator: number_exact
 extra:
   canonical_task: datavoyager_europe_hp_gt_100_four_cyl
   domsteer_task_id: domsteer_t3_datavoyager_europe_hp_gt_100_four_cyl
+  prompt_variant: standard
   task_family: visual_analytics
+  prompt_variants:
+    standard: How many European cars have both horsepower above 100 and four cylinders in the cars dataset?
+    grounded_procedure: >
+      Use DataVoyager to analyze the cars dataset and count cars matching three
+      conditions: Origin is Europe, Horsepower is greater than 100, and
+      Cylinders equals 4. In the Encodings panel, add Origin, Horsepower, and
+      Cylinders to the view or filters so you can isolate the matching records.
+      Filter or inspect for Origin = Europe, Horsepower > 100, and Cylinders =
+      4, verify the remaining matching records, count them, and then return only
+      the count as a number.

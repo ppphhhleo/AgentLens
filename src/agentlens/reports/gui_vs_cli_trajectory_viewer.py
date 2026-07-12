@@ -44,6 +44,13 @@ def _load_result(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _load_json_dict(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    value = json.loads(path.read_text(encoding="utf-8"))
+    return value if isinstance(value, dict) else {}
+
+
 def _render_page(
     steps: list[dict[str, Any]],
     *,
@@ -144,6 +151,28 @@ def _render_page(
     }}
     .metric span {{ color: var(--muted); margin-right: .25rem; }}
     .metric strong {{ font-weight: 780; }}
+    .task-prompt {{
+      border-top: 1px solid var(--line);
+      padding: .55rem .8rem .65rem;
+      background: var(--panel);
+    }}
+    .task-prompt summary {{
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 760;
+      margin-bottom: .35rem;
+    }}
+    .task-prompt .prompt-text {{
+      max-width: 92rem;
+      color: #222833;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }}
+    .task-prompt .prompt-source {{
+      color: var(--muted);
+      font-weight: 500;
+      margin-left: .35rem;
+    }}
     .ok {{ color: var(--ok); }}
     .bad {{ color: var(--bad); }}
     .step-nav {{
@@ -202,6 +231,14 @@ def _render_page(
       border-radius: 8px;
       background: #fff;
     }}
+    .missing-shot {{
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--muted);
+      padding: .7rem;
+      overflow-wrap: anywhere;
+    }}
     .details {{
       display: grid;
       gap: .55rem;
@@ -245,7 +282,25 @@ def _render_page(
     .action-type {{ --action-color: #8b5cf6; }}
     .action-keypress {{ --action-color: #f59e0b; }}
     .action-wait {{ --action-color: #64748b; }}
+    .action-gui {{ --action-color: #0f766e; }}
     .action-script {{ --action-color: #475569; }}
+    .action-final_answer {{ --action-color: #059669; }}
+    .action-chip {{
+      border-color: color-mix(in srgb, var(--action-color, var(--line)) 34%, var(--line)) !important;
+      background: color-mix(in srgb, var(--action-color, var(--line)) 9%, white) !important;
+      color: color-mix(in srgb, var(--action-color, var(--text)) 78%, #111827) !important;
+      box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--action-color, var(--line)) 14%, transparent);
+    }}
+    .action-chip::before {{
+      content: "";
+      width: .46rem;
+      height: .46rem;
+      border-radius: 999px;
+      background: var(--action-color, var(--line));
+      display: inline-block;
+      margin-right: .32rem;
+      vertical-align: .03rem;
+    }}
     .action-line {{
       border-left: 3px solid var(--action-color, var(--line));
       padding: .26rem .45rem;
@@ -281,6 +336,7 @@ def _render_page(
 def _render_summary(source_path: Path, steps: list[dict[str, Any]], result: dict[str, Any]) -> str:
     run_id = source_path.parent.name
     first_extra = (steps[0].get("extra") if steps else {}) or {}
+    prompt_source, prompt_text = _task_prompt_info(source_path, result)
     metrics = [
         ("score", result.get("score")),
         ("ok", result.get("ok")),
@@ -293,6 +349,7 @@ def _render_summary(source_path: Path, steps: list[dict[str, Any]], result: dict
         for label, value in metrics
         if value is not None
     )
+    task_prompt = _render_task_prompt(prompt_source, prompt_text)
     return f"""<section class="summary">
   <div class="summary-head">
     <div>
@@ -307,13 +364,72 @@ def _render_summary(source_path: Path, steps: list[dict[str, Any]], result: dict
     </div>
   </div>
   <div class="meta">{cells}</div>
+  {task_prompt}
 </section>"""
+
+
+def _render_task_prompt(prompt_source: str, prompt_text: str) -> str:
+    if not prompt_text:
+        return ""
+    source = f'<span class="prompt-source">{escape(prompt_source)}</span>' if prompt_source else ""
+    return (
+        '<details class="task-prompt" open>'
+        f"<summary>Task Prompt{source}</summary>"
+        f'<div class="prompt-text">{escape(prompt_text)}</div>'
+        "</details>"
+    )
+
+
+def _task_prompt_info(source_path: Path, result: dict[str, Any]) -> tuple[str, str]:
+    metadata = _load_json_dict(source_path.with_name("case_metadata.json"))
+    task_path = _task_json_path(metadata, result)
+    if task_path is None or not task_path.exists():
+        return "", ""
+
+    task = _load_json_dict(task_path)
+    source_type = str(
+        metadata.get("source_type") or result.get("source_type") or task.get("source_type") or ""
+    )
+    if source_type == "grounded_prompt":
+        prompt = str(task.get("task_grounding") or task.get("task") or "")
+        label = "grounded"
+    else:
+        prompt = str(task.get("task") or "")
+        label = "standard"
+    return label, prompt
+
+
+def _task_json_path(metadata: dict[str, Any], result: dict[str, Any]) -> Path | None:
+    repo_root = Path(__file__).resolve().parents[3]
+    github_task_path = metadata.get("github_task_path") or result.get("github_task_path")
+    if github_task_path:
+        path = repo_root / "third_party" / "gui-vs-cli" / str(github_task_path)
+        return path / "task.json" if path.is_dir() else path
+
+    task_id = metadata.get("task_id") or result.get("task_id")
+    source_type = metadata.get("source_type") or result.get("source_type") or "standard"
+    if not task_id:
+        return None
+    source_dir = "tasks_grounding" if source_type == "grounded_prompt" else "tasks"
+    return (
+        repo_root
+        / "third_party"
+        / "gui-vs-cli"
+        / "task_generator"
+        / source_dir
+        / str(task_id)
+        / "task.json"
+    )
 
 
 def _render_nav_link(step: dict[str, Any]) -> str:
     labels = _step_action_labels(step)
     title = " + ".join(labels) if labels else "step"
-    return f'<a href="#step-{escape(str(step.get("step")))}">{escape(str(step.get("step")))} · {escape(_short(title, 26))}</a>'
+    action_class = _primary_action_class(labels)
+    return (
+        f'<a class="action-chip {escape(action_class)}" href="#step-{escape(str(step.get("step")))}">'
+        f'{escape(str(step.get("step")))} · {escape(_short(title, 26))}</a>'
+    )
 
 
 def _render_step(step: dict[str, Any], *, output_path: Path) -> str:
@@ -324,7 +440,7 @@ def _render_step(step: dict[str, Any], *, output_path: Path) -> str:
     return f"""<article class="step" id="step-{escape(str(step.get("step")))}">
   <div class="step-head">
     <strong>Step {escape(str(step.get("step")))}</strong>
-    <span class="badge">{escape(action_summary)}</span>
+    <span class="badge action-chip {escape(_primary_action_class(labels))}">{escape(action_summary)}</span>
   </div>
   <div class="step-body">
     <div class="shot">{screenshot}</div>
@@ -342,6 +458,13 @@ def _render_screenshot(step: dict[str, Any], *, output_path: Path) -> str:
     path = step.get("screenshot_file")
     if not path:
         return '<div class="text-block">No screenshot recorded.</div>'
+    artifact = _resolve_artifact_path(str(path), output_path=output_path)
+    if not artifact.exists():
+        return (
+            '<div class="missing-shot">'
+            f'Missing screenshot file: <code>{escape(str(path))}</code>'
+            "</div>"
+        )
     src = _relative_artifact_src(str(path), output_path=output_path)
     return f'<img src="{escape(src)}" loading="lazy" alt="step {escape(str(step.get("step")))} screenshot">'
 
@@ -391,6 +514,11 @@ def _step_action_labels(step: dict[str, Any]) -> list[str]:
     return labels
 
 
+def _primary_action_class(labels: list[str]) -> str:
+    label = labels[0] if labels else "script"
+    return f"action-{_css_token(label)}"
+
+
 def _action_label_detail(action: dict[str, Any]) -> tuple[str, str]:
     if action.get("type") != "desktop_pyautogui":
         return str(action.get("type") or "action"), _json(action)
@@ -403,11 +531,16 @@ def _action_label_detail(action: dict[str, Any]) -> tuple[str, str]:
 def _pyautogui_label(code: str) -> str:
     if "time.sleep" in code:
         return "wait"
-    if "pyautogui.click" in code:
-        return "click"
     if "pyautogui.doubleClick" in code:
         return "double_click"
-    if "pyautogui.dragTo" in code or "pyautogui.dragRel" in code:
+    if "pyautogui.click" in code:
+        return "click"
+    if (
+        "pyautogui.dragTo" in code
+        or "pyautogui.dragRel" in code
+        or "pyautogui.mouseDown" in code
+        or "pyautogui.mouseUp" in code
+    ):
         return "drag"
     if "pyautogui.moveTo" in code or "pyautogui.moveRel" in code:
         return "move"
@@ -415,8 +548,15 @@ def _pyautogui_label(code: str) -> str:
         return "scroll"
     if "pyautogui.typewrite" in code or "pyautogui.write" in code:
         return "type"
-    if "pyautogui.hotkey" in code or "pyautogui.press" in code:
+    if (
+        "pyautogui.hotkey" in code
+        or "pyautogui.press" in code
+        or "pyautogui.keyDown" in code
+        or "pyautogui.keyUp" in code
+    ):
         return "keypress"
+    if "pyautogui." in code:
+        return "gui"
     return "script"
 
 
@@ -428,6 +568,7 @@ def _pyautogui_detail(code: str) -> str:
 
     calls = []
     typed_chars = []
+    key_events = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
             continue
@@ -439,11 +580,23 @@ def _pyautogui_detail(code: str) -> str:
         if owner.id == "pyautogui" and name == "press" and len(args) == 1:
             typed_chars.append(args[0])
             continue
+        if owner.id == "pyautogui" and name in {"keyDown", "keyUp"} and len(args) == 1:
+            key_events.append((name, args[0]))
+            continue
         if owner.id == "pyautogui" and name in {"typewrite", "write"} and args:
             calls.append(f"type text={args[0]}")
         elif owner.id == "pyautogui" and name == "hotkey":
             calls.append("keypress keys=" + "+".join(args))
-        elif owner.id == "pyautogui" and name in {"click", "doubleClick", "moveTo", "moveRel", "dragTo", "dragRel"}:
+        elif owner.id == "pyautogui" and name in {
+            "click",
+            "doubleClick",
+            "moveTo",
+            "moveRel",
+            "dragTo",
+            "dragRel",
+            "mouseDown",
+            "mouseUp",
+        }:
             calls.append(f"{name} args=" + ", ".join(args))
         elif owner.id == "pyautogui" and name in {"scroll", "hscroll"}:
             calls.append(f"{name} amount=" + ", ".join(args))
@@ -455,7 +608,19 @@ def _pyautogui_detail(code: str) -> str:
     if typed_chars:
         text = "".join("\n" if char == "enter" else char for char in typed_chars)
         calls.insert(0, "keypress/type sequence=" + text)
+    if key_events:
+        calls.insert(0, "keypress keys=" + _summarize_key_events(key_events))
     return "\n".join(calls)
+
+
+def _summarize_key_events(key_events: list[tuple[str, str]]) -> str:
+    down_order: list[str] = []
+    for event, key in key_events:
+        if event == "keyDown" and key not in down_order:
+            down_order.append(key)
+    if down_order:
+        return "+".join(down_order)
+    return ", ".join(f"{event}({key})" for event, key in key_events)
 
 
 def _ast_value(node: ast.AST) -> str:
@@ -510,13 +675,58 @@ def _ok_class(label: str, value: Any) -> str:
 
 
 def _relative_artifact_src(path: str, *, output_path: Path) -> str:
-    artifact = Path(path)
-    if not artifact.is_absolute():
-        artifact = output_path.parent / artifact
+    artifact = _resolve_artifact_path(path, output_path=output_path)
     try:
         return Path(os.path.relpath(artifact, output_path.parent)).as_posix()
     except ValueError:
         return artifact.as_uri()
+
+
+def _resolve_artifact_path(path: str, *, output_path: Path) -> Path:
+    artifact = Path(path)
+    if artifact.is_absolute():
+        return artifact
+
+    local_artifact = output_path.parent / artifact
+    if local_artifact.exists():
+        return local_artifact
+
+    for parent in output_path.parent.parents:
+        if not parent.name.endswith(".json_only"):
+            continue
+        sibling_root = parent.with_name(parent.name[: -len(".json_only")])
+        try:
+            run_relative_parent = output_path.parent.relative_to(parent)
+        except ValueError:
+            continue
+        sibling_artifact = sibling_root / run_relative_parent / artifact
+        if sibling_artifact.exists():
+            return sibling_artifact
+        discovered = _find_case_artifact(
+            artifact,
+            case_name=output_path.parent.name,
+            search_roots=(parent.parent, parent.parent.parent),
+        )
+        if discovered is not None:
+            return discovered
+
+    return local_artifact
+
+
+def _find_case_artifact(
+    artifact: Path, *, case_name: str, search_roots: tuple[Path, ...]
+) -> Path | None:
+    seen: set[Path] = set()
+    for search_root in search_roots:
+        if search_root in seen or not search_root.exists():
+            continue
+        seen.add(search_root)
+        candidates = sorted(search_root.glob(f"*/{case_name}/{artifact.as_posix()}"))
+        candidates.extend(sorted(search_root.glob(f"*/*/{case_name}/{artifact.as_posix()}")))
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+    return None
 
 
 def _css_token(value: str) -> str:

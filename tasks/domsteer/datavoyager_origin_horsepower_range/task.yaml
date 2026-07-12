@@ -13,5 +13,15 @@ answer_validator: contains
 extra:
   canonical_task: datavoyager_origin_horsepower_range
   domsteer_task_id: domsteer_t2_datavoyager_origin_horsepower_range
+  prompt_variant: standard
   task_family: visual_analytics
-
+  prompt_variants:
+    standard: Which origin has the widest horsepower range in the cars dataset?
+    grounded_procedure: >
+      Use DataVoyager to analyze the cars dataset and determine which Origin
+      category has the widest Horsepower range. In the Encodings panel, add
+      Origin as a grouping/category encoding and add Horsepower as a quantitative
+      encoding. Inspect the plotted records or use sorting/filtering to compare
+      the minimum and maximum Horsepower values for each Origin, compute or
+      infer each Origin's range, identify the largest range, and then return
+      only the Origin name.

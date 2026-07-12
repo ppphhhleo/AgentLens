@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+
 from agentlens.models.gui_vs_cli_chatgpt import (
     GUI_SCREEN_ONLY_POLICY,
     GuiVsCliChatGPTModel,
@@ -42,3 +45,49 @@ def test_gui_vs_cli_backend_names_are_distinct() -> None:
     assert GuiVsCliChatGPTModel.backend_name == "gui_vs_cli_chatgpt"
     assert GuiVsCliClaudeModel.backend_name == "gui_vs_cli_claude"
     assert GuiVsCliGeminiModel.backend_name == "gui_vs_cli_gemini"
+
+
+def test_gui_vs_cli_claude_ignores_text_on_drag_action() -> None:
+    third_party_root = Path(__file__).resolve().parents[1] / "third_party" / "gui-vs-cli"
+    sys.path.insert(0, str(third_party_root))
+    try:
+        from agents.claude_agent import ClaudeAgent
+
+        agent = ClaudeAgent(model="dummy", screen_size=(1920, 1080))
+        code = agent._parse_actions_from_tool_call(
+            {
+                "input": {
+                    "action": "left_click_drag",
+                    "coordinate": [200, 100],
+                    "start_coordinate": [100, 50],
+                    "text": "unexpected provider annotation",
+                }
+            }
+        )
+
+        assert "pyautogui.moveTo(150, 75" in code
+        assert "pyautogui.dragTo(300, 150" in code
+    finally:
+        try:
+            sys.path.remove(str(third_party_root))
+        except ValueError:
+            pass
+
+
+def test_gui_vs_cli_claude_tolerates_cursor_position_action() -> None:
+    third_party_root = Path(__file__).resolve().parents[1] / "third_party" / "gui-vs-cli"
+    sys.path.insert(0, str(third_party_root))
+    try:
+        from agents.claude_agent import ClaudeAgent
+
+        agent = ClaudeAgent(model="dummy", screen_size=(1920, 1080))
+        code = agent._parse_actions_from_tool_call(
+            {"input": {"action": "cursor_position"}}
+        )
+
+        assert code == "WAIT"
+    finally:
+        try:
+            sys.path.remove(str(third_party_root))
+        except ValueError:
+            pass

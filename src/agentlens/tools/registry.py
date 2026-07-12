@@ -29,6 +29,7 @@ class ToolSpec:
             for key, value in args.items()
             if key not in {"reasoning"} and value is not None
         }
+        action_args = _normalize_action_args(self.action_type, action_args)
         if self.executor_family == "mcp":
             return ComputerAction.from_raw(
                 {"type": "mcp_tool", "mcp_tool": self.name, "mcp_args": action_args}
@@ -62,6 +63,121 @@ class ToolCallDecision:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
         }
+
+
+def _normalize_action_args(action_type: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Tolerate small provider formatting slips before strict action parsing.
+
+    Some tool-call models occasionally put a coordinate pair into one field,
+    e.g. {"x": "352, 107"}, despite the registered schema asking for separate
+    numeric x/y values. Store canonical numeric coordinates in trajectories
+    while keeping strict validation for genuinely missing targets.
+    """
+
+    if action_type in {
+        "click",
+        "double_click",
+        "move",
+        "scroll",
+        "desktop_click",
+        "desktop_double_click",
+        "desktop_triple_click",
+        "desktop_move",
+        "desktop_scroll",
+    }:
+        args = dict(args)
+        _normalize_xy_fields(args)
+    if action_type in {"keypress", "desktop_keypress"} and isinstance(args.get("keys"), str):
+        args = dict(args)
+        args["keys"] = [args["keys"]]
+    return args
+
+
+def _resolve_provider_tool_call(
+    provider_name: str,
+    args: dict[str, Any],
+    provider_to_canonical: dict[str, str],
+) -> tuple[str | None, dict[str, Any]]:
+    """Resolve model-emitted provider tool names to canonical AgentLens tools.
+
+    Providers are only given names generated from registered tools, e.g.
+    `desktop.click` -> `desktop__click`. Some models still invent intuitive
+    variants such as `desktop__right_click`. Keep the canonical registry small
+    and recover these aliases at parse time.
+    """
+
+    canonical_name = provider_to_canonical.get(provider_name)
+    if canonical_name is not None:
+        return canonical_name, args
+
+    alias = _provider_tool_alias(provider_name)
+    if alias is None:
+        return None, args
+
+    alias_provider_name, alias_args = alias
+    canonical_name = provider_to_canonical.get(alias_provider_name)
+    if canonical_name is None:
+        return None, args
+
+    resolved_args = dict(args)
+    resolved_args.update(alias_args)
+    return canonical_name, resolved_args
+
+
+def _provider_tool_alias(provider_name: str) -> tuple[str, dict[str, Any]] | None:
+    aliases = {
+        "browser__right_click": ("browser__click", {"button": "right"}),
+        "desktop__right_click": ("desktop__click", {"button": "right"}),
+        "browser__middle_click": ("browser__click", {"button": "middle"}),
+        "desktop__middle_click": ("desktop__click", {"button": "middle"}),
+    }
+    return aliases.get(provider_name)
+
+
+def _normalize_xy_fields(args: dict[str, Any]) -> None:
+    pair = _parse_coordinate_pair(args.get("x"))
+    if pair is not None:
+        args["x"] = pair[0]
+        args["y"] = _coerce_number(args["y"]) if _has_numeric_value(args.get("y")) else pair[1]
+    else:
+        if "x" in args:
+            args["x"] = _coerce_number(args["x"])
+        if "y" in args:
+            args["y"] = _coerce_number(args["y"])
+
+
+def _parse_coordinate_pair(value: Any) -> tuple[float, float] | None:
+    if isinstance(value, str):
+        cleaned = value.strip().strip("()[]")
+        for sep in (",", " "):
+            parts = [part for part in cleaned.replace(",", " ").split() if part]
+            if len(parts) >= 2:
+                x = _coerce_number(parts[0])
+                y = _coerce_number(parts[1])
+                if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+                    return float(x), float(y)
+            if sep == " ":
+                break
+    if isinstance(value, (list, tuple)) and len(value) >= 2:
+        x = _coerce_number(value[0])
+        y = _coerce_number(value[1])
+        if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+            return float(x), float(y)
+    return None
+
+
+def _has_numeric_value(value: Any) -> bool:
+    return isinstance(_coerce_number(value), (int, float))
+
+
+def _coerce_number(value: Any) -> Any:
+    if isinstance(value, str):
+        stripped = value.strip()
+        try:
+            return float(stripped)
+        except ValueError:
+            return value
+    return value
 
 
 class ProviderToolAdapter(Protocol):
@@ -345,6 +461,20 @@ def default_tool_registry() -> ToolRegistry:
                 ),
             ),
             ToolSpec(
+                name="desktop.triple_click",
+                action_type="desktop_triple_click",
+                executor_family="desktop",
+                description="Triple-click a point on the virtual desktop screen.",
+                parameters=_object_schema(
+                    {
+                        "x": {"type": "number", "description": "Screen x coordinate."},
+                        "y": {"type": "number", "description": "Screen y coordinate."},
+                        "button": {"type": "string", "enum": ["left", "right", "middle"]},
+                    },
+                    required=["x", "y"],
+                ),
+            ),
+            ToolSpec(
                 name="desktop.scroll",
                 action_type="desktop_scroll",
                 executor_family="desktop",
@@ -613,15 +743,19 @@ class OpenAIToolAdapter:
         for call in tool_calls:
             function = call.function
             provider_name = function.name
-            canonical_name = self._provider_to_canonical.get(provider_name)
-            if canonical_name is None:
-                raise ValueError(f"unknown provider tool call: {provider_name}")
             try:
                 args = json.loads(function.arguments or "{}")
             except json.JSONDecodeError as exc:
                 raise ValueError(
                     f"tool call arguments were not valid JSON: {exc}; raw={function.arguments!r}"
                 ) from exc
+            canonical_name, args = _resolve_provider_tool_call(
+                provider_name,
+                args,
+                self._provider_to_canonical,
+            )
+            if canonical_name is None:
+                raise ValueError(f"unknown provider tool call: {provider_name}")
             reasoning = str(args.get("reasoning") or (getattr(message, "content", None) or "") or "")
             decisions.append(
                 ToolCallDecision(
@@ -703,12 +837,16 @@ class AnthropicToolAdapter:
         decisions: list[ToolCallDecision] = []
         for tool_block in tool_blocks:
             provider_name = str(getattr(tool_block, "name", ""))
-            canonical_name = self._provider_to_canonical.get(provider_name)
-            if canonical_name is None:
-                raise ValueError(f"unknown provider tool call: {provider_name}")
             raw_input = getattr(tool_block, "input", None) or {}
             if not isinstance(raw_input, dict):
                 raise ValueError(f"tool_use input was not an object: {raw_input!r}")
+            canonical_name, raw_input = _resolve_provider_tool_call(
+                provider_name,
+                dict(raw_input),
+                self._provider_to_canonical,
+            )
+            if canonical_name is None:
+                raise ValueError(f"unknown provider tool call: {provider_name}")
             reasoning = str(raw_input.get("reasoning") or text or "")
             decisions.append(
                 ToolCallDecision(
@@ -798,12 +936,16 @@ class GeminiToolAdapter:
         decisions: list[ToolCallDecision] = []
         for call in function_calls:
             provider_name = str(getattr(call, "name", ""))
-            canonical_name = self._provider_to_canonical.get(provider_name)
-            if canonical_name is None:
-                raise ValueError(f"unknown Gemini function call: {provider_name}")
             raw_args = getattr(call, "args", None) or {}
             if not isinstance(raw_args, dict):
                 raise ValueError(f"Gemini function args were not an object: {raw_args!r}")
+            canonical_name, raw_args = _resolve_provider_tool_call(
+                provider_name,
+                dict(raw_args),
+                self._provider_to_canonical,
+            )
+            if canonical_name is None:
+                raise ValueError(f"unknown Gemini function call: {provider_name}")
             reasoning = str(raw_args.get("reasoning") or text or "")
             decisions.append(
                 ToolCallDecision(

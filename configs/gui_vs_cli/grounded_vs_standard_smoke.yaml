@@ -1,0 +1,113 @@
+id: gui_vs_cli_grounded_vs_standard_smoke
+description: >
+  Paired GUI-vs-CLI smoke plan for testing whether grounded prompts change
+  trajectory behavior. Each task appears twice: once with the standard prompt
+  and once with the grounded-prompt variant. The runner records source_type,
+  paired_task_id, and github_task_path in each result directory.
+
+env_backend: docker
+docker_image: agentlens-gui-vs-cli-runtime:latest
+docker_platform: linux/amd64
+docker_shm_size: 2g
+docker_ready_timeout: 180
+screen_size: [1920, 1080]
+max_steps: 500
+output_dir: runs/gui_vs_cli_grounded_vs_standard_smoke
+
+agents:
+  - id: agentlens_gui_toolcall_gpt54
+    provider: openai
+    model: gpt-5.4
+    interaction_backend: tool_call
+    prompt_policy: gui_screen_only
+    family: agentlens_strict_gui_toolcall
+    tools: &strict_gui_tools
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+
+  - id: agentlens_gui_toolcall_haiku
+    enabled: false
+    provider: anthropic
+    model: claude-3-5-haiku-20241022
+    interaction_backend: tool_call
+    prompt_policy: gui_screen_only
+    family: agentlens_strict_gui_toolcall
+    tools: *strict_gui_tools
+
+  - id: agentlens_gui_toolcall_gemini
+    enabled: false
+    provider: gemini
+    model: gemini-3-flash-preview
+    interaction_backend: tool_call
+    prompt_policy: gui_screen_only
+    family: agentlens_strict_gui_toolcall
+    tools: *strict_gui_tools
+
+tasks:
+  - id: gimp_add_alpha_transparent
+    source_type: standard
+    app: gimp
+    category: image_editing
+
+  - id: gimp_add_alpha_transparent
+    source_type: grounded_prompt
+    app: gimp
+    category: image_editing
+
+  - id: drawio_aws_cloud_arch
+    source_type: standard
+    app: drawio
+    category: diagram_editing
+
+  - id: drawio_aws_cloud_arch
+    source_type: grounded_prompt
+    app: drawio
+    category: diagram_editing
+
+  - id: godot4_full_enemy_controller
+    source_type: standard
+    app: godot4
+    category: game_editor
+
+  - id: godot4_full_enemy_controller
+    source_type: grounded_prompt
+    app: godot4
+    category: game_editor
+
+  - id: calc_3d_quarterly_consolidation
+    source_type: standard
+    app: libreoffice_calc
+    category: spreadsheet_analysis
+
+  - id: calc_3d_quarterly_consolidation
+    source_type: grounded_prompt
+    app: libreoffice_calc
+    category: spreadsheet_analysis
+
+  - id: impress_add_entry_animations_to_bullets
+    source_type: standard
+    app: libreoffice_impress
+    category: presentation_editing
+
+  - id: impress_add_entry_animations_to_bullets
+    source_type: grounded_prompt
+    app: libreoffice_impress
+    category: presentation_editing
+
+  - id: chrome_multi_tab_wikipedia
+    source_type: standard
+    app: chrome
+    category: information_seeking
+
+  - id: chrome_multi_tab_wikipedia
+    source_type: grounded_prompt
+    app: chrome
+    category: information_seeking

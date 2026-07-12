@@ -22,6 +22,8 @@ from typing import Any
 
 import yaml
 
+from agentlens.trajectory_paths import gui_vs_cli_case_slug
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 THIRD_PARTY_GUI_VS_CLI = REPO_ROOT / "third_party" / "gui-vs-cli"
 
@@ -67,7 +69,7 @@ def main() -> int:
 
     results = []
     for task_ref in selected_tasks:
-        task = _load_task(task_ref["id"])
+        task = _load_task(task_ref)
         app = task_ref.get("app") or task.get("app")
         for agent_ref in selected_agents:
             result = _run_one(
@@ -112,18 +114,66 @@ def _select(items: list[dict[str, Any]], ids: list[str] | None) -> list[dict[str
     return selected
 
 
-def _load_task(task_id: str) -> dict[str, Any]:
-    full_task = THIRD_PARTY_GUI_VS_CLI / "task_generator" / "tasks" / task_id / "task.json"
+def _load_task(task_ref: dict[str, Any]) -> dict[str, Any]:
+    task_id = task_ref["id"]
+    source_type = _task_source_type(task_ref)
+    source_dir = "tasks_grounding" if source_type == "grounded_prompt" else "tasks"
+    full_task = THIRD_PARTY_GUI_VS_CLI / "task_generator" / source_dir / task_id / "task.json"
     if full_task.exists():
-        return json.loads(full_task.read_text())
-    catalog = REPO_ROOT / "tasks" / "gui_vs_cli" / "tasks.jsonl"
+        task = json.loads(full_task.read_text())
+        task.setdefault("id", task_id)
+        task["source_type"] = source_type
+        task["paired_task_id"] = task_ref.get("paired_task_id") or task_id
+        task["github_task_path"] = f"task_generator/{source_dir}/{task_id}"
+        return _task_with_effective_prompt(task, source_type)
+
+    catalog_name = (
+        "tasks_grounding.jsonl" if source_type == "grounded_prompt" else "tasks_standard.jsonl"
+    )
+    catalog = REPO_ROOT / "tasks" / "gui_vs_cli" / catalog_name
     for line in catalog.read_text().splitlines():
         if not line.strip():
             continue
         record = json.loads(line)
         if record.get("id") == task_id:
-            return record
-    raise FileNotFoundError(f"GUI-vs-CLI task not found: {task_id}")
+            record["source_type"] = source_type
+            record["paired_task_id"] = (
+                task_ref.get("paired_task_id") or record.get("paired_task_id") or task_id
+            )
+            return _task_with_effective_prompt(record, source_type)
+    raise FileNotFoundError(f"GUI-vs-CLI task not found: {task_id} ({source_type})")
+
+
+def _task_source_type(task_ref: dict[str, Any]) -> str:
+    source_type = task_ref.get("source_type") or task_ref.get("task_source") or "standard"
+    aliases = {
+        "grounded": "grounded_prompt",
+        "grounding": "grounded_prompt",
+        "tasks_grounding": "grounded_prompt",
+        "standard_prompt": "standard",
+        "tasks": "standard",
+    }
+    source_type = aliases.get(str(source_type), str(source_type))
+    if source_type not in {"standard", "grounded_prompt"}:
+        raise ValueError(
+            f"unsupported GUI-vs-CLI source_type {source_type!r}; "
+            "expected 'standard' or 'grounded_prompt'"
+        )
+    return source_type
+
+
+def _task_with_effective_prompt(task: dict[str, Any], source_type: str) -> dict[str, Any]:
+    task = dict(task)
+    original_task_text = task.get("task", "")
+    effective_task_text = original_task_text
+    if source_type == "grounded_prompt":
+        effective_task_text = task.get("task_grounding") or original_task_text
+    task["standard_task_text"] = original_task_text
+    task["effective_task_text"] = effective_task_text
+    task["task"] = effective_task_text
+    task["source_type"] = source_type
+    task.setdefault("paired_task_id", task.get("id"))
+    return task
 
 
 def _run_one(
@@ -142,10 +192,35 @@ def _run_one(
 
     agent_id = agent_ref["id"]
     task_id = task_ref["id"]
-    case_dir = run_dir / f"{task_id}__{agent_id}"
+    source_type = task.get("source_type") or _task_source_type(task_ref)
+    paired_task_id = task.get("paired_task_id") or task_id
+    source_slug = "grounded" if source_type == "grounded_prompt" else "standard"
+    case_dir = run_dir / "trajectories" / gui_vs_cli_case_slug(
+        app=app,
+        task_id=str(paired_task_id),
+        prompt_style=source_slug,
+        model=str(agent_ref.get("model") or ""),
+        agent_id=str(agent_id),
+    )
     case_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"\n=== {task_id} / {agent_id} / {app} ===")
+    case_metadata = {
+        "task_id": task_id,
+        "paired_task_id": paired_task_id,
+        "source_type": source_type,
+        "github_task_path": task.get("github_task_path"),
+        "app": app,
+        "category": task_ref.get("category"),
+        "agent": agent_id,
+        "model": agent_ref.get("model"),
+        "family": agent_ref.get("family"),
+    }
+    (case_dir / "case_metadata.json").write_text(
+        json.dumps(case_metadata, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    print(f"\n=== {paired_task_id} / {source_slug} / {agent_id} / {app} ===")
     if _is_paper_style_cli_agent(agent_ref):
         return _run_cli_one(
             config=config,
@@ -178,6 +253,9 @@ def _run_one(
             result = {
                 "ok": True,
                 "task_id": task_id,
+                "paired_task_id": paired_task_id,
+                "source_type": source_type,
+                "github_task_path": task.get("github_task_path"),
                 "app": app,
                 "agent": agent_id,
                 "ready_check_only": True,
@@ -194,6 +272,8 @@ def _run_one(
             case_dir=case_dir,
             max_steps=max_steps,
         )
+        agent_done = _trajectory_has_final_answer(trajectory)
+        max_steps_reached = len(trajectory) >= max_steps and not agent_done
         passed, total, details = verify_task(
             session.sandbox,
             app,
@@ -204,8 +284,15 @@ def _run_one(
         result = {
             "ok": passed == total and total > 0,
             "task_id": task_id,
+            "paired_task_id": paired_task_id,
+            "source_type": source_type,
+            "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
+            "agent_done": agent_done,
+            "agent_steps": len(trajectory),
+            "max_steps": max_steps,
+            "max_steps_reached": max_steps_reached,
             "checks_passed": passed,
             "checks_total": total,
             "score": passed / total if total else 0.0,
@@ -219,11 +306,15 @@ def _run_one(
         result = {
             "ok": False,
             "task_id": task_id,
+            "paired_task_id": paired_task_id,
+            "source_type": source_type,
+            "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
             "error": str(exc),
             "elapsed_seconds": round(time.time() - started_at, 1),
         }
+        _promote_partial_trajectory(case_dir, result)
         (case_dir / "result.json").write_text(json.dumps(result, indent=2, default=str))
         print(f"ERROR: {exc}")
         return result
@@ -269,6 +360,8 @@ def _run_cli_one(
         )
 
     agent_id = agent_ref["id"]
+    source_type = task.get("source_type", "standard")
+    paired_task_id = task.get("paired_task_id") or task_id
     started_at = time.time()
     session = None
     try:
@@ -292,6 +385,9 @@ def _run_cli_one(
             result = {
                 "ok": binary_check["ok"],
                 "task_id": task_id,
+                "paired_task_id": paired_task_id,
+                "source_type": source_type,
+                "github_task_path": task.get("github_task_path"),
                 "app": app,
                 "agent": agent_id,
                 "family": "paper_style_cli",
@@ -308,6 +404,9 @@ def _run_cli_one(
             result = {
                 "ok": False,
                 "task_id": task_id,
+                "paired_task_id": paired_task_id,
+                "source_type": source_type,
+                "github_task_path": task.get("github_task_path"),
                 "app": app,
                 "agent": agent_id,
                 "family": "paper_style_cli",
@@ -342,6 +441,9 @@ def _run_cli_one(
         result = {
             "ok": passed == total and total > 0,
             "task_id": task_id,
+            "paired_task_id": paired_task_id,
+            "source_type": source_type,
+            "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
             "family": "paper_style_cli",
@@ -364,6 +466,9 @@ def _run_cli_one(
         result = {
             "ok": False,
             "task_id": task_id,
+            "paired_task_id": paired_task_id,
+            "source_type": source_type,
+            "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
             "family": "paper_style_cli",
@@ -521,6 +626,7 @@ def _run_agent_loop(
 
     screenshots_dir = case_dir / "screenshots"
     screenshots_dir.mkdir(exist_ok=True)
+    partial_path = case_dir / "trajectory_partial.json"
     model = _build_agentlens_model(agent_ref)
     history: list[ModelStep] = []
     trajectory: list[dict[str, Any]] = []
@@ -567,10 +673,62 @@ def _run_agent_loop(
             if not ok:
                 break
         trajectory.append(step_record)
+        _write_partial_trajectory(
+            partial_path,
+            trajectory=trajectory,
+            max_steps=max_steps,
+            status="running",
+        )
         if done:
             break
         time.sleep(0.5)
+    final_status = "completed" if _trajectory_has_final_answer(trajectory) else "max_steps_reached"
+    _write_partial_trajectory(
+        partial_path,
+        trajectory=trajectory,
+        max_steps=max_steps,
+        status=final_status,
+    )
     return trajectory
+
+
+def _trajectory_has_final_answer(trajectory: list[dict[str, Any]]) -> bool:
+    return any("final_answer" in step for step in trajectory)
+
+
+def _write_partial_trajectory(
+    path: Path,
+    *,
+    trajectory: list[dict[str, Any]],
+    max_steps: int,
+    status: str,
+) -> None:
+    payload = {
+        "status": status,
+        "steps": len(trajectory),
+        "max_steps": max_steps,
+        "trajectory": trajectory,
+    }
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _promote_partial_trajectory(case_dir: Path, result: dict[str, Any]) -> None:
+    final_path = case_dir / "trajectory.json"
+    if final_path.exists():
+        return
+    partial_path = case_dir / "trajectory_partial.json"
+    if partial_path.exists():
+        try:
+            payload = json.loads(partial_path.read_text(encoding="utf-8"))
+        except Exception:
+            payload = {"trajectory": []}
+    else:
+        payload = {"trajectory": []}
+    payload["status"] = "error"
+    payload["result"] = result
+    final_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
 
 
 def _build_agentlens_model(agent_ref: dict[str, Any]):
@@ -645,12 +803,20 @@ def _desktop_action_to_pyautogui(action: Any) -> str:
         if len(points) < 2:
             return ""
         first = points[0]
-        lines = [f"pyautogui.moveTo({int(first['x'])}, {int(first['y'])})", "pyautogui.mouseDown()"]
+        first_x, first_y = _point_xy(first)
+        lines = [f"pyautogui.moveTo({int(first_x)}, {int(first_y)})", "pyautogui.mouseDown()"]
         for point in points[1:]:
-            lines.append(f"pyautogui.moveTo({int(point['x'])}, {int(point['y'])}, duration=0.1)")
+            x, y = _point_xy(point)
+            lines.append(f"pyautogui.moveTo({int(x)}, {int(y)}, duration=0.1)")
         lines.append("pyautogui.mouseUp()")
         return "\n".join(lines)
     return ""
+
+
+def _point_xy(point: Any) -> tuple[float, float]:
+    if isinstance(point, dict):
+        return float(point["x"]), float(point["y"])
+    return float(point.x), float(point.y)
 
 
 def _normalize_pyautogui_keys(keys: list[Any]) -> list[str]:

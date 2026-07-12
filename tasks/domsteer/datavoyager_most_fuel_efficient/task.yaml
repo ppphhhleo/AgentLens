@@ -12,4 +12,15 @@ expected_answer: Mazda GLC
 answer_validator: contains
 extra:
   canonical_task: datavoyager_most_fuel_efficient
+  prompt_variant: standard
   task_family: visual_analytics
+  prompt_variants:
+    standard: What is the most fuel-efficient car in the dataset?
+    grounded_procedure: >
+      Use DataVoyager to analyze the cars dataset and identify the car with the
+      highest fuel efficiency. In the Encodings panel, add Miles_per_Gallon to a
+      quantitative encoding so the values can be compared, and add the car
+      name/model field to an encoding or view detail that lets you read the
+      associated car name. Sort or inspect the resulting view to find the maximum
+      Miles_per_Gallon value, verify the associated car name, and then return
+      only that car name.

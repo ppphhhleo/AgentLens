@@ -29,6 +29,7 @@ Task catalogs:
 ```text
 tasks/domsteer/tasks.jsonl
 tasks/gui_vs_cli/tasks.jsonl
+tasks/gui_vs_cli/high_delta_prompt_pairs.md
 ```
 
 ## Harness Tiers
@@ -99,6 +100,11 @@ All 176 grounded-prompt tasks have a corresponding standard task with the same
 `paired_task_id`/`id`; their base `task` text is identical and the grounded
 variant adds `task_grounding`. Use `task_pairs.jsonl` for matched standard vs
 grounded experiments.
+
+For grounded-vs-standard behavior analysis, do not sample uniformly from all
+176 grounded tasks. Many grounded prompts are near-identical to their standard
+task text. Use `tasks/gui_vs_cli/high_delta_prompt_pairs.md` for pairs where the
+grounded prompt adds meaningful procedural guidance.
 
 Standard task app counts:
 

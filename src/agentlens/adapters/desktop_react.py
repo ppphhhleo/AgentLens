@@ -24,6 +24,7 @@ from agentlens.schemas import (
     TrajectoryEvent,
     TrajectoryEventType,
 )
+from agentlens.trajectory_paths import trajectory_case_slug
 from agentlens.validators.answers import validate_answer
 
 
@@ -247,8 +248,7 @@ class DesktopReactAdapter:
         )
 
     def _trajectory_dir(self, plan: DesktopReactRunPlan) -> Path:
-        safe = f"{plan.run_id}_seed{plan.seed}_trial{plan.trial}".replace("/", "_")
-        return plan.output_dir / "trajectories" / safe
+        return plan.output_dir / "trajectories" / trajectory_case_slug(plan)
 
     def _write_trajectory(self, trajectory: Trajectory) -> None:
         from agentlens.reports.trajectory_viewer import write_trajectory_viewer

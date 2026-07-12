@@ -35,6 +35,7 @@ from agentlens.schemas import (
     TrajectoryEvent,
     TrajectoryEventType,
 )
+from agentlens.trajectory_paths import trajectory_case_slug
 
 MOCK_MODEL_NAME = "mock_screenshot_react"
 
@@ -363,11 +364,7 @@ class BrowserGymBridgeAdapter:
             log_action(message)
 
     def _trajectory_dir(self, plan: BrowserGymBridgeRunPlan) -> Path:
-        return (
-            plan.output_dir
-            / "trajectories"
-            / f"{plan.run_id}_seed{plan.seed}_trial{plan.trial}"
-        )
+        return plan.output_dir / "trajectories" / trajectory_case_slug(plan)
 
     def _write_trajectory(self, trajectory: Trajectory) -> Path:
         from agentlens.reports.trajectory_viewer import write_trajectory_viewer
