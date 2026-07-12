@@ -79,6 +79,22 @@ def build_model(config: ModelConfig, toolset=None) -> ChatModel:
     """
     interaction_backend = (config.extra or {}).get("interaction_backend", "legacy_json_action")
 
+    if config.provider == "openai":
+        from agentlens.openai_provider import CodexOAuthCapabilityError, resolve_auth_mode
+
+        if resolve_auth_mode(config.auth_mode) == "codex_oauth":
+            if interaction_backend in {"openai_computer", "gui_vs_cli_chatgpt"}:
+                raise CodexOAuthCapabilityError(
+                    f"Codex OAuth does not support OpenAI backend {interaction_backend!r}; "
+                    "use API-key authentication."
+                )
+            exposed = set(getattr(toolset, "allowed", ()) or ())
+            if "web.openai_search" in exposed:
+                raise CodexOAuthCapabilityError(
+                    "Codex OAuth does not support the built-in web.openai_search tool; "
+                    "remove it or use API-key authentication."
+                )
+
     if config.provider == "openai" and interaction_backend == "tool_call":
         from agentlens.models.openai_tool_call import OpenAIToolCallModel
 

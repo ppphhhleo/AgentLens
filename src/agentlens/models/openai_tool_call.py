@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 from pathlib import Path
 from typing import Any
 
-from openai import OpenAI
-
 from agentlens.models.base import ModelStep, ScreenshotObservation
+from agentlens.openai_provider import build_openai_client
 from agentlens.schemas import ModelConfig
 from agentlens.tools.registry import (
     OpenAIToolAdapter,
@@ -39,12 +37,7 @@ class OpenAIToolCallModel:
 
     def __init__(self, config: ModelConfig, toolset=None) -> None:
         self.config = config
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError(
-                "OPENAI_API_KEY is not set. Put it in .env at the repo root or export it."
-            )
-        self.client = OpenAI(api_key=api_key, base_url=os.environ.get("OPENAI_BASE_URL"))
+        self.client = build_openai_client(auth_mode=config.auth_mode, model=config.name)
         self.model_name = config.name
         self.temperature = config.temperature
         self.max_output_tokens = config.max_output_tokens or 1024
@@ -113,6 +106,9 @@ class OpenAIToolCallModel:
                 "provider_tool_call": primary.to_record(),
                 "provider_tool_calls": [decision.to_record() for decision in decisions],
                 "parallel_tool_calls": self.parallel_tool_calls,
+                "openai_provider_telemetry": getattr(
+                    response, "agentlens_telemetry", {}
+                ),
             },
         )
 

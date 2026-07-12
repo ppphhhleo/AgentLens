@@ -56,6 +56,7 @@ class ModelConfig(BaseModel):
     id: str
     provider: str
     name: str
+    auth_mode: Literal["api_key", "codex_oauth"] | None = None
     temperature: float = 0.1
     vision: bool = False
     context_window: int | None = None

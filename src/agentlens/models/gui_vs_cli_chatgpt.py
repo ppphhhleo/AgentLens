@@ -9,6 +9,7 @@ from typing import Any
 from agentlens.actions import ComputerAction
 from agentlens.models.base import ModelStep, ScreenshotObservation
 from agentlens.schemas import ModelConfig
+from agentlens.openai_provider import CodexOAuthCapabilityError, resolve_auth_mode
 
 
 GUI_SCREEN_ONLY_POLICY = """<GUI_SCREEN_ONLY_POLICY>
@@ -34,6 +35,11 @@ class _GuiVsCliAgentModel:
     paper_agent = ""
 
     def __init__(self, config: ModelConfig, toolset=None) -> None:
+        if config.provider == "openai" and resolve_auth_mode(config.auth_mode) == "codex_oauth":
+            raise CodexOAuthCapabilityError(
+                "Codex OAuth does not support the GUI-vs-CLI ChatGPT computer agent; "
+                "use API-key authentication."
+            )
         self.config = config
         self.model_name = config.name
         self.use_gui_screen_only_policy = bool(
