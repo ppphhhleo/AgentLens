@@ -96,7 +96,7 @@ agent structure, not just the provider model.
 | `agentlens_gui_toolcall_gemini` | Gemini | AgentLens registered-tool agent using `gemini_tool_call.py`. | Strict GUI-only direct-manipulation tool list registered by AgentLens. Requires `GEMINI_API_KEY` or `GOOGLE_AI_STUDIO_API_KEY`. |
 | `gui_vs_cli_chatgpt` | OpenAI GPT | gui-vs-cli paper-style `ChatGPTAgent`. | Computer-use agent from the gui-vs-cli repo; model emits native computer actions that the paper code converts to pyautogui snippets. |
 | `gui_vs_cli_claude` | Anthropic Claude | gui-vs-cli paper-style `ClaudeAgent`. | Claude computer-use agent from the gui-vs-cli repo; not the AgentLens strict registered-tool Claude agent. |
-| `gui_vs_cli_gemini` | Gemini | gui-vs-cli paper-style `GeminiAgent`. | Gemini desktop agent from the gui-vs-cli repo; not the disabled AgentLens strict registered-tool Gemini agent. |
+| `gui_vs_cli_gemini` | Gemini | gui-vs-cli paper-style `GeminiAgent`. | Gemini desktop agent from the gui-vs-cli repo; not the AgentLens strict registered-tool Gemini adapter. |
 | `gui_vs_cli_cli_claude` | Claude Code CLI | gui-vs-cli paper-style CLI agent. | Runs `claude -p ...` inside the Docker task image with the paper's CLI-Anything-only prompt. Requires `claude` installed and authenticated inside the image. |
 | `gui_vs_cli_cli_codex` | Codex CLI | gui-vs-cli paper-style CLI agent. | Runs `codex exec ...` inside the Docker task image with the paper's CLI-Anything-only prompt. Requires `codex` installed and authenticated inside the image. |
 
@@ -222,12 +222,13 @@ The runner writes `/home/user/.agentlens_cli_env` and, when `OPENAI_API_KEY` is
 available, writes `/home/user/.codex/config.toml` with a custom
 `openai_env` provider using `env_key = "OPENAI_API_KEY"`.
 
-AWS smoke status:
+Historical AWS smoke status from the initial GUI-vs-CLI enablement:
 
 - CLI binary readiness passes for `gui_vs_cli_cli_claude` and
   `gui_vs_cli_cli_codex`.
-- `gui_vs_cli_cli_codex` reaches the OpenAI API, but the current key is blocked
-  by quota (`Quota exceeded. Check your plan and billing details.`).
+- `gui_vs_cli_cli_codex` reached the OpenAI API during the original smoke run,
+  but that run was blocked by quota (`Quota exceeded. Check your plan and
+  billing details.`). Re-check provider quota before treating this as current.
 - `gui_vs_cli_claude` and `gui_vs_cli_cli_claude` require
   `ANTHROPIC_API_KEY` in the AWS `.env`; do not commit that file.
 

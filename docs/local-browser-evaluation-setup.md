@@ -1,23 +1,23 @@
 # Local Browser Evaluation Setup
 
-This guide sets up AgentLens for local testing of the web/browser evaluation path.
-It focuses on browser-only and sandboxed-browser tasks, not desktop app harnesses.
-
-## What Already Exists
-
-There is partial setup guidance in `docs/handout.md`, evaluation details in
-`docs/acting-evaluating-pipeline.md`, and tool details in
-`docs/screenshot-react-tools.md`. This document is the dedicated local setup
-path for browser evaluation.
+This guide covers local checks for AgentLens browser-oriented tasks. It focuses
+on DOMSteer/DataVoyager browser and sandbox runs. Desktop app workflows from
+GUI-vs-CLI use the separate Docker runtime described in
+`docs/agent-structures-and-tool-tiers.md` and
+`docs/archive/trajectory-infra-history.md`.
 
 ## Prerequisites
 
-- Python 3.11 or 3.12
-- A shell from the repo root
-- Chromium dependencies installable by Playwright
-- Docker only if you want `full_sandbox` / AIO sandbox browser runs
-- `OPENAI_API_KEY` for real OpenAI model runs
-- `ANTHROPIC_API_KEY` only for Anthropic configs
+- Python 3.11 or 3.12.
+- A shell from the repo root.
+- Chromium dependencies installable by Playwright.
+- Docker only for `full_sandbox`, `no_gui_tool_only`, desktop, or AIO sandbox
+  runs.
+- Provider credentials for real model calls:
+  - `OPENAI_API_KEY`, or Codex OAuth as described in
+    `docs/openai-providers.md`.
+  - `ANTHROPIC_API_KEY` for Anthropic configs.
+  - `GEMINI_API_KEY` or `GOOGLE_AI_STUDIO_API_KEY` for Gemini configs.
 
 ## Install
 
@@ -46,21 +46,8 @@ Create local secrets:
 cp .env.example .env
 ```
 
-Edit `.env` and set at least:
-
-```bash
-OPENAI_API_KEY=sk-...
-```
-
-Optional values used by specific configs:
-
-```bash
-ANTHROPIC_API_KEY=...
-OPENAI_BASE_URL=...
-ANTHROPIC_BASE_URL=...
-HF_TOKEN=...
-MINIWOB_URL=file:///path/to/miniwob/html/miniwob/
-```
+Edit `.env` and set the provider keys needed by the config you plan to run.
+Do not commit `.env`.
 
 ## Sanity Checks
 
@@ -71,158 +58,132 @@ Verify the package imports and the CLI entry point works:
 .venv/bin/agentlens list-configs
 ```
 
-Validate all experiment YAML files:
+Validate all YAML config files:
 
 ```bash
 .venv/bin/python - <<'PY'
 from pathlib import Path
 import yaml
 
-for path in sorted(Path("configs/experiments").glob("*.yaml")):
+for path in sorted(Path("configs").glob("**/*.yaml")):
     yaml.safe_load(path.read_text())
 
 print("yaml ok")
 PY
 ```
 
-Validate one browser config through the AgentLens schema:
+Validate a current DOMSteer batch:
 
 ```bash
-.venv/bin/agentlens validate-config configs/experiments/browsergym_direct_smoke.yaml
+.venv/bin/agentlens validate-config \
+  configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml
 ```
 
-## First Browser Smoke Test
+## DOMSteer Browser/Sandbox Smoke
 
-Start with the no-model BrowserGym direct smoke. It uses a local `data:` URL, so
-it does not require an API key or live website access:
+Inspect the planned runs without executing model calls:
 
 ```bash
-.venv/bin/agentlens run configs/experiments/browsergym_direct_smoke.yaml \
+.venv/bin/agentlens run \
+  configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml \
   --dry-run
-
-.venv/bin/agentlens run configs/experiments/browsergym_direct_smoke.yaml \
-  --execute --log-actions
 ```
 
-Expected output lands under:
+Run a small local subset once credentials and the browser/sandbox environment
+are ready:
+
+```bash
+.venv/bin/agentlens run \
+  configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml \
+  --execute \
+  --log-actions \
+  --max-runs 1
+```
+
+Generated outputs land under:
 
 ```text
-agentlens_results/browsergym_direct_smoke/<UTC_TIMESTAMP>/
+runs/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison/raw/<timestamp>/
 ```
 
-The trajectory file is typically:
+Trajectory folders use the readable case naming scheme:
 
 ```text
-agentlens_results/browsergym_direct_smoke/<UTC_TIMESTAMP>/trajectories/smoke_click_seed0_trial1/trajectory.json
+runs/<batch>/raw/<timestamp>/trajectories/{app_or_family}__{task_name}__{prompt_style}__{model_id}__{harness_or_agent}__seed{seed}__trial{trial}/
 ```
 
-Generate a static viewer:
+Generate or regenerate a static viewer:
 
 ```bash
-.venv/bin/agentlens trajectory-viewer \
-  agentlens_results/browsergym_direct_smoke/<UTC_TIMESTAMP>/trajectories/smoke_click_seed0_trial1/trajectory.json
+.venv/bin/agentlens trajectory-viewer path/to/trajectory.json
 ```
 
-## Real Browser Agent Run
+## GUI-vs-CLI Ready Check
 
-For a model-backed browser task, use a small run from the DOMSteer configs. First
-inspect the run IDs:
+The GUI-vs-CLI runner is separate from `agentlens run` because it reuses the
+paper's desktop runtime, seed-file upload, application launcher, and verifier
+stack.
+
+Check the current GPT-5.5 five-task comparison config:
 
 ```bash
-.venv/bin/agentlens run configs/experiments/domsteer_screenshot_react.yaml \
-  --dry-run
+PYTHONPATH=src python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml \
+  --ready-check-only
 ```
 
-Then execute one run:
+Run one agent/task pair only after the Docker runtime and provider credentials
+are configured:
 
 ```bash
-.venv/bin/agentlens run configs/experiments/domsteer_screenshot_react.yaml \
-  --run-id tf_discretize_toggle_gpt5 \
-  --execute --log-actions
+PYTHONPATH=src python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml \
+  --agent agentlens_gui_toolcall_gpt55 \
+  --task gimp_add_alpha_transparent \
+  --max-steps 150
 ```
 
-To watch the browser locally:
+## Post-Hoc Evaluation And Analysis
 
-```bash
-.venv/bin/agentlens run configs/experiments/domsteer_screenshot_react.yaml \
-  --run-id tf_discretize_toggle_gpt5 \
-  --execute --live --log-actions
+Evaluation and analysis are separate from acting. After a trajectory exists,
+use the raw `trajectory.json` for:
+
+- outcome validation: final answer, score, finished status
+- trajectory summaries: counts, screenshots, errors, tool calls
+- Wang-style workflow aggregation
+- Act-onomy-style behavior tagging and phase summaries
+
+The high-level design is documented in:
+
+```text
+docs/acting-evaluating-pipeline.md
 ```
 
-If the run ID differs, use the exact ID printed by `--dry-run`.
+Local curated CSVs and figures may live under `runs/curated/`, but `/runs/` is
+gitignored. Do not publish EDA plots or run artifacts unless explicitly asked.
 
-## Post-Hoc Evaluation
+## Useful Current Configs
 
-Evaluation is separate from acting. After a trajectory exists:
-
-```bash
-.venv/bin/agentlens evaluate-trajectory \
-  path/to/trajectory.json \
-  --output-dir agentlens_results/evaluations/local_single \
-  --config configs/experiments/domsteer_screenshot_react.yaml
-```
-
-Batch evaluation scans directories for `trajectory.json` files:
-
-```bash
-.venv/bin/agentlens evaluate-batch \
-  agentlens_results/domsteer_screenshot_react \
-  --output-dir agentlens_results/evaluations/domsteer_local \
-  --config configs/experiments/domsteer_screenshot_react.yaml
-```
-
-Evaluation writes `evaluation_bundle.json` for single trajectories and
-`evaluation_bundles.jsonl` plus summaries for batch runs.
-
-## Sandboxed Browser Runs
-
-Use this only when the harness has `tier: full_sandbox`,
-`tier: no_gui_tool_only`, or `extra.browser_source: aio_sandbox`.
-
-Prerequisites:
-
-```bash
-docker version
-docker pull ghcr.io/agent-infra/sandbox:latest
-```
-
-Dry-run a sandboxed browser config:
-
-```bash
-.venv/bin/agentlens run configs/experiments/domsteer_sandbox.yaml \
-  --dry-run
-```
-
-Execute one sandboxed run:
-
-```bash
-.venv/bin/agentlens run configs/experiments/domsteer_sandbox.yaml \
-  --max-runs 1 \
-  --execute --log-actions
-```
-
-Sandboxed browser runs use Docker for the browser, shell, Python, file I/O, and
-optional search tools. Browser-only runs do not need Docker.
-
-## Useful Browser Configs
-
-- `configs/experiments/browsergym_direct_smoke.yaml`: no-model local browser smoke
-- `configs/experiments/domsteer_screenshot_react.yaml`: browser-only model-backed web tasks
-- `configs/experiments/domsteer_datavoyager_toolcall_matrix.yaml`: browser-only, sandbox, and no-GUI tool-call matrix
-- `configs/experiments/domsteer_sandbox.yaml`: full sandbox browser tasks
-- `configs/experiments/online_mind2web_screenshot_react.yaml`: live Online-Mind2Web-style tasks
-
-Note: `configs/experiments/screenshot_react_tools_smoke.yaml` currently contains
-absolute fixture URLs from another machine. Prefer `browsergym_direct_smoke.yaml`
-for a portable first smoke test.
+- `configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml`
+  - DOMSteer DataVoyager T1-T3 standard/grounded comparison.
+- `configs/batches/domsteer_t1_t3_opus48_standard_grounded_gui_comparison.yaml`
+  - Existing Opus 4.8 DOMSteer comparison shape.
+- `configs/batches/gpt54_datavoyager_smoke.yaml`
+  - Older small curated GPT-5.4 DataVoyager smoke.
+- `configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml`
+  - GUI-vs-CLI five-task standard/grounded comparison.
+- `configs/gui_vs_cli/full_workflow_smoke.yaml`
+  - One-per-application GUI-vs-CLI full workflow POC.
 
 ## Common Failures
 
-- `OPENAI_API_KEY is not set`: copy `.env.example` to `.env` and fill the key.
-- `Executable doesn't exist` from Playwright: run `python -m playwright install chromium`.
-- Docker connection errors on sandbox configs: start Docker and pull
-  `ghcr.io/agent-infra/sandbox:latest`.
-- Live websites fail or block automation: retry with `--live` for inspection, or
-  use browser-only local smoke tests to isolate environment issues.
+- `OPENAI_API_KEY is not set`: copy `.env.example` to `.env` and fill the key,
+  or use Codex OAuth as documented in `docs/openai-providers.md`.
+- `Executable doesn't exist` from Playwright: run
+  `python -m playwright install chromium`.
+- Docker connection errors on sandbox configs: start Docker and check the
+  required runtime image.
+- Live websites fail or block automation: retry with `--live` where supported,
+  or use a dry-run/ready-check path first to isolate config issues.
 - `run id not found`: run the same config with `--dry-run` and copy the printed
   run ID.

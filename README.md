@@ -14,31 +14,53 @@ AgentLens/
   environments/             # Docker and remote environment templates
   runs/                     # Local generated runs; gitignored
   examples/results/         # Small curated published result bundles
-  docs/                     # Project planning docs
+  docs/                     # Project docs and archived handover history
   third_party/              # Vendored taxonomies or external assets
   tests/                    # Focused regression tests
 ```
 
-## Current Smoke Batch
+## Current Working State
 
-Validate the active GPT-5.4 DataVoyager smoke batch:
+The active handover is [handover.md](handover.md). It is intentionally short
+and points to current collection commands, open items, and replacement-sensitive
+decisions. Older smoke-run and setup history lives in
+[docs/archive/trajectory-infra-history.md](docs/archive/trajectory-infra-history.md).
 
-```bash
-.venv/bin/agentlens validate-config configs/batches/gpt54_datavoyager_smoke.yaml
+The current follow-up collection plan is:
+
+- DOMSteer DataVoyager T1-T3 standard/grounded comparisons.
+- GUI-vs-CLI five-task standard/grounded comparisons.
+- Agent styles: AgentLens strict GUI-only tool-call and paper-style
+  gui-vs-cli computer agents.
+
+Key configs:
+
+```text
+configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml
+configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml
 ```
 
-Dry-run all three harness tiers:
+Validate the DOMSteer GPT-5.5 follow-up config:
 
 ```bash
-.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml --dry-run
+.venv/bin/agentlens validate-config \
+  configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml
 ```
 
-Run the batch:
+Dry-run the DOMSteer plan:
 
 ```bash
-.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml \
-  --execute \
-  --log-actions
+.venv/bin/agentlens run \
+  configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml \
+  --dry-run
+```
+
+Check the GUI-vs-CLI five-task config without launching environments:
+
+```bash
+PYTHONPATH=src python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml \
+  --ready-check-only
 ```
 
 Generated outputs go under `runs/`. Curated examples that are useful for
@@ -69,29 +91,37 @@ See [OpenAI providers](docs/openai-providers.md) for supported features and
 credential-safety details. API keys remain the recommended/default automation
 path.
 
-## Desktop Benchmark Candidates
+## Task Catalogs
 
 Desktop task metadata that is not yet in an active batch can live under
-`tasks/` without polluting runnable configs. For example, GUI-vs-CLI task
-metadata is stored under:
+`tasks/` without polluting runnable configs.
 
 ```text
+tasks/domsteer/tasks.jsonl
 tasks/gui_vs_cli/tasks.jsonl
+tasks/gui_vs_cli/tasks_standard.jsonl
+tasks/gui_vs_cli/tasks_grounding.jsonl
+tasks/gui_vs_cli/task_pairs.jsonl
+tasks/gui_vs_cli/high_delta_prompt_pairs.md
 ```
 
-This catalog contains 440 desktop tasks. It preserves original task text,
-seed-file requirements, and verifier commands, but should not be run until the
-matching desktop image/assets and verifier bridge are available.
+DOMSteer T1-T3 have runnable standard and grounded DataVoyager task YAMLs with
+deterministic final-answer validators. GUI-vs-CLI contains 440 standard desktop
+tasks and 176 grounded-prompt matched pairs; use
+`tasks/gui_vs_cli/high_delta_prompt_pairs.md` when selecting grounded-vs-standard
+tasks for behavioral claims.
 
-## Curated Example
+## Curated Examples
 
-The current published example is:
+Published example bundles:
 
 ```text
 examples/results/gpt54_datavoyager_smoke/
+examples/results/domsteer_t1_t3_gui_vs_cli_chatgpt_smoke/
 ```
 
-It contains one successful trajectory for each harness tier:
+The GPT-5.4 DataVoyager example contains one successful trajectory for each
+basic harness tier:
 
 - `browser`
 - `sandbox`
@@ -99,3 +129,12 @@ It contains one successful trajectory for each harness tier:
 
 Each trajectory folder contains the canonical `trajectory.json`, a compact
 `trajectory_viewer.html`, and screenshots.
+
+## Key Docs
+
+- [Agent structures and tool tiers](docs/agent-structures-and-tool-tiers.md)
+- [Evaluation and post-analysis plan](docs/acting-evaluating-pipeline.md)
+- [Trajectory collection task catalog](docs/trajectory-collection-tasks.md)
+- [OpenAI provider authentication](docs/openai-providers.md)
+- [Local browser setup](docs/local-browser-evaluation-setup.md)
+- [Historical infrastructure archive](docs/archive/trajectory-infra-history.md)

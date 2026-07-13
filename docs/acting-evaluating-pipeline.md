@@ -8,33 +8,36 @@ AgentLens keeps four layers separate:
 4. `analysis`: Wang-style workflow aggregation and Act-onomy-style behavioral
    tagging/summarization.
 
-## Current Smoke Path
+## Current Collection Paths
 
 ```bash
-.venv/bin/agentlens run configs/batches/gpt54_datavoyager_smoke.yaml --dry-run
+.venv/bin/agentlens run \
+  configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml \
+  --dry-run
 ```
 
 Fresh trajectories are written under:
 
 ```text
-runs/gpt54_datavoyager_smoke/raw/<timestamp>/trajectories/<run_id>/
+runs/<batch_id>/raw/<timestamp>/trajectories/<case_id>/
 ```
 
 Published examples are curated separately:
 
 ```text
 examples/results/gpt54_datavoyager_smoke/
+examples/results/domsteer_t1_t3_gui_vs_cli_chatgpt_smoke/
 ```
 
 ## Outcome Evaluation
 
-For the current DataVoyager smoke task:
+For the answer-verifiable DOMSteer DataVoyager tasks:
 
-| Field | Value |
-| --- | --- |
-| Validator | `final_answer` |
-| Expected answer | `Mazda GLC` |
-| Match rule | `contains` |
+| Task | Validator | Expected |
+| --- | --- | --- |
+| `datavoyager_most_fuel_efficient` | `final_answer` / contains | `Mazda GLC` |
+| `datavoyager_origin_horsepower_range` | `final_answer` / contains | `USA` |
+| `datavoyager_europe_hp_gt_100_four_cyl` | `final_answer` / exact number | `10` |
 
 Outcome evaluation is necessary but not enough. It tells whether a trajectory
 finished the task, but it does not explain why the run succeeded, failed, or
@@ -73,3 +76,5 @@ These methods should remain post-hoc. They should not mutate the raw trajectory.
 - Do not enable intervention during collection unless explicitly requested.
 - Add new benchmark tasks only after the task catalog records harness fit,
   expected answer or artifact, and evaluator design.
+- Stratify grounded-vs-standard analysis by prompt-delta strength; do not pool
+  weak prompt-delta pairs with high-delta pairs without flagging it.
