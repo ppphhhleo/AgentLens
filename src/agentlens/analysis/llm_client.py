@@ -40,9 +40,12 @@ def _resolve_provider(provider: str) -> str:
         return provider
     if shutil.which("claude"):
         return "claude_cli"
-    if os.environ.get("OPENAI_API_KEY"):
+    if os.environ.get("OPENAI_API_KEY") or os.environ.get("AGENTLENS_OPENAI_AUTH_MODE") == "codex_oauth":
         return "openai"
-    raise RuntimeError("no LLM provider available: install claude CLI or set OPENAI_API_KEY")
+    raise RuntimeError(
+        "no LLM provider available: install claude CLI, set OPENAI_API_KEY, "
+        "or select AGENTLENS_OPENAI_AUTH_MODE=codex_oauth"
+    )
 
 
 def _call_claude_cli(prompt: str, *, model: str | None, timeout_s: int) -> LLMResult:
@@ -67,13 +70,14 @@ def _call_claude_cli(prompt: str, *, model: str | None, timeout_s: int) -> LLMRe
 
 
 def _call_openai(prompt: str, *, model: str | None) -> LLMResult:
-    from openai import OpenAI
+    from agentlens.openai_provider import build_openai_client, resolve_auth_mode, resolve_helper_model
 
-    model_name = model or os.environ.get("AGENTLENS_ANALYSIS_MODEL") or "gpt-5.4-nano"
-    client = OpenAI(
-        api_key=os.environ.get("OPENAI_API_KEY"),
-        base_url=os.environ.get("OPENAI_BASE_URL"),
-    )
+    mode = resolve_auth_mode()
+    if mode == "codex_oauth":
+        model_name = resolve_helper_model(model, fallback_env="AGENTLENS_ANALYSIS_MODEL")
+    else:
+        model_name = model or os.environ.get("AGENTLENS_ANALYSIS_MODEL") or "gpt-5.4-nano"
+    client = build_openai_client(auth_mode=mode, model=model_name)
     kwargs: dict[str, Any] = {
         "model": model_name,
         "messages": [

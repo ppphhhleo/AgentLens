@@ -14,11 +14,8 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 from pathlib import Path
 from typing import Any
-
-from openai import OpenAI
 
 from agentlens.actors.base import UserAction, UserObservation
 from agentlens.harnesses.tool_gating import (
@@ -27,6 +24,7 @@ from agentlens.harnesses.tool_gating import (
     user_tool_name_for,
 )
 from agentlens.schemas import ModelConfig, UserActionType, UserHarnessConfig
+from agentlens.openai_provider import build_openai_client
 
 DEFAULT_PERSONA = (
     "You are a thoughtful user collaborating with an autonomous browser agent.\n"
@@ -61,12 +59,9 @@ class SimulatedDialogueUser:
         # Multi-turn memory of (turn_index, what_we_said).
         self._history: list[tuple[int, UserAction]] = []
 
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError(
-                "OPENAI_API_KEY is not set; SimulatedDialogueUser needs it"
-            )
-        self.client = OpenAI(api_key=api_key, base_url=os.environ.get("OPENAI_BASE_URL"))
+        self.client = build_openai_client(
+            auth_mode=judge_model.auth_mode, model=judge_model.name
+        )
 
     def observe(self, observation: UserObservation) -> UserAction:
         turn_index = int(observation.extra.get("turn_index", 1))

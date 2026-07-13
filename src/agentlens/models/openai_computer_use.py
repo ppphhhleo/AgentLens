@@ -12,6 +12,7 @@ from openai import OpenAI
 from agentlens.actions import ComputerAction
 from agentlens.models.base import ModelStep, ScreenshotObservation
 from agentlens.schemas import ModelConfig
+from agentlens.openai_provider import CodexOAuthCapabilityError, resolve_auth_mode
 
 
 GUI_OPERATOR_PROMPT = """You are operating a Linux desktop through its graphical interface.
@@ -40,6 +41,10 @@ class OpenAIComputerUseModel:
     """
 
     def __init__(self, config: ModelConfig, toolset=None) -> None:
+        if resolve_auth_mode(config.auth_mode) == "codex_oauth":
+            raise CodexOAuthCapabilityError(
+                "Codex OAuth does not support native OpenAI computer-use; use API-key authentication."
+            )
         self.config = config
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:

@@ -20,7 +20,11 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from openai import OpenAI
+from agentlens.openai_provider import (
+    build_openai_client,
+    resolve_auth_mode,
+    resolve_helper_model,
+)
 
 DEFAULT_JUDGE_MODEL = "gpt-4o"
 DEFAULT_MAX_SCREENSHOTS = 6  # cap images to control token cost
@@ -74,9 +78,21 @@ def judge_trajectory(
 
     Returns a WebJudgeResult; never raises (errors are encoded in the result).
     """
-    judge_model = judge_model or os.environ.get("WEBJUDGE_MODEL") or DEFAULT_JUDGE_MODEL
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
+    try:
+        mode = resolve_auth_mode()
+        if mode == "codex_oauth":
+            judge_model = resolve_helper_model(judge_model, fallback_env="WEBJUDGE_MODEL")
+        else:
+            judge_model = judge_model or os.environ.get("WEBJUDGE_MODEL") or DEFAULT_JUDGE_MODEL
+    except (ValueError, RuntimeError) as exc:
+        return WebJudgeResult(
+            success=False,
+            score=0.0,
+            reason=f"WebJudge configuration failed: {exc}",
+            raw_response="",
+            judge_model=judge_model or "(not configured)",
+        )
+    if mode == "api_key" and not os.environ.get("OPENAI_API_KEY"):
         return WebJudgeResult(
             success=False,
             score=0.0,
@@ -101,7 +117,7 @@ def judge_trajectory(
             }
         )
 
-    client = OpenAI(api_key=api_key, base_url=os.environ.get("OPENAI_BASE_URL"))
+    client = build_openai_client(auth_mode=mode, model=judge_model)
     try:
         kwargs: dict = {
             "model": judge_model,

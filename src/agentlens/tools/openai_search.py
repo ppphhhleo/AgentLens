@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-from openai import OpenAI
+from agentlens.openai_provider import build_openai_client, resolve_auth_mode
 
 DEFAULT_SEARCH_MODEL = os.environ.get("OPENAI_SEARCH_MODEL", "gpt-5.4")
 DEFAULT_MAX_CHARS = 2000
@@ -40,6 +40,11 @@ def openai_web_search(
     Never raises — errors are encoded in `WebSearchResult.error`.
     """
     model = model or DEFAULT_SEARCH_MODEL
+    if resolve_auth_mode() == "codex_oauth":
+        return WebSearchResult(
+            query=query, text="", sources=[], model=model,
+            error="Codex OAuth does not support built-in OpenAI web search; use API-key authentication",
+        )
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         return WebSearchResult(
@@ -47,7 +52,7 @@ def openai_web_search(
             error="OPENAI_API_KEY not set",
         )
 
-    client = OpenAI(api_key=api_key, base_url=os.environ.get("OPENAI_BASE_URL"))
+    client = build_openai_client(auth_mode="api_key", model=model)
     try:
         r = client.responses.create(
             model=model,

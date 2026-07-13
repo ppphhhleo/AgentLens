@@ -44,6 +44,31 @@ Run the batch:
 Generated outputs go under `runs/`. Curated examples that are useful for
 inspection or paper discussion live under `examples/results/`.
 
+## OpenAI authentication
+
+OpenAI models use `OPENAI_API_KEY` by default. AgentLens can instead reuse an
+existing Codex CLI login globally:
+
+```bash
+codex login
+export AGENTLENS_OPENAI_AUTH_MODE=codex_oauth
+export AGENTLENS_CODEX_MODEL=gpt-5.5  # required by helpers without a model
+```
+
+Or select it for one model while preserving the configured model ID exactly:
+
+```yaml
+models:
+  - id: gpt55
+    provider: openai
+    name: gpt-5.5
+    auth_mode: codex_oauth
+```
+
+See [OpenAI providers](docs/openai-providers.md) for supported features and
+credential-safety details. API keys remain the recommended/default automation
+path.
+
 ## Desktop Benchmark Candidates
 
 Desktop task metadata that is not yet in an active batch can live under

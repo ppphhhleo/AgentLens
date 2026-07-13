@@ -10,14 +10,12 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 from pathlib import Path
 from typing import Any
 
-from openai import OpenAI
-
 from agentlens.actions import ComputerAction
 from agentlens.models.base import ModelStep, ScreenshotObservation
+from agentlens.openai_provider import build_openai_client
 from agentlens.schemas import ModelConfig
 
 # The action-schema bullet list is injected at runtime from the run's
@@ -56,13 +54,7 @@ class OpenAIVisionModel:
 
     def __init__(self, config: ModelConfig, toolset=None) -> None:
         self.config = config
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError(
-                "OPENAI_API_KEY is not set. Put it in .env at the repo root or export it."
-            )
-        base_url = os.environ.get("OPENAI_BASE_URL")
-        self.client = OpenAI(api_key=api_key, base_url=base_url)
+        self.client = build_openai_client(auth_mode=config.auth_mode, model=config.name)
         self.model_name = config.name
         self.temperature = config.temperature
         self.max_output_tokens = config.max_output_tokens or 1024
@@ -113,6 +105,9 @@ class OpenAIVisionModel:
             prompt_tokens=getattr(usage, "prompt_tokens", None),
             completion_tokens=getattr(usage, "completion_tokens", None),
             extra={
+                "openai_provider_telemetry": getattr(
+                    response, "agentlens_telemetry", {}
+                ),
                 "model": response.model,
                 "finish_reason": choice.finish_reason,
             },
