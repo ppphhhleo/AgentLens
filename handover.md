@@ -7,6 +7,298 @@ commands. Longer-term planning lives in:
 - `docs/agent-structures-and-tool-tiers.md`
 - `docs/acting-evaluating-pipeline.md`
 
+## 2026-07-09: Brief Analysis Hints
+
+Current curated local analysis files are under `runs/curated/`, but `/runs/`
+is ignored and should not be pushed. Keep EDA figures/reports local unless the
+user explicitly asks to publish selected summary artifacts.
+
+For early results, prioritize simple comparisons before deep annotation:
+
+- Performance by prompt style: standard vs grounded, stratified by task and
+  agent type. Do not pool weak prompt-delta pairs with high-delta pairs without
+  flagging the difference.
+- Performance by agent style: AgentLens strict GUI-only vs gui-vs-cli
+  paper-style computer agent, with model held fixed when possible.
+- Task sensitivity: report per-task results because prompt grounding appears
+  task-dependent and draw.io/Impress have known harness/runtime noise.
+- Effort proxies: steps, screenshots, elapsed time, tool calls, and max-step
+  termination. Compare these only within the same agent style because
+  paper-style computer agents emit lower-level actions.
+- Behavior annotation: once `behaviors.csv` is updated, treat behavior episodes
+  as explanatory signals, not final ground truth. Useful first plots are
+  behavior share/count by agent type, prompt style, task, and success.
+- Segment/workflow analysis: use Wang-style segments and Act-onomy tags to
+  inspect where challenge/recovery patterns occur; keep LLM-refined summaries
+  as qualitative examples rather than the main quantitative claim.
+
+Current defensible early claim shape: grounded prompts and tool/agent condition
+can change behavior and effort, but evidence should be stated as pilot-level
+until missing cells are filled and noisy tasks are diagnosed.
+
+## 2026-07-09: High-Delta Grounded Prompt Candidate List
+
+Grounded-vs-standard task selection is now documented in:
+
+```text
+tasks/gui_vs_cli/high_delta_prompt_pairs.md
+```
+
+Use this file before expanding grounded-vs-standard runs. It now covers both
+GUI-vs-CLI and the active DOMSteer DataVoyager standard/grounded tasks. The key
+finding is that the `grounded_prompt` label alone is not enough for
+behavior-analysis claims: many GUI-vs-CLI grounded prompts are near-identical
+to their standard prompts, especially in Calc/Chrome. For prompt-effect
+experiments, prefer Level `2` or `3` pairs where the grounded prompt adds
+concrete procedure, menu paths, object locations, or exact interaction
+sequences.
+
+Already-run GUI-vs-CLI pilot pairs remain:
+
+```text
+gimp_add_alpha_transparent
+drawio_aws_cloud_arch
+godot4_full_enemy_controller
+calc_3d_quarterly_consolidation
+impress_add_entry_animations_to_bullets
+chrome_multi_tab_wikipedia
+```
+
+Already-run or ready DOMSteer DataVoyager pairs:
+
+```text
+datavoyager_most_fuel_efficient
+datavoyager_origin_horsepower_range
+datavoyager_europe_hp_gt_100_four_cyl
+```
+
+These three DOMSteer pairs should remain in the near-term GPT/Opus comparison
+set because they are answer-verifiable visual analytics tasks with standard and
+grounded YAMLs. T4-T8 are cataloged but verifier-pending.
+
+Recommended next high-delta GUI-vs-CLI candidates include:
+
+```text
+gimp_rotate_180_tiff_export
+gimp_fill_bucket_background
+drawio_restyle_erd
+drawio_fix_and_color_workflow
+calc_text_parse_contacts
+cloudcompare_gap_csf_ground_filter
+cloudcompare_obj_to_mesh_xyz_asc
+freecad_export_multi_format
+freecad_create_parametric_box
+krita_wrap_around_and_mirror
+obs_create_scene_collection
+zotero_gap_import_ris_file
+```
+
+Avoid using draw.io as a primary next result until the draw.io harness failures
+are diagnosed. Impress is lower priority because recent runs were slow/noisy.
+
+## 2026-07-09: Readable Trajectory Storage Names
+
+Future trajectory case folders now use metadata-rich names instead of opaque
+`{run_id}_seed{seed}_trial{trial}` names where the runner has task/model
+metadata. The timestamp remains the batch/snapshot parent folder; the case
+folder now follows:
+
+```text
+trajectories/{app_or_family}__{task_name}__{prompt_style}__{model_id}__{harness_or_agent}__seed{seed}__trial{trial}/
+```
+
+The shared helper is `src/agentlens/trajectory_paths.py`. It is wired into the
+main AgentLens adapters and into `scripts/gui_vs_cli_full_workflow_smoke.py`
+and `scripts/domsteer_cli_comparison.py`. Existing old run folders are not
+renamed in place; curated indexes should keep pointing to those historical
+paths.
+
+## 2026-07-09: GPT-5.5 Follow-Up Collection Commands
+
+The next GPT comparison should mirror the Opus 4.8 collection but use a cleaner
+task subset. Use GPT-5.5 for:
+
+- GUI-vs-CLI five-task subset: GIMP, draw.io, Godot 4, LibreOffice Calc, and
+  Chrome. Do not include Impress by default; it is a known looping/noisy target
+  for strict GUI-only.
+- DOMSteer DataVoyager T1-T3: standard and grounded prompts.
+- Agent styles: AgentLens strict GUI-only tool-call and gui-vs-cli paper-style
+  ChatGPT computer-use agent.
+
+Configs:
+
+```text
+configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml
+configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml
+```
+
+The configs currently use model name `gpt-5.5`. If the API exposes a different
+alias, update only the `model:` / `name:` fields in those configs before
+running.
+
+Local/AWS dry checks:
+
+```bash
+cd /home/ubuntu/AgentLens-grounded
+set -a; . ./.env; set +a
+
+PYTHONPATH=src python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml \
+  --ready-check-only
+
+PYTHONPATH=src python -m agentlens.cli run \
+  configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml \
+  --dry-run \
+  --output runs/gpt55_domsteer_dry_run_plan.json
+```
+
+Run GUI-vs-CLI five-task trajectories. Running the two agents separately makes
+monitoring and restart easier:
+
+```bash
+tmux new -s agentlens_gpt55_five_task_agentlens
+cd /home/ubuntu/AgentLens-grounded
+set -a; . ./.env; set +a
+PYTHONPATH=src python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml \
+  --agent agentlens_gui_toolcall_gpt55 \
+  --max-steps 150
+```
+
+```bash
+tmux new -s agentlens_gpt55_five_task_chatgpt
+cd /home/ubuntu/AgentLens-grounded
+set -a; . ./.env; set +a
+PYTHONPATH=src python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_gpt55_five_task_gui_comparison.yaml \
+  --agent gui_vs_cli_chatgpt_gpt55 \
+  --max-steps 150
+```
+
+Run DOMSteer T1-T3:
+
+```bash
+tmux new -s agentlens_gpt55_domsteer
+cd /home/ubuntu/AgentLens-grounded
+set -a; . ./.env; set +a
+PYTHONPATH=src python -m agentlens.cli run \
+  configs/batches/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison.yaml \
+  --execute \
+  --log-actions
+```
+
+Sync JSON artifacts back first; screenshots can be synced later or served from
+AWS because they are large:
+
+```bash
+rsync -av --include='*/' --include='*.json' --include='*.yaml' --include='*.html' --exclude='*' \
+  ubuntu@ec2-34-218-248-219.us-west-2.compute.amazonaws.com:/home/ubuntu/AgentLens-grounded/runs/gui_vs_cli_grounded_vs_standard_gpt55_five_task_gui_comparison/ \
+  /Users/pan00342/Documents/Projects/AgentLens/runs/gui_vs_cli_grounded_vs_standard_gpt55_five_task_gui_comparison/
+
+rsync -av --include='*/' --include='*.json' --include='*.yaml' --include='*.html' --exclude='*' \
+  ubuntu@ec2-34-218-248-219.us-west-2.compute.amazonaws.com:/home/ubuntu/AgentLens-grounded/runs/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison/ \
+  /Users/pan00342/Documents/Projects/AgentLens/runs/domsteer_t1_t3_gpt55_standard_grounded_gui_comparison/
+```
+
+## 2026-07-08: DOMSteer Opus 4.8 Standard/Grounded GUI Comparison
+
+Active batch:
+
+```bash
+PYTHONPATH=src python -m agentlens.cli run \
+  configs/batches/domsteer_t1_t3_opus48_standard_grounded_gui_comparison.yaml \
+  --execute --log-actions
+```
+
+AWS:
+
+- Host: `ubuntu@ec2-34-218-248-219.us-west-2.compute.amazonaws.com`
+- Repo: `/home/ubuntu/AgentLens-grounded`
+- tmux: `agentlens_domsteer_opus48`
+- Run root:
+  `runs/domsteer_t1_t3_opus48_standard_grounded_gui_comparison/raw/2026-07-08_09-55-22/`
+
+This batch compares T1-T3 DOMSteer standard vs grounded prompts for:
+
+- `agentlens_gui_toolcall`: strict AgentLens GUI-only registered tools.
+- `gui_vs_cli_claude`: paper-style Claude computer-use agent converted to
+  `desktop_pyautogui` actions.
+
+Important interpretation: the paper-style Claude computer-use path is much
+slower and noisier than the strict AgentLens GUI-only path. It often emits
+low-level actions such as separate key down/up, mouse down/move/up, waits, and
+browser-chrome interactions. Treat its step counts as paper-style computer
+agent granularity, not as equivalent to AgentLens full-sandbox or strict
+GUI-only step counts.
+
+Compatibility fixes made for future runs:
+
+- `third_party/gui-vs-cli/agents/claude_agent.py` ignores unexpected `text`
+  fields on `left_click_drag`.
+- `cursor_position` from Claude computer-use is treated as a no-op wait because
+  the current AgentLens bridge returns screenshots, not cursor-coordinate tool
+  results.
+
+## 2026-07-07: Grounded-vs-Standard Prompt Support
+
+Implemented first-class GUI-vs-CLI task-source selection in
+`scripts/gui_vs_cli_full_workflow_smoke.py`.
+
+- Task entries may now set `source_type: standard` or
+  `source_type: grounded_prompt`.
+- `standard` loads from `task_generator/tasks/<id>/task.json` or
+  `tasks/gui_vs_cli/tasks_standard.jsonl`.
+- `grounded_prompt` loads from
+  `task_generator/tasks_grounding/<id>/task.json` or
+  `tasks/gui_vs_cli/tasks_grounding.jsonl`.
+- For grounded-prompt runs, the agent receives `task_grounding` as the task
+  text. The same environment files and verifier specs are preserved.
+- Result directories now use:
+  `{paired_task_id}__standard__{agent_id}` or
+  `{paired_task_id}__grounded__{agent_id}`.
+- Each result directory writes `case_metadata.json` with `task_id`,
+  `paired_task_id`, `source_type`, `github_task_path`, app/category, agent,
+  model, and family.
+
+New smoke config:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_smoke.yaml \
+  --agent agentlens_gui_toolcall_gpt54
+```
+
+Single paired-task smoke:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/grounded_vs_standard_smoke.yaml \
+  --agent agentlens_gui_toolcall_gpt54 \
+  --task gimp_add_alpha_transparent
+```
+
+The initial paired config covers:
+
+- GIMP image editing: `gimp_add_alpha_transparent`
+- draw.io diagram editing: `drawio_aws_cloud_arch`
+- Godot 4 game/editor workflow: `godot4_full_enemy_controller`
+- LibreOffice Calc data/spreadsheet analysis:
+  `calc_3d_quarterly_consolidation`
+- LibreOffice Impress presentation editing:
+  `impress_add_entry_animations_to_bullets`
+- Chrome information seeking: `chrome_multi_tab_wikipedia`
+
+Current limitation: this config uses the strict GUI tool-call agent. The
+gui-vs-cli desktop bridge can execute desktop GUI actions today, but it should
+not yet be treated as a clean `full_sandbox` condition because shell/file/code
+tool outputs are not integrated into the desktop observation loop with the same
+quality as the main AgentLens batch harness.
+
+LLM-refined phase summaries already exist in
+`src/agentlens/analysis/llm_refinement.py` and are enabled by method analysis
+with `annotation_mode=llm`. Use them for readable phase names and qualitative
+examples, but keep structured metrics as the primary validation evidence.
+
 ## 2026-07-04: No-GUI Tier Split
 
 No-GUI/tool-only AgentLens harnesses now use the first-class
