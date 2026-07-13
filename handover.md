@@ -48,8 +48,10 @@ For early results, prioritize simple comparisons before deep annotation:
   termination. Compare these only within the same agent style because
   paper-style computer agents emit lower-level actions.
 - Behavior annotation: once `behaviors.csv` is updated, treat behavior episodes
-  as explanatory signals, not final ground truth. Useful first plots are
-  behavior share/count by agent type, prompt style, task, and success.
+  as explanatory signals, not final ground truth. The preferred metric is
+  within-trajectory behavior percentage first, then average those percentages
+  by condition/agent/task. Keep absolute episode counts as secondary effort
+  context only, because longer trajectories mechanically create more episodes.
 - Segment/workflow analysis: use Wang-style segments and Act-onomy tags to
   inspect where challenge/recovery patterns occur; keep LLM-refined summaries
   as qualitative examples rather than the main quantitative claim.

@@ -52,6 +52,18 @@ Use the same raw trajectory as input to multiple post-hoc methods:
 | Wang-style workflow aggregation | screenshots, tool calls, actions, observations | workflow segments / phases | Coarse process structure and stage comparison. |
 | Act-onomy-style behavior coding | per-turn observation/thought/action/tool data | cognitive/action labels plus phase summaries | Behavioral profile and codebook-driven comparison. |
 
+For behavior-code analysis, normalize before aggregating across conditions:
+
+1. For each trajectory, compute each behavior's percentage of that trajectory's
+   behavior episodes.
+2. Average those within-trajectory percentages by condition, agent type, prompt
+   style, task, or success group.
+3. Report absolute behavior episode counts separately as an effort/trajectory
+   length signal, not as the primary comparison.
+
+This avoids making longer or more failure-prone trajectories look behaviorally
+dominant only because they contain more annotated episodes.
+
 LLM-refined summaries are available through method analysis with
 `annotation_mode=llm`. In that mode, the deterministic Wang and Act-onomy
 outputs are first generated, then an LLM pass replaces the merge layer with
