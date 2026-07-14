@@ -428,6 +428,14 @@ def run(
             log_action=typer.echo if log_actions else None,
         )
         report_dir = plans[0].output_dir / "cocoabench_summary"
+    elif adapters == {"arb_judge"}:
+        from agentlens.adapters.arb_judge import ARBJudgeAdapter
+
+        result = ARBJudgeAdapter().run_many(
+            plans,
+            log_action=typer.echo if log_actions else None,
+        )
+        report_dir = plans[0].output_dir / "arb_judge_summary"
     else:
         raise typer.BadParameter(
             "mixed or unsupported execution plans; use --dry-run to inspect plans"
@@ -570,6 +578,114 @@ def import_online_mind2web(
     typer.echo(
         f"Wrote {len(tasks)} task(s) to {output} (model={model_id}, judge={judge_model})"
     )
+
+
+@app.command("arb-evaluate")
+def arb_evaluate(
+    config_path: Path = typer.Argument(..., help="ARB experiment config YAML."),
+    run_id: str | None = typer.Option(None, "--run-id", help="Only run one run id."),
+    max_runs: int | None = typer.Option(
+        None, "--max-runs", min=1, help="Limit expanded plans."
+    ),
+    log_actions: bool = typer.Option(
+        False, "--log-actions", help="Print progress while executing."
+    ),
+) -> None:
+    """Run ARB 4-dimensional LLM judge evaluation on pre-existing trajectories."""
+    from agentlens.adapters.arb_judge import ARBJudgeAdapter
+    from agentlens.reports.writers import write_all_reports
+    from agentlens.run_plans import build_run_plans
+
+    config = load_experiment_config(config_path)
+    plans = build_run_plans(config, run_id=run_id, max_runs=max_runs)
+
+    arb_plans = [p for p in plans if getattr(p, "adapter", None) == "arb_judge"]
+    if not arb_plans:
+        raise typer.BadParameter("no arb_judge plans found in config")
+
+    result = ARBJudgeAdapter().run_many(
+        arb_plans,
+        log_action=typer.echo if log_actions else None,
+    )
+
+    report_dir = arb_plans[0].output_dir / "arb_judge_summary"
+    report_paths = write_all_reports(result, report_dir)
+    typer.echo(f"Evaluated {len(result.run_results)} trajectory(ies).")
+    typer.echo(f"Aggregate score: {result.score}")
+    for report_path in report_paths:
+        typer.echo(str(report_path))
+
+
+@app.command("import-arb")
+def import_arb(
+    benchmark: str = typer.Argument(
+        ..., help="ARB benchmark: webarena_100 | assistantbench"
+    ),
+    trajectory_dir: Path = typer.Argument(
+        ..., help="Base directory of cleaned ARB trajectory JSONs."
+    ),
+    output: Path = typer.Option(
+        Path("configs/experiments/arb_generated.yaml"),
+        "--output",
+        "-o",
+        help="Where to write the generated experiment config.",
+    ),
+    judge_model: str = typer.Option(
+        "gpt-4o-mini-2024-07-18", "--judge-model", help="LLM judge model name."
+    ),
+    judge_provider: str = typer.Option(
+        "openai", "--judge-provider", help="Judge API provider."
+    ),
+    use_screenshot: bool = typer.Option(
+        True, "--screenshot/--no-screenshot", help="Include last screenshot."
+    ),
+    use_axtree: bool = typer.Option(
+        False, "--axtree/--no-axtree", help="Include last accessibility tree."
+    ),
+    limit: int | None = typer.Option(
+        None, "--limit", min=1, help="Max tasks to include."
+    ),
+) -> None:
+    """Generate an AgentLens experiment config for ARB judge evaluation."""
+    from agentlens.adapters.arb_config_generator import generate_arb_experiment_config
+
+    config = generate_arb_experiment_config(
+        arb_benchmark=benchmark,
+        trajectory_base_dir=trajectory_dir,
+        judge_model=judge_model,
+        judge_provider=judge_provider,
+        use_screenshot=use_screenshot,
+        use_axtree=use_axtree,
+        limit=limit,
+    )
+
+    import yaml
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
+    typer.echo(
+        f"Wrote ARB config with {len(config['tasks'])} task(s) and "
+        f"{len(config['runs'])} run(s) to {output}"
+    )
+
+
+@app.command("arb-dashboard")
+def arb_dashboard(
+    results_dir: Path = typer.Argument(
+        ..., help="Directory containing ARB evaluation trajectory.json files."
+    ),
+    output: Path = typer.Option(
+        Path("agentlens_results/arb_dashboard.html"),
+        "--output",
+        "-o",
+        help="Output HTML dashboard path.",
+    ),
+) -> None:
+    """Generate an ARB evaluation dashboard with WHO/WHEN breakdowns."""
+    from agentlens.reports.arb_dashboard import write_arb_dashboard
+
+    dashboard_path = write_arb_dashboard(results_dir, output)
+    typer.echo(f"ARB dashboard written to {dashboard_path}")
 
 
 if __name__ == "__main__":

@@ -68,6 +68,11 @@ def build_run_plans(
 
             adapter = CocoaBenchAdapter()
             plans.extend(adapter.build_run_plans(scoped_config, max_runs=max_runs))
+        elif tool_harness.runner == "arb_judge":
+            from agentlens.adapters.arb_judge import ARBJudgeAdapter
+
+            adapter = ARBJudgeAdapter()
+            plans.extend(adapter.build_run_plans(scoped_config, max_runs=max_runs))
         else:
             raise ValueError(f"unsupported runner for run '{run.id}': {tool_harness.runner}")
 
