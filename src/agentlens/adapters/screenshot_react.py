@@ -654,12 +654,14 @@ class ScreenshotReactAdapter:
                 "expected 'screenshot_react'"
             )
         # Tier: browser_only is the historical default; browser_files,
-        # full_sandbox, and no_gui_tool_only are valid with the sandbox-backed
+        # computer_use and cli_only are valid with the sandbox-backed
         # screenshot_react runner. The tool allow-list controls actual access.
         allowed_tiers = {
             ToolHarnessTier.BROWSER_ONLY,
             ToolHarnessTier.BROWSER_FILES,
+            ToolHarnessTier.COMPUTER_USE,
             ToolHarnessTier.FULL_SANDBOX,
+            ToolHarnessTier.CLI_ONLY,
             ToolHarnessTier.NO_GUI_TOOL_ONLY,
         }
         if tool_harness.tier not in allowed_tiers:

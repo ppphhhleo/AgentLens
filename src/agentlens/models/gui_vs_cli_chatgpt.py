@@ -132,8 +132,8 @@ class GuiVsCliChatGPTModel(_GuiVsCliAgentModel):
 
         extra = self.config.extra or {}
         screen_size = extra.get("screen_size") or [
-            int(extra.get("display_width", 1600)),
-            int(extra.get("display_height", 900)),
+            int(extra.get("display_width", 1920)),
+            int(extra.get("display_height", 1080)),
         ]
         return ChatGPTAgent(
             model=self.model_name,

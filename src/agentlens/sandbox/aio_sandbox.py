@@ -28,6 +28,9 @@ DEFAULT_HOST_PORT = 8080
 CONTAINER_PORT = 8080
 HEALTH_TIMEOUT_SEC = 180
 HEALTH_POLL_INTERVAL_SEC = 1.0
+MANAGED_CONTAINER_LABEL = "agentlens.managed"
+BACKEND_LABEL = "agentlens.backend"
+KIND_LABEL = "agentlens.kind"
 
 
 @dataclass
@@ -172,6 +175,9 @@ class AIOSandboxSession:
             "docker", "run", "-d",
             "--rm",
             "--name", self.container_name,
+            "--label", f"{MANAGED_CONTAINER_LABEL}=true",
+            "--label", f"{BACKEND_LABEL}=aio_sandbox",
+            "--label", f"{KIND_LABEL}=sandbox",
             "-p", f"{self.host_port}:{CONTAINER_PORT}",
         ]
         if self.shm_size:

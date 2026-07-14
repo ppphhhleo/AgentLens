@@ -113,3 +113,48 @@ def test_openai_adapter_maps_right_click_alias() -> None:
 def test_model_step_action_list_defaults_to_primary_action() -> None:
     action = ComputerAction(type="wait", ms=100)
     assert ModelStep(thought="", action=action).action_list() == [action]
+
+
+def test_computer_batch_expands_to_ordered_desktop_actions() -> None:
+    registry = default_tool_registry()
+    adapter = OpenAIToolAdapter(registry)
+    payload = adapter.tool_payloads([registry.get("computer.batch")])[0]
+
+    assert payload["function"]["name"] == "computer__batch"
+    assert payload["function"]["parameters"]["properties"]["actions"]["maxItems"] == 20
+
+    decision = SimpleNamespace(
+        tool_name="computer.batch",
+        tool_args={
+            "actions": [
+                {"type": "move", "x": 100, "y": 200},
+                {"type": "left_click", "x": 100, "y": 200},
+                {"type": "type", "text": "hello"},
+                {"type": "keypress", "keys": ["CTRL", "S"]},
+            ]
+        },
+    )
+
+    actions = registry.to_actions(decision)
+
+    assert [action.type for action in actions] == [
+        "desktop_move",
+        "desktop_click",
+        "desktop_type",
+        "desktop_keypress",
+    ]
+    assert actions[1].button == "left"
+    assert actions[2].text == "hello"
+
+
+def test_computer_batch_maps_native_scroll_aliases() -> None:
+    registry = default_tool_registry()
+    decision = SimpleNamespace(
+        tool_name="computer.batch",
+        tool_args={"actions": [{"type": "scroll", "x": 20, "y": 30, "deltaY": 450}]},
+    )
+
+    action = registry.to_actions(decision)[0]
+
+    assert action.type == "desktop_scroll"
+    assert action.scroll_y == 450

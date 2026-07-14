@@ -22,8 +22,19 @@ class ToolSpec:
     parameters: dict[str, Any]
     executor_family: str
     default_enabled: bool = True
+    ordered_action_batch: bool = False
 
     def to_action(self, args: dict[str, Any]) -> ComputerAction:
+        actions = self.to_actions(args)
+        if len(actions) != 1:
+            raise ValueError(
+                f"tool {self.name!r} expands to {len(actions)} actions; use to_actions()"
+            )
+        return actions[0]
+
+    def to_actions(self, args: dict[str, Any]) -> list[ComputerAction]:
+        if self.ordered_action_batch:
+            return _computer_batch_to_actions(args)
         action_args = {
             key: value
             for key, value in args.items()
@@ -31,10 +42,12 @@ class ToolSpec:
         }
         action_args = _normalize_action_args(self.action_type, action_args)
         if self.executor_family == "mcp":
-            return ComputerAction.from_raw(
-                {"type": "mcp_tool", "mcp_tool": self.name, "mcp_args": action_args}
-            )
-        return ComputerAction.from_raw({"type": self.action_type, **action_args})
+            return [
+                ComputerAction.from_raw(
+                    {"type": "mcp_tool", "mcp_tool": self.name, "mcp_args": action_args}
+                )
+            ]
+        return [ComputerAction.from_raw({"type": self.action_type, **action_args})]
 
 
 @dataclass(frozen=True)
@@ -91,6 +104,62 @@ def _normalize_action_args(action_type: str, args: dict[str, Any]) -> dict[str, 
         args = dict(args)
         args["keys"] = [args["keys"]]
     return args
+
+
+def _computer_batch_to_actions(args: dict[str, Any]) -> list[ComputerAction]:
+    raw_actions = args.get("actions")
+    if not isinstance(raw_actions, list) or not raw_actions:
+        raise ValueError("computer.batch requires a non-empty actions array")
+    if len(raw_actions) > 20:
+        raise ValueError("computer.batch supports at most 20 ordered actions")
+
+    actions: list[ComputerAction] = []
+    for index, raw in enumerate(raw_actions, start=1):
+        if not isinstance(raw, dict):
+            raise ValueError(f"computer.batch action {index} must be an object")
+        action_type = str(raw.get("type") or "")
+        action_args = {key: value for key, value in raw.items() if key != "type" and value is not None}
+        mapped = _map_computer_batch_action(action_type, action_args)
+        try:
+            actions.append(ComputerAction.from_raw(mapped))
+        except Exception as exc:
+            raise ValueError(f"invalid computer.batch action {index}: {exc}") from exc
+    return actions
+
+
+def _map_computer_batch_action(action_type: str, args: dict[str, Any]) -> dict[str, Any]:
+    aliases = {
+        "left_click": ("desktop_click", {"button": "left"}),
+        "right_click": ("desktop_click", {"button": "right"}),
+        "middle_click": ("desktop_click", {"button": "middle"}),
+        "click": ("desktop_click", {}),
+        "double_click": ("desktop_double_click", {}),
+        "move": ("desktop_move", {}),
+        "drag": ("desktop_drag", {}),
+        "scroll": ("desktop_scroll", {}),
+        "type": ("desktop_type", {}),
+        "keypress": ("desktop_keypress", {}),
+        "wait": ("desktop_wait", {}),
+        "screenshot": ("desktop_screenshot", {}),
+    }
+    mapping = aliases.get(action_type)
+    if mapping is None:
+        raise ValueError(f"unsupported computer.batch action type: {action_type!r}")
+
+    mapped_type, defaults = mapping
+    mapped = {"type": mapped_type, **args, **defaults}
+    mapped = {"type": mapped.pop("type"), **_normalize_action_args(mapped_type, mapped)}
+    if mapped_type == "desktop_scroll":
+        mapped["scroll_x"] = mapped.pop("delta_x", mapped.pop("deltaX", mapped.get("scroll_x", 0)))
+        mapped["scroll_y"] = mapped.pop("delta_y", mapped.pop("deltaY", mapped.get("scroll_y", 0)))
+    if mapped_type == "desktop_keypress" and not mapped.get("keys") and mapped.get("key"):
+        mapped["keys"] = [mapped.pop("key")]
+    if mapped_type == "desktop_drag" and not mapped.get("path"):
+        start = mapped.pop("from", None)
+        end = mapped.pop("to", None)
+        if start is not None and end is not None:
+            mapped["path"] = [start, end]
+    return mapped
 
 
 def _resolve_provider_tool_call(
@@ -227,6 +296,9 @@ class ToolRegistry:
 
     def to_action(self, decision: ToolCallDecision) -> ComputerAction:
         return self.get(decision.tool_name).to_action(decision.tool_args)
+
+    def to_actions(self, decision: ToolCallDecision) -> list[ComputerAction]:
+        return self.get(decision.tool_name).to_actions(decision.tool_args)
 
 
 def default_tool_registry() -> ToolRegistry:
@@ -424,6 +496,18 @@ def default_tool_registry() -> ToolRegistry:
                     },
                     required=["file_path", "content"],
                 ),
+            ),
+            ToolSpec(
+                name="computer.batch",
+                action_type="computer_batch",
+                executor_family="desktop",
+                default_enabled=False,
+                ordered_action_batch=True,
+                description=(
+                    "Execute an ordered batch of direct computer actions. Actions run in order; "
+                    "use a short batch only when no intermediate screenshot is needed."
+                ),
+                parameters=_computer_batch_schema(),
             ),
             ToolSpec(
                 name="desktop.screenshot",
@@ -1081,6 +1165,59 @@ def _object_schema(
         "required": list(required or []),
         "additionalProperties": False,
     }
+
+
+def _computer_batch_schema() -> dict[str, Any]:
+    action = _object_schema(
+        {
+            "type": {
+                "type": "string",
+                "enum": [
+                    "click",
+                    "left_click",
+                    "right_click",
+                    "middle_click",
+                    "double_click",
+                    "move",
+                    "drag",
+                    "scroll",
+                    "type",
+                    "keypress",
+                    "wait",
+                    "screenshot",
+                ],
+            },
+            "x": {"type": "number"},
+            "y": {"type": "number"},
+            "button": {"type": "string", "enum": ["left", "right", "middle"]},
+            "scroll_x": {"type": "number"},
+            "scroll_y": {"type": "number"},
+            "text": {"type": "string"},
+            "keys": _string_array("Keys to press in order or as a chord."),
+            "path": {
+                "type": "array",
+                "minItems": 2,
+                "items": _object_schema(
+                    {"x": {"type": "number"}, "y": {"type": "number"}},
+                    required=["x", "y"],
+                ),
+            },
+            "ms": {"type": "integer"},
+        },
+        required=["type"],
+    )
+    return _object_schema(
+        {
+            "actions": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 20,
+                "items": action,
+                "description": "Direct computer actions to execute sequentially.",
+            }
+        },
+        required=["actions"],
+    )
 
 
 def _targeted_object_schema(

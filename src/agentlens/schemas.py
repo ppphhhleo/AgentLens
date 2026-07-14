@@ -14,6 +14,11 @@ class ToolHarnessTier(StrEnum):
     HUMAN = "human"
     BROWSER_ONLY = "browser_only"
     BROWSER_FILES = "browser_files"
+    GUI_ONLY = "gui_only"
+    CLI_ONLY = "cli_only"
+    COMPUTER_USE = "computer_use"
+    # Backward-compatible legacy labels. New configs should use the clearer
+    # cli_only and computer_use names above.
     FULL_SANDBOX = "full_sandbox"
     NO_GUI_TOOL_ONLY = "no_gui_tool_only"
 
@@ -85,24 +90,58 @@ class ToolHarnessConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_no_gui_tier(self) -> ToolHarnessConfig:
-        if self.tier != ToolHarnessTier.NO_GUI_TOOL_ONLY:
+        if "computer.batch" in self.tools and self.runner != "desktop_react":
+            raise ValueError("computer.batch requires runner='desktop_react'")
+
+        if self.tier == ToolHarnessTier.GUI_ONLY:
+            if self.runner != "desktop_react":
+                raise ValueError("tier 'gui_only' requires runner='desktop_react'")
+            allowed = {
+                "computer.batch",
+                "desktop.screenshot",
+                "desktop.click",
+                "desktop.double_click",
+                "desktop.triple_click",
+                "desktop.scroll",
+                "desktop.move",
+                "desktop.drag",
+                "desktop.type",
+                "desktop.keypress",
+                "desktop.wait",
+                "task.final_answer",
+            }
+            invalid = sorted(set(self.tools) - allowed)
+            if invalid:
+                raise ValueError(
+                    "tier 'gui_only' permits only direct-manipulation desktop tools, "
+                    f"computer.batch, and task.final_answer; invalid tools: {invalid}"
+                )
+            return self
+
+        if self.tier not in {
+            ToolHarnessTier.CLI_ONLY,
+            ToolHarnessTier.NO_GUI_TOOL_ONLY,
+        }:
             return self
 
         gui_tools = [
             tool
             for tool in self.tools
-            if tool.startswith("browser.") or tool.startswith("desktop.")
+            if tool.startswith("browser.")
+            or tool.startswith("desktop.")
+            or tool == "computer.batch"
         ]
         if gui_tools:
             raise ValueError(
-                "tier 'no_gui_tool_only' must not expose browser.* or desktop.* tools: "
+                "tier 'cli_only' must not expose browser.*, desktop.*, or computer.batch "
+                "tools: "
                 f"{gui_tools}"
             )
 
         input_modes = self.extra.get("input_modes")
         if not isinstance(input_modes, list) or not input_modes:
             raise ValueError(
-                "tier 'no_gui_tool_only' must set extra.input_modes to non-visual modes "
+                "tier 'cli_only' must set extra.input_modes to non-visual modes "
                 "such as ['axtree']"
             )
 
@@ -111,7 +150,7 @@ class ToolHarnessConfig(BaseModel):
         )
         if visual_modes:
             raise ValueError(
-                "tier 'no_gui_tool_only' must not expose visual input modes: "
+                "tier 'cli_only' must not expose visual input modes: "
                 f"{visual_modes}"
             )
         return self

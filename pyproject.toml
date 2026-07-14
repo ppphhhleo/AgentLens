@@ -39,3 +39,6 @@ exclude = [
     ".uv-cache",
     ".venv",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

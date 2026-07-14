@@ -28,6 +28,7 @@ def run_desktop_react_loop(
     model_max_attempts: int = 3,
     model_retry_sleep_s: float = 1.0,
     max_actions_per_round: int = 1,
+    viewport: dict[str, int] | None = None,
     log_action: Callable[[str], None] | None = None,
 ) -> tuple[str | None, list[TrajectoryEvent]]:
     events: list[TrajectoryEvent] = []
@@ -37,7 +38,14 @@ def run_desktop_react_loop(
         toolset = ToolSet(allowed=frozenset())
     intervention = RepeatedActionIntervention.from_config(intervention_config)
 
-    initial = capture_desktop_screenshot_event(sandbox, screenshot_dir, 0, goal)
+    viewport = viewport or {"width": 1920, "height": 1080}
+    initial = capture_desktop_screenshot_event(
+        sandbox,
+        screenshot_dir,
+        0,
+        goal,
+        viewport=viewport,
+    )
     events.append(initial)
     last_screenshot = initial.artifact_paths[0] if initial.artifact_paths else None
     pending_tool_output = None
@@ -49,7 +57,7 @@ def run_desktop_react_loop(
             max_steps=max_steps,
             screenshot_path=last_screenshot,
             url="desktop://sandbox",
-            viewport={"width": 0, "height": 0},
+            viewport=viewport,
             tool_output_since_last_step=pending_tool_output,
         )
         pending_tool_output = None
@@ -85,7 +93,8 @@ def run_desktop_react_loop(
         round_actions = model_step.action_list()
         if max_actions_per_round < 1:
             max_actions_per_round = 1
-        if len(round_actions) > max_actions_per_round:
+        ordered_action_batch = bool((model_step.extra or {}).get("ordered_action_batch"))
+        if len(round_actions) > max_actions_per_round and not ordered_action_batch:
             events.append(
                 TrajectoryEvent(
                     event_type=TrajectoryEventType.GATING_VIOLATION,
@@ -121,6 +130,9 @@ def run_desktop_react_loop(
                     "model_meta": model_step.extra,
                     "provider_tool_call": (model_step.extra or {}).get("provider_tool_call"),
                     "provider_tool_calls": (model_step.extra or {}).get("provider_tool_calls"),
+                    "provider_action_group_sizes": (model_step.extra or {}).get(
+                        "provider_action_group_sizes"
+                    ),
                     "mock": False,
                 },
             )
@@ -136,7 +148,10 @@ def run_desktop_react_loop(
 
             decision = intervention.observe(action)
             if decision.triggered:
-                pending_tool_output = f"[intervention:{decision.kind}]\n{decision.message}"
+                pending_tool_output = _merge_tool_outputs(
+                    pending_tool_output,
+                    f"[intervention:{decision.kind}]\n{decision.message}",
+                )
                 events.append(
                     TrajectoryEvent(
                         event_type=TrajectoryEventType.USER_INTERVENTION,
@@ -154,7 +169,10 @@ def run_desktop_react_loop(
 
             allowed, gating_msg = toolset.gate_action(action)
             if not allowed:
-                pending_tool_output = f"[gating violation]\n{gating_msg}"
+                pending_tool_output = _merge_tool_outputs(
+                    pending_tool_output,
+                    f"[gating violation]\n{gating_msg}",
+                )
                 events.append(
                     TrajectoryEvent(
                         event_type=TrajectoryEventType.GATING_VIOLATION,
@@ -174,7 +192,10 @@ def run_desktop_react_loop(
                 break
 
             output, error = execute_desktop_action(sandbox, action)
-            pending_tool_output = _format_tool_output(action.type, output, error)
+            pending_tool_output = _merge_tool_outputs(
+                pending_tool_output,
+                _format_tool_output(action.type, output, error),
+            )
             events.append(
                 TrajectoryEvent(
                     event_type=TrajectoryEventType.TOOL_CALL,
@@ -182,6 +203,9 @@ def run_desktop_react_loop(
                     data={
                         **common,
                         "tool_name": tool_name_for(action),
+                        "expanded_from_tool": (
+                            "computer.batch" if ordered_action_batch else None
+                        ),
                         "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
                         "ok": not bool(error),
                         "output": output,
@@ -196,6 +220,7 @@ def run_desktop_react_loop(
                 step_index,
                 goal,
                 name_suffix=_subaction_suffix(len(round_actions), subaction_index),
+                viewport=viewport,
             )
             events.append(screenshot)
             if screenshot.artifact_paths:
@@ -215,6 +240,13 @@ def _format_tool_output(action_type: str, output: str, error: str, max_chars: in
     if len(text) > max_chars:
         text = text[:max_chars] + "...[truncated]"
     return f"[{action_type} result]\n{text or '(no output)'}"
+
+
+def _merge_tool_outputs(left: str | None, right: str, max_chars: int = 6000) -> str:
+    merged = right if not left else f"{left}\n\n{right}"
+    if len(merged) > max_chars:
+        return merged[:max_chars] + "...[truncated]"
+    return merged
 
 
 def _subaction_suffix(actions_in_round: int, subaction_index: int) -> str:

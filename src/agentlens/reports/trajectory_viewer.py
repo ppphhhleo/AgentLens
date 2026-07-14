@@ -662,6 +662,16 @@ def _harness_display(tool_harness: dict[str, Any]) -> tuple[str, str]:
     tier = str(tool_harness.get("tier") or "")
     tools = [str(tool) for tool in tool_harness.get("tools") or []]
 
+    if tier == "gui_only":
+        labels = [_display_tool_name(tool) for tool in tools]
+        return "GUI-only", ", ".join(labels) if labels else "direct manipulation"
+    if tier in {"cli_only", "no_gui_tool_only"}:
+        labels = [_display_tool_name(tool) for tool in tools]
+        return "CLI-only", ", ".join(labels) if labels else "programmatic tools"
+    if tier in {"computer_use", "full_sandbox"}:
+        labels = [_display_tool_name(tool) for tool in tools]
+        return "Computer use", ", ".join(labels) if labels else "GUI + programmatic tools"
+
     if harness_id == "browser_only":
         return (
             "GUI-only",
@@ -672,14 +682,12 @@ def _harness_display(tool_harness: dict[str, Any]) -> tuple[str, str]:
             "GUI-only",
             "click, double click, move, drag, scroll, type, keypress, wait, final_answer",
         )
-    if harness_id == "full_sandbox" or tier == "full_sandbox":
+    if harness_id == "full_sandbox":
+        labels = [_display_tool_name(tool) for tool in tools]
+        return "Full sandbox", ", ".join(labels) if labels else "GUI + programmatic tools"
+    if harness_id == "no_gui_tool_only":
         return (
-            "Full sandbox",
-            "GUI actions + web search, Python, shell, files, final_answer",
-        )
-    if harness_id == "no_gui_tool_only" or tier == "no_gui_tool_only":
-        return (
-            "No-GUI/tool-only",
+            "CLI-only",
             "web search, Python, shell, files, final_answer",
         )
     if harness_id == "desktop_gui_gui_vs_cli_chatgpt":
@@ -702,7 +710,15 @@ def _harness_display(tool_harness: dict[str, Any]) -> tuple[str, str]:
 
 def _display_tool_name(tool_name: str) -> str:
     name = tool_name
-    for prefix in ("browser.", "desktop.", "task.", "code.", "files.", "web."):
+    for prefix in (
+        "browser.",
+        "computer.",
+        "desktop.",
+        "task.",
+        "code.",
+        "files.",
+        "web.",
+    ):
         if name.startswith(prefix):
             name = name[len(prefix) :]
             break

@@ -118,9 +118,21 @@ class DesktopReactAdapter:
         screenshot_dir = artifact_dir / "screenshots"
         screenshot_dir.mkdir(parents=True, exist_ok=True)
         harness_extra = plan.tool_harness.extra
+        sandbox_env = {
+            str(key): str(value)
+            for key, value in dict(harness_extra.get("sandbox_env") or {}).items()
+        }
+        screen_size = harness_extra.get("screen_size") or (
+            plan.model.extra or {}
+        ).get("screen_size", [1920, 1080])
+        if not isinstance(screen_size, (list, tuple)) or len(screen_size) != 2:
+            screen_size = [1920, 1080]
+        sandbox_env.setdefault("DISPLAY_WIDTH", str(int(screen_size[0])))
+        sandbox_env.setdefault("DISPLAY_HEIGHT", str(int(screen_size[1])))
         sandbox_cm = AIOSandboxSession(
             image=harness_extra.get("sandbox_image", "ghcr.io/agent-infra/sandbox:latest"),
             host_port=int(harness_extra.get("sandbox_port", 8080)),
+            env=sandbox_env,
             shm_size=harness_extra.get("sandbox_shm_size", "2g"),
             cap_add=list(harness_extra.get("sandbox_cap_add", ["SYS_ADMIN"])),
             security_opt=list(harness_extra.get("sandbox_security_opt", ["seccomp=unconfined"])),
@@ -136,6 +148,13 @@ class DesktopReactAdapter:
                 settle_ms = int(harness_extra.get("settle_ms", 0) or 0)
                 if settle_ms > 0:
                     time.sleep(settle_ms / 1000)
+                if plan.task.start_url and bool(harness_extra.get("maximize_window", True)):
+                    maximized = sandbox.shell(_maximize_active_window_command(), timeout_sec=10)
+                    self._log(
+                        log_action,
+                        f"[{plan.run_id}] desktop_maximize_window "
+                        f"ok={maximized.ok} err={maximized.error[:120]!r}",
+                    )
                 if plan.task.start_url and bool(harness_extra.get("force_start_url", True)):
                     nav = sandbox.shell(_force_start_url_command(plan.task.start_url), timeout_sec=10)
                     self._log(
@@ -144,6 +163,29 @@ class DesktopReactAdapter:
                     )
                     if settle_ms > 0:
                         time.sleep(settle_ms / 1000)
+                if plan.task.start_url and bool(
+                    harness_extra.get("require_browser_ready", True)
+                ):
+                    ready, observed_url = _wait_for_browser_ready(
+                        sandbox,
+                        plan.task.start_url,
+                        timeout_s=float(harness_extra.get("browser_ready_timeout_s", 30)),
+                    )
+                    self._log(
+                        log_action,
+                        f"[{plan.run_id}] desktop_browser_ready "
+                        f"ok={ready} url={observed_url!r}",
+                    )
+                    if not ready:
+                        raise RuntimeError(
+                            "browser did not reach the task website before the acting loop; "
+                            f"expected={plan.task.start_url!r}, observed={observed_url!r}"
+                        )
+                    ready_settle_ms = int(
+                        harness_extra.get("browser_ready_settle_ms", 1500) or 0
+                    )
+                    if ready_settle_ms > 0:
+                        time.sleep(ready_settle_ms / 1000)
             toolset = ToolSet.from_harness(plan.tool_harness)
             model_config = plan.model.model_copy(
                 update={
@@ -170,6 +212,10 @@ class DesktopReactAdapter:
                 model_max_attempts=int(harness_extra.get("model_max_attempts", 3)),
                 model_retry_sleep_s=float(harness_extra.get("model_retry_sleep_s", 1.0)),
                 max_actions_per_round=int(harness_extra.get("max_actions_per_round", 1)),
+                viewport={
+                    "width": int(screen_size[0]),
+                    "height": int(screen_size[1]),
+                },
                 log_action=log_action,
             )
 
@@ -266,8 +312,12 @@ class DesktopReactAdapter:
     ) -> None:
         if tool_harness.runner != "desktop_react":
             raise ValueError(f"run '{run_id}' expected runner desktop_react")
-        if tool_harness.tier != ToolHarnessTier.FULL_SANDBOX:
-            raise ValueError("desktop_react requires tier='full_sandbox'")
+        if tool_harness.tier not in {
+            ToolHarnessTier.GUI_ONLY,
+            ToolHarnessTier.COMPUTER_USE,
+            ToolHarnessTier.FULL_SANDBOX,
+        }:
+            raise ValueError("desktop_react requires tier='gui_only' or 'computer_use'")
         if model.provider not in {"openai", "anthropic", "gemini"}:
             raise ValueError("desktop_react currently supports OpenAI, Anthropic, or Gemini models")
         if not model.vision:
@@ -312,9 +362,95 @@ def _desktop_start_command(plan: DesktopReactRunPlan) -> str | None:
 
 
 def _force_start_url_command(start_url: str) -> str:
+    cdp_script = (
+        "import json,sys,urllib.parse,urllib.request; "
+        "base='http://127.0.0.1:9222'; "
+        "url=sys.argv[1]; "
+        "req=urllib.request.Request(base+'/json/new?'+urllib.parse.quote(url,safe=''), "
+        "method='PUT'); "
+        "target=json.load(urllib.request.urlopen(req,timeout=5)); "
+        "target_id=str(target.get('id','')); "
+        "assert target_id; "
+        "urllib.request.urlopen(urllib.request.Request("
+        "base+'/json/activate/'+target_id,method='PUT'),timeout=5).read()"
+    )
+    cdp_command = f"python3 -c {shlex.quote(cdp_script)} {shlex.quote(start_url)}"
     quoted_url = shlex.quote(start_url)
-    return (
+    gui_fallback = _desktop_user_command(
+        f"{_activate_browser_window_script()} && "
         "xdotool key --clearmodifiers ctrl+l && "
         f"xdotool type --clearmodifiers -- {quoted_url} && "
         "xdotool key --clearmodifiers Return"
     )
+    return f"({cdp_command}) || ({gui_fallback})"
+
+
+def _maximize_active_window_command() -> str:
+    return _desktop_user_command(
+        f"{_activate_browser_window_script()} && "
+        "(wmctrl -i -r \"$wid\" -b add,maximized_vert,maximized_horz "
+        "|| xdotool key --clearmodifiers alt+F10)"
+    )
+
+
+def _activate_browser_window_script() -> str:
+    return (
+        "wid=$(xdotool search --onlyvisible --class "
+        "'(google-chrome|chromium|Google-chrome)' 2>/dev/null | tail -n 1); "
+        "[ -n \"$wid\" ] || wid=$(xdotool search --onlyvisible --name "
+        "'(Chrome|Chromium)' 2>/dev/null | tail -n 1); "
+        "[ -n \"$wid\" ] && xdotool windowactivate --sync \"$wid\""
+    )
+
+
+def _desktop_user_command(script: str) -> str:
+    quoted_script = shlex.quote(script)
+    return (
+        'if [ "$(id -u)" -eq 0 ]; then '
+        'runuser -u gem -- env HOME=/home/gem DISPLAY="${DISPLAY:-:99.0}" '
+        f"sh -lc {quoted_script}; "
+        "else "
+        'env HOME="${HOME:-/home/gem}" DISPLAY="${DISPLAY:-:99.0}" '
+        f"sh -lc {quoted_script}; "
+        "fi"
+    )
+
+
+def _wait_for_browser_ready(
+    sandbox,
+    start_url: str,
+    *,
+    timeout_s: float,
+) -> tuple[bool, str]:
+    deadline = time.monotonic() + max(1.0, timeout_s)
+    command = _browser_target_check_command(start_url)
+    last_url = ""
+    stable_matches = 0
+    while time.monotonic() < deadline:
+        result = sandbox.shell(command, timeout_sec=5)
+        observed_url = (result.output or "").strip().splitlines()
+        if observed_url:
+            current_url = observed_url[-1]
+            if result.ok:
+                stable_matches = stable_matches + 1 if current_url == last_url else 1
+                if stable_matches >= 2:
+                    return True, current_url
+            else:
+                stable_matches = 0
+            last_url = current_url
+        time.sleep(1)
+    return False, last_url
+
+
+def _browser_target_check_command(start_url: str) -> str:
+    script = (
+        "import json,sys,urllib.parse,urllib.request; "
+        "expected=sys.argv[1]; expected_host=urllib.parse.urlsplit(expected).netloc; "
+        "targets=json.load(urllib.request.urlopen('http://127.0.0.1:9222/json/list', timeout=3)); "
+        "urls=[str(item.get('url','')) for item in targets if item.get('type')=='page']; "
+        "valid=[url for url in urls if url and not url.startswith('chrome-error://') "
+        "and (not expected_host or urllib.parse.urlsplit(url).netloc==expected_host)]; "
+        "print(valid[0] if valid else (urls[0] if urls else '')); "
+        "raise SystemExit(0 if valid else 1)"
+    )
+    return f"python3 -c {shlex.quote(script)} {shlex.quote(start_url)}"

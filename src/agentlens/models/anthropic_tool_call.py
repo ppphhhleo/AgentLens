@@ -84,7 +84,8 @@ class AnthropicToolCallModel:
             kwargs["temperature"] = self.temperature
         response = self.client.messages.create(**kwargs)
         decisions = self.provider_adapter.parse_decisions(response, model=self.model_name)
-        actions = [self.registry.to_action(decision) for decision in decisions]
+        action_groups = [self.registry.to_actions(decision) for decision in decisions]
+        actions = [action for group in action_groups for action in group]
         primary = decisions[0]
         return ModelStep(
             thought=primary.reasoning,
@@ -99,6 +100,10 @@ class AnthropicToolCallModel:
                 "interaction_backend": "tool_call",
                 "provider_tool_call": primary.to_record(),
                 "provider_tool_calls": [decision.to_record() for decision in decisions],
+                "provider_action_group_sizes": [len(group) for group in action_groups],
+                "ordered_action_batch": any(
+                    decision.tool_name == "computer.batch" for decision in decisions
+                ),
             },
         )
 
@@ -113,15 +118,20 @@ class AnthropicToolCallModel:
         for i, past in enumerate(history, start=1):
             action_parts = []
             provider_calls = (past.extra or {}).get("provider_tool_calls") or []
-            for j, action in enumerate(past.action_list(), start=1):
-                action_json = action.model_dump(
-                    mode="json",
-                    exclude_none=True,
-                    exclude_defaults=True,
-                )
-                provider_call = provider_calls[j - 1] if j - 1 < len(provider_calls) else {}
-                tool_name = provider_call.get("tool_name") or action_json.get("type")
-                action_parts.append(f"{j}. tool={tool_name!r} args={action_json}")
+            if provider_calls:
+                for j, provider_call in enumerate(provider_calls, start=1):
+                    action_parts.append(
+                        f"{j}. tool={provider_call.get('tool_name')!r} "
+                        f"args={provider_call.get('tool_args') or {}}"
+                    )
+            else:
+                for j, action in enumerate(past.action_list(), start=1):
+                    action_json = action.model_dump(
+                        mode="json",
+                        exclude_none=True,
+                        exclude_defaults=True,
+                    )
+                    action_parts.append(f"{j}. tool={action_json.get('type')!r} args={action_json}")
             history_lines.append(
                 f"Round {i}: " + "; ".join(action_parts) + f" reasoning={past.thought!r}"
             )
@@ -195,14 +205,20 @@ class AnthropicToolCallModel:
         return "You receive textual context and tool outputs. No screenshot is provided."
 
     def _action_policy(self) -> str:
+        batch_note = ""
+        if "computer.batch" in self.toolset.allowed:
+            batch_note = (
+                " computer.batch may contain a short ordered sequence of direct-manipulation "
+                "actions when no intermediate screenshot is needed."
+            )
         if self.parallel_tool_calls and self.max_actions_per_round > 1:
             return (
                 f"You may call up to {self.max_actions_per_round} tools in one step "
                 "when they are a short, safe sequence that does not require inspecting "
                 "intermediate results. Use one tool call when the next action depends on "
-                "what changes on screen."
+                f"what changes on screen.{batch_note}"
             )
-        return "Use exactly one tool call per step."
+        return f"Use exactly one registered tool call per step.{batch_note}"
 
     @staticmethod
     def _image_block(path: Path) -> dict[str, Any]:

@@ -63,6 +63,48 @@ TOOL_NAME_BY_ACTION_TYPE: dict[str, str] = {
 
 TOOL_NAME_TO_ACTION_TYPE: dict[str, str] = {v: k for k, v in TOOL_NAME_BY_ACTION_TYPE.items()}
 
+_COMPUTER_BATCH_ACTION_TYPES = frozenset(
+    {
+        "desktop_screenshot",
+        "desktop_click",
+        "desktop_double_click",
+        "desktop_scroll",
+        "desktop_move",
+        "desktop_drag",
+        "desktop_type",
+        "desktop_keypress",
+        "desktop_wait",
+    }
+)
+
+DESKTOP_DIRECT_MANIPULATION_TOOLS = (
+    "computer.batch",
+    "desktop.screenshot",
+    "desktop.click",
+    "desktop.double_click",
+    "desktop.triple_click",
+    "desktop.scroll",
+    "desktop.move",
+    "desktop.drag",
+    "desktop.type",
+    "desktop.keypress",
+    "desktop.wait",
+    "task.final_answer",
+)
+
+COMPUTER_USE_PROGRAMMATIC_TOOLS = (
+    "code.run_python",
+    "code.shell",
+    "files.read",
+    "files.write",
+    "desktop.launch_app",
+    "desktop.shell",
+)
+
+# Compatibility alias for older configs and imports. New code should use the
+# condition name above; "full_sandbox" is now only a legacy storage label.
+FULL_SANDBOX_PROGRAMMATIC_TOOLS = COMPUTER_USE_PROGRAMMATIC_TOOLS
+
 
 # Per-action prompt schema fragments. Order in this dict drives the
 # rendered list order in the system prompt. Keep concise — these are
@@ -133,7 +175,9 @@ class ToolSet:
             # Unknown action types are conservatively rejected when gating
             # is on; this surfaces typos and keeps the prompt aligned.
             return False
-        return tool_name in self.allowed
+        return tool_name in self.allowed or (
+            "computer.batch" in self.allowed and action_type in _COMPUTER_BATCH_ACTION_TYPES
+        )
 
     def gate_action(self, action: ComputerAction) -> tuple[bool, str | None]:
         """Returns (allowed, error_message_if_denied)."""

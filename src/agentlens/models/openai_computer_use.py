@@ -58,8 +58,8 @@ class OpenAIComputerUseModel:
         self.reasoning_summary = (config.extra or {}).get("reasoning_summary")
         self.truncation = (config.extra or {}).get("truncation", "auto")
         self.environment = (config.extra or {}).get("computer_environment", "linux")
-        self.display_width = int((config.extra or {}).get("display_width", 1024))
-        self.display_height = int((config.extra or {}).get("display_height", 768))
+        self.display_width = int((config.extra or {}).get("display_width", 1920))
+        self.display_height = int((config.extra or {}).get("display_height", 1080))
         self.previous_response_id: str | None = None
         self.pending_input_items: list[dict[str, Any]] = []
 

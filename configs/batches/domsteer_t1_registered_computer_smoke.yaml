@@ -1,0 +1,120 @@
+schema_version: "0.1"
+id: domsteer_t1_registered_computer_smoke
+description: >
+  Short DOMSteer T1 Codex OAuth smoke test for the registered-tool computer-use
+  approximation. Holds model, task, image, viewport, and prompt constant while
+  comparing GUI-only against computer-use tool exposure.
+
+models:
+  - id: gpt55_oauth_registered_computer
+    provider: openai
+    name: gpt-5.5
+    auth_mode: codex_oauth
+    temperature: 0.0
+    vision: true
+    max_output_tokens: 2048
+    extra:
+      interaction_backend: tool_call
+      input_modes: [screenshot]
+      addressing_modes: [coordinate]
+      parallel_tool_calls: false
+      max_actions_per_round: 1
+
+tool_harnesses:
+  - &desktop_base
+    id: desktop_gui_only_batched
+    runner: desktop_react
+    tier: gui_only
+    tools:
+      - computer.batch
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.triple_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+    prompt_version: registered_computer_v1
+    extra: &desktop_runtime
+      agent_type: gui_only
+      interaction_protocol: registered_tools
+      programmatic_access: none
+      sandbox_image: agentlens/desktop-poc:latest
+      sandbox_port: 18080
+      sandbox_shm_size: 2g
+      sandbox_cap_add: [SYS_ADMIN]
+      sandbox_security_opt: [seccomp=unconfined]
+      sandbox_watch_paths: [/home/gem, /tmp, /home/gem/Downloads]
+      desktop_start_cmd_template: >-
+        nohup bash -lc "if command -v google-chrome >/dev/null 2>&1; then exec google-chrome --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium-browser >/dev/null 2>&1; then exec chromium-browser --no-sandbox --disable-dev-shm-usage {start_url}; elif command -v chromium >/dev/null 2>&1; then exec chromium --no-sandbox --disable-dev-shm-usage {start_url}; else exec xdg-open {start_url}; fi" >/tmp/agentlens_start_browser.log 2>&1 &
+      settle_ms: 5000
+      screenshot_source: virtual_desktop
+      coordinate_frame: desktop_screen
+      screen_size: [1920, 1080]
+      max_actions_per_round: 1
+      model_max_attempts: 3
+      model_retry_sleep_s: 2.0
+
+  - <<: *desktop_base
+    id: desktop_computer_use_batched
+    tier: computer_use
+    tools:
+      - computer.batch
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.triple_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+      - code.run_python
+      - code.shell
+      - files.read
+      - files.write
+      - desktop.launch_app
+    extra:
+      <<: *desktop_runtime
+      agent_type: computer_use
+      interaction_protocol: registered_tools
+      programmatic_access: direct_tools
+
+memory_harnesses:
+  - id: no_memory
+    kind: none
+    scope: none
+
+task_files:
+  - tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml
+
+tasks: []
+
+runs:
+  - id: datavoyager_most_fuel_efficient__gpt55__gui_only_registered_batch
+    model: gpt55_oauth_registered_computer
+    tool_harness: desktop_gui_only_batched
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    max_steps: 3
+    output_dir: runs/domsteer_t1_registered_computer_smoke/raw
+    tags: [smoke, domsteer, datavoyager, gpt55, gui_only, registered_tools, ordered_batch]
+
+  - id: datavoyager_most_fuel_efficient__gpt55__computer_use_registered_batch
+    model: gpt55_oauth_registered_computer
+    tool_harness: desktop_computer_use_batched
+    memory_harness: no_memory
+    task: datavoyager_most_fuel_efficient
+    seeds: [0]
+    trials: 1
+    max_steps: 3
+    output_dir: runs/domsteer_t1_registered_computer_smoke/raw
+    tags: [smoke, domsteer, datavoyager, gpt55, computer_use, registered_tools, ordered_batch]

@@ -20,6 +20,7 @@ def capture_desktop_screenshot_event(
     goal: str | None,
     *,
     name_suffix: str = "",
+    viewport: dict[str, int] | None = None,
 ) -> TrajectoryEvent:
     """Capture the virtual desktop from inside the sandbox container."""
     screenshot_dir.mkdir(parents=True, exist_ok=True)
@@ -41,6 +42,7 @@ def capture_desktop_screenshot_event(
             "kind": "desktop",
             "screenshot_source": "virtual_desktop",
             "coordinate_frame": "desktop_screen",
+            "viewport": viewport or {},
             "remote_path": remote_path,
             "error": error,
         },
@@ -61,7 +63,7 @@ def execute_desktop_action(sandbox, action: ComputerAction) -> tuple[str, str]:
         return result.output, result.error
     if action.type == "desktop_pyautogui":
         result = sandbox.shell(_pyautogui_command(action.code or ""), timeout_sec=100)
-        return result.output, result.error
+        return result.output, _desktop_tool_error(result, "pyautogui")
     if action.type == "desktop_shell":
         cmd = action.cmd or ""
         safe_cmd = _detached_gui_command(cmd)
@@ -75,6 +77,18 @@ def execute_desktop_action(sandbox, action: ComputerAction) -> tuple[str, str]:
                 ).lstrip()
             return output, result.error
         result = sandbox.shell(cmd, timeout_sec=60)
+        return result.output, result.error
+    if action.type == "run_python":
+        result = sandbox.run_python(action.code or "")
+        return result.output, result.error
+    if action.type == "shell":
+        result = sandbox.shell(action.cmd or "", timeout_sec=60)
+        return result.output, result.error
+    if action.type == "read_file":
+        result = sandbox.read_file(action.file_path or "")
+        return result.output, result.error
+    if action.type == "write_file":
+        result = sandbox.write_file(action.file_path or "", action.content or "")
         return result.output, result.error
     if action.type == "desktop_click":
         button = {"left": 1, "middle": 2, "right": 3}.get(action.button, 1)
@@ -176,10 +190,12 @@ def _pyautogui_command(code: str) -> str:
     preamble = "import pyautogui; import pyperclip; import time; pyautogui.FAILSAFE = False"
     quoted = shlex.quote(preamble + "; " + body)
     return (
+        'python_bin="${AGENTLENS_PYAUTOGUI_PYTHON:-/opt/agentlens-pyautogui/bin/python}"; '
+        '[ -x "$python_bin" ] || python_bin="$(command -v python3)"; '
         'if [ "$(id -u)" -eq 0 ]; then '
-        f"runuser -u gem -- env HOME=/home/gem DISPLAY=${{DISPLAY:-:99.0}} python3 -c {quoted}; "
+        f"runuser -u gem -- env HOME=/home/gem DISPLAY=${{DISPLAY:-:99.0}} \"$python_bin\" -c {quoted}; "
         "else "
-        f"env HOME=${{HOME:-/home/gem}} DISPLAY=${{DISPLAY:-:99.0}} python3 -c {quoted}; "
+        f"env HOME=${{HOME:-/home/gem}} DISPLAY=${{DISPLAY:-:99.0}} \"$python_bin\" -c {quoted}; "
         "fi"
     )
 
@@ -206,10 +222,19 @@ def _docker_cp_from_container(sandbox, remote_path: str, host_path: Path) -> boo
 
 
 def _desktop_tool_error(result, tool_name: str) -> str:
-    if result.ok:
+    combined = "\n".join(
+        value for value in (str(result.error or ""), str(result.output or "")) if value
+    )
+    failure_markers = (
+        "Traceback (most recent call last)",
+        "ModuleNotFoundError",
+        "ImportError",
+        "command not found",
+    )
+    if result.ok and not any(marker in combined for marker in failure_markers):
         return ""
-    err = result.error or result.output
-    if "not found" in err or "command not found" in err:
+    err = combined or f"{tool_name} action failed"
+    if "not found" in err or "command not found" in err or "No module named" in err:
         return f"{tool_name} is not installed in the desktop sandbox image"
     return err
 

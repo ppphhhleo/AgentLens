@@ -7,6 +7,16 @@ Run for human inspection (this spends model quota):
     AGENTLENS_CODEX_MODEL=<exact-model-id> \
       .venv/bin/pytest -s tests/test_codex_oauth_live.py
 
+Run the focused three-tier registered-tool smoke:
+
+    AGENTLENS_LIVE_CODEX_OAUTH_TIERS=1 \
+    AGENTLENS_OPENAI_AUTH_MODE=codex_oauth \
+    AGENTLENS_CODEX_MODEL=<exact-model-id> \
+    PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+    PYTHONPATH=src \
+      .venv/bin/python -m pytest -p no:capture -q \
+      tests/test_codex_oauth_live.py -k agent_tiers
+
 The test reuses ``codex login`` credentials. It intentionally checks that
 built-in OpenAI web search is rejected: that native tool is not supported by
 the ChatGPT Codex endpoint and must never fall back to ``OPENAI_API_KEY``.
@@ -17,12 +27,14 @@ import base64
 import json
 import os
 from pathlib import Path
+import time
 from typing import Any
 
 import pytest
 
 from agentlens.openai_provider import build_openai_client, resolve_helper_model
 from agentlens.tools.openai_search import openai_web_search
+from agentlens.tools.registry import OpenAIToolAdapter, default_tool_registry
 
 
 # Use a real, tracked RGB screenshot. Some vision backends reject 1x1 images
@@ -66,6 +78,114 @@ def _show(label: str, response: Any) -> None:
     }
     print(f"\n===== {label} =====")
     print(json.dumps(printable, indent=2, ensure_ascii=False))
+
+
+def _create_with_retry(client: Any, **kwargs: Any) -> Any:
+    for attempt in range(1, 4):
+        try:
+            return client.chat.completions.create(**kwargs)
+        except Exception:
+            if attempt == 3:
+                raise
+            time.sleep(2**attempt)
+    raise AssertionError("unreachable")
+
+
+@pytest.mark.skipif(
+    os.environ.get("AGENTLENS_LIVE_CODEX_OAUTH_TIERS") != "1",
+    reason="set AGENTLENS_LIVE_CODEX_OAUTH_TIERS=1 for the three-tier OAuth smoke",
+)
+def test_live_codex_oauth_agent_tiers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Smoke the actual OAuth image/function surface for all three agent tiers."""
+    monkeypatch.setenv("AGENTLENS_OPENAI_AUTH_MODE", "codex_oauth")
+    model = resolve_helper_model(None)
+    client = build_openai_client(auth_mode="codex_oauth", model=model)
+    registry = default_tool_registry()
+
+    def call_tier(
+        label: str,
+        tool_names: list[str],
+        forced_tool: str,
+        instruction: str,
+        *,
+        include_image: bool,
+    ) -> tuple[Any, list[Any]]:
+        adapter = OpenAIToolAdapter(registry)
+        payloads = adapter.tool_payloads(
+            registry.specs_for_tool_names(tool_names, strict=True)
+        )
+        provider_name = forced_tool.replace(".", "__")
+        content: Any = instruction
+        if include_image:
+            content = [
+                {"type": "text", "text": instruction},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": _vision_data_url(), "detail": "auto"},
+                },
+            ]
+        response = _create_with_retry(
+            client,
+            model=model,
+            messages=[{"role": "user", "content": content}],
+            tools=payloads,
+            tool_choice={"type": "function", "function": {"name": provider_name}},
+            parallel_tool_calls=False,
+        )
+        _show(label, response)
+        decisions = adapter.parse_decisions(response, model=model)
+        assert len(decisions) == 1
+        assert decisions[0].tool_name == forced_tool
+        actions = registry.to_actions(decisions[0])
+        return response, actions
+
+    _, gui_actions = call_tier(
+        "OAUTH GUI-ONLY",
+        [
+            "computer.batch",
+            "desktop.click",
+            "desktop.type",
+            "desktop.keypress",
+            "desktop.wait",
+            "task.final_answer",
+        ],
+        "computer.batch",
+        (
+            "Use computer.batch with exactly two ordered actions: move to x=100,y=200, "
+            "then left_click at x=100,y=200."
+        ),
+        include_image=True,
+    )
+    assert [action.type for action in gui_actions] == ["desktop_move", "desktop_click"]
+
+    _, cli_actions = call_tier(
+        "OAUTH CLI-ONLY",
+        ["code.run_python", "code.shell", "files.read", "files.write", "task.final_answer"],
+        "code.shell",
+        "Call code.shell with the command: printf oauth-cli-only-ok",
+        include_image=False,
+    )
+    assert len(cli_actions) == 1 and cli_actions[0].type == "shell"
+
+    _, computer_actions = call_tier(
+        "OAUTH COMPUTER-USE",
+        [
+            "computer.batch",
+            "desktop.click",
+            "desktop.type",
+            "desktop.keypress",
+            "desktop.wait",
+            "code.run_python",
+            "code.shell",
+            "files.read",
+            "files.write",
+            "task.final_answer",
+        ],
+        "code.shell",
+        "Inspect the provided screen, then call code.shell with: printf oauth-computer-use-ok",
+        include_image=True,
+    )
+    assert len(computer_actions) == 1 and computer_actions[0].type == "shell"
 
 
 @pytest.mark.skipif(

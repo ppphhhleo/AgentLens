@@ -330,11 +330,12 @@ class CocoaBenchAdapter:
             )
         if tool_harness.tier not in {
             ToolHarnessTier.BROWSER_FILES,
+            ToolHarnessTier.COMPUTER_USE,
             ToolHarnessTier.FULL_SANDBOX,
         }:
             raise ValueError(
                 f"run '{run_id}' uses tier '{tool_harness.tier}'; CocoaBench tasks "
-                "require browser_files or full_sandbox"
+                "require browser_files or computer_use"
             )
         if task.benchmark != "cocoabench":
             raise ValueError(

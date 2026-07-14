@@ -123,6 +123,36 @@ def test_anthropic_triple_click_maps_to_desktop_action() -> None:
     assert action.y == 240
 
 
+def test_anthropic_computer_batch_expands_to_ordered_actions() -> None:
+    registry = default_tool_registry()
+    adapter = AnthropicToolAdapter(registry)
+    adapter.tool_payloads([registry.get("computer.batch")])
+    response = SimpleNamespace(
+        content=[
+            SimpleNamespace(
+                type="tool_use",
+                name="computer__batch",
+                input={
+                    "actions": [
+                        {"type": "move", "x": 100, "y": 200},
+                        {"type": "left_click", "x": 100, "y": 200},
+                    ],
+                    "reasoning": "Move and click without an intermediate screenshot.",
+                },
+            ),
+        ],
+        stop_reason="tool_use",
+        usage=SimpleNamespace(input_tokens=20, output_tokens=12),
+        model_dump=lambda mode="json": {"id": "msg_batch"},
+    )
+
+    decision = adapter.parse_decision(response, model="claude-test")
+    actions = registry.to_actions(decision)
+
+    assert decision.tool_name == "computer.batch"
+    assert [action.type for action in actions] == ["desktop_move", "desktop_click"]
+
+
 def test_anthropic_text_response_can_fallback_to_final_answer() -> None:
     registry = default_tool_registry()
     adapter = AnthropicToolAdapter(registry)
