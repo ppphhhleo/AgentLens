@@ -20,6 +20,7 @@ from agentlens.adapters.desktop_react import (
     DesktopReactAdapter,
     _desktop_start_command,
     _fresh_browser_profile_command,
+    _force_start_url_command,
     _maximize_active_window_command,
     _wait_for_browser_ready,
 )
@@ -117,6 +118,34 @@ def main() -> int:
                     "ok": maximized.ok,
                     "error": maximized.error or None,
                 }
+
+            if plan.task.start_url and bool(harness_extra.get("force_start_url", True)):
+                launch_ready, launch_url = _wait_for_browser_ready(
+                    sandbox,
+                    plan.task.start_url,
+                    timeout_s=float(harness_extra.get("launch_url_grace_s", 4)),
+                )
+                if not launch_ready:
+                    navigation = sandbox.shell(
+                        _force_start_url_command(plan.task.start_url), timeout_sec=10
+                    )
+                    result["force_start_url"] = {
+                        "attempted": True,
+                        "ok": navigation.ok,
+                        "prior_url": launch_url,
+                        "error": navigation.error or None,
+                    }
+                    if not navigation.ok:
+                        raise RuntimeError(navigation.error or navigation.output)
+                    settle_ms = int(harness_extra.get("settle_ms", 0) or 0)
+                    if settle_ms:
+                        time.sleep(settle_ms / 1000)
+                else:
+                    result["force_start_url"] = {
+                        "attempted": False,
+                        "ok": True,
+                        "prior_url": launch_url,
+                    }
 
             if plan.task.start_url and bool(harness_extra.get("require_browser_ready", True)):
                 ready, observed_url = _wait_for_browser_ready(
