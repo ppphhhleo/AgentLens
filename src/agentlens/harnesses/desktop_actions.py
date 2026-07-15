@@ -27,13 +27,23 @@ def capture_desktop_screenshot_event(
     suffix = f"_{name_suffix.lstrip('_')}" if name_suffix else ""
     host_path = screenshot_dir / f"step_{step_index:03d}{suffix}.png"
     remote_path = f"/tmp/agentlens_desktop_step_{step_index:03d}{suffix}.png"
-    result = sandbox.shell(_screenshot_command(remote_path), timeout_sec=15)
-    if result.ok and _docker_cp_from_container(sandbox, remote_path, host_path):
-        artifact_paths = [host_path]
-        error = ""
+    screenshot_fn = getattr(sandbox, "screenshot", None)
+    if callable(screenshot_fn):
+        try:
+            host_path.write_bytes(screenshot_fn())
+            artifact_paths = [host_path]
+            error = ""
+        except Exception as exc:  # noqa: BLE001 - fall through to existing capture path
+            artifact_paths = []
+            error = f"desktop screenshot capture failed: {exc}"
     else:
-        artifact_paths = []
-        error = result.error or result.output or "desktop screenshot capture failed"
+        result = sandbox.shell(_screenshot_command(remote_path), timeout_sec=15)
+        if result.ok and _docker_cp_from_container(sandbox, remote_path, host_path):
+            artifact_paths = [host_path]
+            error = ""
+        else:
+            artifact_paths = []
+            error = result.error or result.output or "desktop screenshot capture failed"
     return TrajectoryEvent(
         event_type=TrajectoryEventType.SCREENSHOT,
         step_index=step_index,

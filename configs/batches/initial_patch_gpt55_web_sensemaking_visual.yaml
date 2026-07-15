@@ -55,7 +55,9 @@ tool_harnesses:
       agent_type: gui_only
       interaction_protocol: registered_tools
       programmatic_access: none
-      sandbox_image: agentlens/desktop-poc:latest
+      sandbox_backend: gui_synth
+      gui_synth_app: chrome
+      sandbox_image: agentlens-gui-vs-cli-runtime:latest
       sandbox_port: 8080
       sandbox_shm_size: 2g
       sandbox_cap_add: [SYS_ADMIN]
@@ -68,7 +70,8 @@ tool_harnesses:
       coordinate_frame: desktop_screen
       parallel_tool_calls: true
       max_actions_per_round: 5
-      fresh_browser_profile_per_run: true
+      # Every gui_synth case provisions a fresh desktop container.
+      fresh_browser_profile_per_run: false
       record_setup_actions: false
       model_max_attempts: 6
       model_retry_sleep_s: 2.0
@@ -87,7 +90,9 @@ tool_harnesses:
       agent_type: computer_use
       interaction_protocol: native_computer
       programmatic_access: gui_mediated
-      sandbox_image: agentlens/desktop-poc:latest
+      sandbox_backend: gui_synth
+      gui_synth_app: chrome
+      sandbox_image: agentlens-gui-vs-cli-runtime:latest
       sandbox_port: 8080
       sandbox_shm_size: 2g
       sandbox_cap_add: [SYS_ADMIN]
@@ -99,7 +104,7 @@ tool_harnesses:
       screenshot_source: virtual_desktop
       coordinate_frame: desktop_screen
       max_actions_per_round: 5
-      fresh_browser_profile_per_run: true
+      fresh_browser_profile_per_run: false
       record_setup_actions: false
       model_retry_sleep_s: 2.0
       model_retry_max_sleep_s: 60.0

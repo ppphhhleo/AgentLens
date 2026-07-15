@@ -18,14 +18,15 @@ from pathlib import Path
 
 from agentlens.adapters.desktop_react import (
     DesktopReactAdapter,
+    _build_desktop_sandbox_session,
     _desktop_start_command,
     _fresh_browser_profile_command,
     _force_start_url_command,
     _maximize_active_window_command,
     _wait_for_browser_ready,
 )
+from agentlens.harnesses.desktop_actions import capture_desktop_screenshot_event
 from agentlens.schemas import load_experiment_config
-from agentlens.sandbox import AIOSandboxSession
 from agentlens.trajectory_paths import trajectory_case_slug
 
 
@@ -83,15 +84,7 @@ def main() -> int:
     }
 
     try:
-        with AIOSandboxSession(
-            image=harness_extra.get("sandbox_image", "ghcr.io/agent-infra/sandbox:latest"),
-            host_port=int(harness_extra.get("sandbox_port", 8080)),
-            env=sandbox_env,
-            shm_size=harness_extra.get("sandbox_shm_size", "2g"),
-            cap_add=list(harness_extra.get("sandbox_cap_add", ["SYS_ADMIN"])),
-            security_opt=list(harness_extra.get("sandbox_security_opt", ["seccomp=unconfined"])),
-            watch_paths=list(harness_extra.get("sandbox_watch_paths", ["/home/gem", "/tmp"])),
-        ) as sandbox:
+        with _build_desktop_sandbox_session(plan, sandbox_env) as sandbox:
             if result["browser_profile_reset"]["requested"]:  # type: ignore[index]
                 reset = sandbox.shell(_fresh_browser_profile_command(), timeout_sec=15)
                 result["browser_profile_reset"] = {  # type: ignore[index]
@@ -163,7 +156,18 @@ def main() -> int:
                 if settle_ms:
                     time.sleep(settle_ms / 1000)
 
-            screenshot_path.write_bytes(sandbox.screenshot())
+            screenshot = capture_desktop_screenshot_event(
+                sandbox,
+                artifact_dir,
+                0,
+                plan.task.goal,
+                viewport={"width": int(screen_size[0]), "height": int(screen_size[1])},
+            )
+            if not screenshot.artifact_paths:
+                raise RuntimeError(screenshot.data.get("error") or "initial screenshot capture failed")
+            captured_path = screenshot.artifact_paths[0]
+            if captured_path != screenshot_path:
+                captured_path.replace(screenshot_path)
             result["initial_screenshot"] = str(screenshot_path.name)
             result["ok"] = True
     except Exception as exc:  # noqa: BLE001

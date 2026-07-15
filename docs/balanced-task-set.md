@@ -53,12 +53,13 @@ record, and label results accordingly.
 
 ## Run Components
 
-Runtime image selection is intentional: the browser/DataVoyager/TensorFlow
-components use `agentlens/desktop-poc:latest`, which exposes the AIO sandbox
-API required by `desktop_react`. GUI-vs-CLI application workflows use
-`agentlens-gui-vs-cli-runtime:latest` through
-`scripts/gui_vs_cli_full_workflow_smoke.py`; that image is not an AIO sandbox
-image and should not be passed to `desktop_react`.
+The controlled comparison uses `agentlens-gui-vs-cli-runtime:latest` for both
+the browser/DataVoyager/TensorFlow tasks and the GUI-vs-CLI application
+workflows. `desktop_react` selects its `gui_synth` environment adapter for the
+browser tasks; the adapter translates only the sandbox-control interface while
+retaining the same 1920x1080 desktop image, app launch path, and fresh
+container-per-trial isolation. Agent style, not the desktop runtime, is the
+experimental difference.
 
 ```text
 configs/gui_vs_cli/initial_patch_gpt55_workflow_pairs.yaml

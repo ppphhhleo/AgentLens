@@ -111,7 +111,6 @@ class DesktopReactAdapter:
         log_action: Callable[[str], None] | None = None,
     ) -> SingleRunResult:
         from agentlens.harnesses.desktop_react_loop import run_desktop_react_loop
-        from agentlens.sandbox import AIOSandboxSession
 
         started_at = datetime.now(UTC)
         artifact_dir = self._trajectory_dir(plan)
@@ -129,17 +128,7 @@ class DesktopReactAdapter:
             screen_size = [1920, 1080]
         sandbox_env.setdefault("DISPLAY_WIDTH", str(int(screen_size[0])))
         sandbox_env.setdefault("DISPLAY_HEIGHT", str(int(screen_size[1])))
-        sandbox_cm = AIOSandboxSession(
-            image=harness_extra.get("sandbox_image", "ghcr.io/agent-infra/sandbox:latest"),
-            host_port=int(harness_extra.get("sandbox_port", 8080)),
-            env=sandbox_env,
-            shm_size=harness_extra.get("sandbox_shm_size", "2g"),
-            cap_add=list(harness_extra.get("sandbox_cap_add", ["SYS_ADMIN"])),
-            security_opt=list(harness_extra.get("sandbox_security_opt", ["seccomp=unconfined"])),
-            watch_paths=list(harness_extra.get("sandbox_watch_paths", ["/home/gem", "/tmp", "/home/gem/Downloads"])),
-            reuse_existing=bool(harness_extra.get("reuse_existing_sandbox", False)),
-            keep_open_seconds=int(harness_extra.get("keep_sandbox_open_seconds", 0)),
-        )
+        sandbox_cm = _build_desktop_sandbox_session(plan, sandbox_env)
         with sandbox_cm as sandbox:
             browser_profile_reset: dict[str, object] = {
                 "requested": bool(harness_extra.get("fresh_browser_profile_per_run", False)),
@@ -314,6 +303,12 @@ class DesktopReactAdapter:
                     "coordinate_frame": str(
                         harness_extra.get("coordinate_frame", "desktop_screen")
                     ),
+                    "sandbox_backend": str(harness_extra.get("sandbox_backend", "aio_sandbox")),
+                    "environment_isolation": (
+                        "fresh_gui_synth_container"
+                        if harness_extra.get("sandbox_backend") == "gui_synth"
+                        else "fresh_aio_sandbox_container"
+                    ),
                     "browser_profile_reset": browser_profile_reset,
                 },
             ),
@@ -392,12 +387,68 @@ class DesktopReactAdapter:
 
 
 def _desktop_start_command(plan: DesktopReactRunPlan) -> str | None:
+    # gui_synth launches the selected application as part of environment setup.
+    # Starting Chrome again here can create a second, non-CDP window.
+    if plan.tool_harness.extra.get("sandbox_backend") == "gui_synth":
+        return None
     if plan.task.extra and plan.task.extra.get("desktop_start_cmd"):
         return str(plan.task.extra["desktop_start_cmd"])
     template = plan.tool_harness.extra.get("desktop_start_cmd_template")
     if template and plan.task.start_url:
         return str(template).format(start_url=shlex.quote(plan.task.start_url))
     return None
+
+
+def _build_desktop_sandbox_session(
+    plan: DesktopReactRunPlan,
+    sandbox_env: dict[str, str],
+):
+    """Choose the environment implementation without changing the agent loop."""
+
+    harness_extra = plan.tool_harness.extra
+    backend = str(harness_extra.get("sandbox_backend", "aio_sandbox"))
+    if backend == "gui_synth":
+        from agentlens.sandbox.gui_synth import GuiSynthSandboxSession
+
+        app_name = str(
+            harness_extra.get("gui_synth_app")
+            or plan.task.extra.get("gui_synth_app")
+            or ""
+        )
+        if not app_name:
+            raise ValueError(
+                "gui_synth desktop runs require extra.gui_synth_app, such as 'chrome'."
+            )
+        task_payload = plan.task.model_dump(mode="json", exclude_none=True)
+        task_payload.setdefault("id", plan.task.id)
+        return GuiSynthSandboxSession(
+            app_name=app_name,
+            task=task_payload,
+            sandbox_timeout=int(harness_extra.get("sandbox_timeout", 600)),
+            run_id=f"{plan.run_id}.t{plan.trial}",
+            docker_image=str(harness_extra.get("sandbox_image")),
+            docker_platform=str(harness_extra.get("sandbox_platform", "linux/amd64")),
+            docker_shm_size=str(harness_extra.get("sandbox_shm_size", "2g")),
+            docker_ready_timeout=int(harness_extra.get("sandbox_ready_timeout", 180)),
+        )
+    if backend != "aio_sandbox":
+        raise ValueError(f"unsupported desktop sandbox backend: {backend!r}")
+
+    from agentlens.sandbox import AIOSandboxSession
+
+    return AIOSandboxSession(
+        image=harness_extra.get("sandbox_image", "ghcr.io/agent-infra/sandbox:latest"),
+        host_port=int(harness_extra.get("sandbox_port", 8080)),
+        env=sandbox_env,
+        shm_size=harness_extra.get("sandbox_shm_size", "2g"),
+        cap_add=list(harness_extra.get("sandbox_cap_add", ["SYS_ADMIN"])),
+        security_opt=list(harness_extra.get("sandbox_security_opt", ["seccomp=unconfined"])),
+        watch_paths=list(
+            harness_extra.get("sandbox_watch_paths", ["/home/gem", "/tmp", "/home/gem/Downloads"])
+        ),
+        reuse_existing=bool(harness_extra.get("reuse_existing_sandbox", False)),
+        keep_open_seconds=int(harness_extra.get("keep_sandbox_open_seconds", 0)),
+    )
 
 
 def _fresh_browser_profile_command() -> str:
