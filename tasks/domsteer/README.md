@@ -15,6 +15,12 @@ datavoyager_origin_horsepower_range/task.yaml
 datavoyager_origin_horsepower_range_grounded/task.yaml
 datavoyager_europe_hp_gt_100_four_cyl/task.yaml
 datavoyager_europe_hp_gt_100_four_cyl_grounded/task.yaml
+tfplayground_discretize_effect/task.yaml
+tfplayground_misclassified_point/task.yaml
+tfplayground_regression_two_datasets/task.yaml
+tfplayground_regression_two_datasets_grounded/task.yaml
+tfplayground_classification_four_datasets/task.yaml
+tfplayground_classification_four_datasets_grounded/task.yaml
 tasks.jsonl
 ```
 
@@ -34,6 +40,10 @@ Important distinctions:
   - the original task YAMLs keep the standard, goal-only prompt;
   - the sibling `_grounded` task YAMLs use procedure-grounded prompts that
     identify relevant fields and workflow checks without revealing the answer.
+- T5-T8 now have TensorFlow Playground task YAMLs. T7 and T8 each have a
+  distinct standard and procedure-grounded YAML. They remain `manual_pending`
+  because they need rubrics or state/screenshot judges before they should be
+  used for automatic performance claims.
 
 Do not assume every DOMSteer task is automatically executable. For active agent
 runs, create a task YAML with a concrete `start_url`, expected answer or rubric,

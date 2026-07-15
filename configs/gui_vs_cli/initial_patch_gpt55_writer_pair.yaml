@@ -1,0 +1,77 @@
+id: initial_patch_gpt55_writer_pair
+description: >
+  Controlled Writer pair for the balanced task set. The standard condition is
+  the immutable GUI-vs-CLI task; the grounded condition is an AgentLens-local
+  procedural overlay with the same environment and deterministic verifier.
+
+env_backend: docker
+docker_image: agentlens-gui-vs-cli-runtime:latest
+docker_platform: linux/amd64
+docker_shm_size: 2g
+docker_ready_timeout: 180
+screen_size: [1920, 1080]
+max_steps: 500
+output_dir: runs/initial_patch_gpt55_writer_pair
+
+agents:
+  - id: gpt55_oauth_gui_only
+    provider: openai
+    model: gpt-5.5
+    auth_mode: codex_oauth
+    interaction_backend: tool_call
+    prompt_policy: gui_screen_only
+    family: agentlens_strict_gui_toolcall
+    max_output_tokens: 4096
+    tools: &gui_only_tools
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.triple_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+    extra:
+      input_modes: [screenshot]
+      max_actions_per_round: 5
+      parallel_tool_calls: true
+      screen_size: [1920, 1080]
+
+  - id: gpt55_native_computer_use
+    provider: openai
+    model: gpt-5.5
+    auth_mode: api_key
+    interaction_backend: gui_vs_cli_chatgpt
+    prompt_policy: gui_screen_only
+    family: paper_style_gui_vs_cli
+    max_output_tokens: 4096
+    extra:
+      api_backend: openai
+      screen_size: [1920, 1080]
+      max_steps: 500
+      platform: ubuntu
+      computer_environment: linux
+
+tasks:
+  - id: libreoffice_writer_grant_proposal_v2
+    source_type: standard
+    paired_task_id: libreoffice_writer_grant_proposal_v2
+    app: libreoffice_writer
+    category: specified_text_data_production
+    task_taxonomy: &writer
+      primary_type: SP
+      outcome_form: specified
+      evidence_mode: text_data
+      prompt_delta_strength: 2
+      prompt_provenance: standard_upstream__grounded_agentlens_authored
+
+  - id: libreoffice_writer_grant_proposal_v2_grounded
+    source_type: grounded_prompt
+    paired_task_id: libreoffice_writer_grant_proposal_v2
+    agentlens_task_file: tasks/gui_vs_cli_authored/libreoffice_writer_grant_proposal_v2_grounded/task.json
+    app: libreoffice_writer
+    category: specified_text_data_production
+    task_taxonomy: *writer

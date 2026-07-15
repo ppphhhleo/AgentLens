@@ -1,0 +1,29 @@
+id: wikipedia_birth_order_grounded
+benchmark: custom
+task_id: custom_web.wikipedia_birth_order
+goal: >
+  Use Wikipedia to determine which of Ada Lovelace, Grace Hopper, and Alan
+  Turing was born first. Search for each person, locate the birth date in the
+  introductory text or infobox on each page, compare the three calendar dates,
+  and return only that person's full name.
+start_url: https://www.wikipedia.org/
+capability_required:
+  - browser_ui
+  - web_navigation
+  - text_sensemaking
+validator: final_answer
+expected_answer: Ada Lovelace
+answer_validator: contains
+extra:
+  canonical_task: wikipedia_birth_order
+  standard_task_id: wikipedia_birth_order
+  grounded_task_id: wikipedia_birth_order_grounded
+  task_family: custom_web
+  prompt_variant: grounded_procedure
+  task_taxonomy:
+    primary_type: SF
+    sf_mode: foraging
+    deliverable_kind: answer
+    visual_decoding_required: false
+    prompt_delta_strength: 2
+    rationale: The answer requires cross-page text foraging and date comparison, not visual decoding.

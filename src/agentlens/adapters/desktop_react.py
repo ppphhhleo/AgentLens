@@ -141,6 +141,28 @@ class DesktopReactAdapter:
             keep_open_seconds=int(harness_extra.get("keep_sandbox_open_seconds", 0)),
         )
         with sandbox_cm as sandbox:
+            browser_profile_reset: dict[str, object] = {
+                "requested": bool(harness_extra.get("fresh_browser_profile_per_run", False)),
+                "performed": False,
+            }
+            if browser_profile_reset["requested"]:
+                reset = sandbox.shell(_fresh_browser_profile_command(), timeout_sec=15)
+                browser_profile_reset.update(
+                    {
+                        "performed": bool(reset.ok),
+                        "error": reset.error or None,
+                    }
+                )
+                self._log(
+                    log_action,
+                    f"[{plan.run_id}] desktop_browser_profile_reset "
+                    f"ok={reset.ok} err={reset.error[:120]!r}",
+                )
+                if not reset.ok:
+                    raise RuntimeError(
+                        "failed to reset the browser profile before the acting loop: "
+                        f"{reset.error or reset.output}"
+                    )
             launch_cmd = _desktop_start_command(plan)
             if launch_cmd:
                 launch = sandbox.shell(str(launch_cmd), timeout_sec=10)
@@ -156,13 +178,29 @@ class DesktopReactAdapter:
                         f"ok={maximized.ok} err={maximized.error[:120]!r}",
                     )
                 if plan.task.start_url and bool(harness_extra.get("force_start_url", True)):
-                    nav = sandbox.shell(_force_start_url_command(plan.task.start_url), timeout_sec=10)
-                    self._log(
-                        log_action,
-                        f"[{plan.run_id}] desktop_force_start_url ok={nav.ok} err={nav.error[:120]!r}",
+                    launch_ready, launch_url = _wait_for_browser_ready(
+                        sandbox,
+                        plan.task.start_url,
+                        timeout_s=float(harness_extra.get("launch_url_grace_s", 4)),
                     )
-                    if settle_ms > 0:
-                        time.sleep(settle_ms / 1000)
+                    if launch_ready:
+                        self._log(
+                            log_action,
+                            f"[{plan.run_id}] desktop_force_start_url skipped "
+                            f"url={launch_url!r}",
+                        )
+                    else:
+                        nav = sandbox.shell(
+                            _force_start_url_command(plan.task.start_url),
+                            timeout_sec=10,
+                        )
+                        self._log(
+                            log_action,
+                            f"[{plan.run_id}] desktop_force_start_url "
+                            f"ok={nav.ok} err={nav.error[:120]!r}",
+                        )
+                        if settle_ms > 0:
+                            time.sleep(settle_ms / 1000)
                 if plan.task.start_url and bool(
                     harness_extra.get("require_browser_ready", True)
                 ):
@@ -276,6 +314,7 @@ class DesktopReactAdapter:
                     "coordinate_frame": str(
                         harness_extra.get("coordinate_frame", "desktop_screen")
                     ),
+                    "browser_profile_reset": browser_profile_reset,
                 },
             ),
             artifact_dir=artifact_dir,
@@ -359,6 +398,28 @@ def _desktop_start_command(plan: DesktopReactRunPlan) -> str | None:
     if template and plan.task.start_url:
         return str(template).format(start_url=shlex.quote(plan.task.start_url))
     return None
+
+
+def _fresh_browser_profile_command() -> str:
+    """Clear Chromium-family profiles inside a newly provisioned sandbox.
+
+    This is deliberately orchestration setup rather than an agent tool call, so
+    it does not appear as an agent action in the captured trajectory.
+    """
+
+    profiles = " ".join(
+        shlex.quote(path)
+        for path in (
+            "/home/gem/.config/google-chrome",
+            "/home/gem/.cache/google-chrome",
+            "/home/gem/.config/chromium",
+            "/home/gem/.cache/chromium",
+        )
+    )
+    return (
+        f"rm -rf {profiles}; "
+        "install -d -o gem -g gem /home/gem/.config /home/gem/.cache"
+    )
 
 
 def _force_start_url_command(start_url: str) -> str:

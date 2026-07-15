@@ -23,3 +23,9 @@ extra:
   grounded_task_id: datavoyager_origin_horsepower_range_grounded
   prompt_variant: grounded_procedure
   task_family: visual_analytics
+  task_taxonomy:
+    primary_type: SV
+    deliverable_kind: answer
+    visual_decoding_required: true
+    prompt_delta_strength: 2
+    rationale: Grounded procedure for the same visual-analytic answer task.

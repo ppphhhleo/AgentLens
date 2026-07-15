@@ -15,6 +15,12 @@ extra:
   domsteer_task_id: domsteer_t3_datavoyager_europe_hp_gt_100_four_cyl
   prompt_variant: standard
   task_family: visual_analytics
+  task_taxonomy:
+    primary_type: SV
+    deliverable_kind: answer
+    visual_decoding_required: true
+    prompt_delta_strength: 2
+    rationale: Apply visual filters and inspect/count the resulting data view.
   prompt_variants:
     standard: How many European cars have both horsepower above 100 and four cylinders in the cars dataset?
     grounded_procedure: >

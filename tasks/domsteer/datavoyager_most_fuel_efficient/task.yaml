@@ -14,6 +14,12 @@ extra:
   canonical_task: datavoyager_most_fuel_efficient
   prompt_variant: standard
   task_family: visual_analytics
+  task_taxonomy:
+    primary_type: SV
+    deliverable_kind: answer
+    visual_decoding_required: true
+    prompt_delta_strength: 2
+    rationale: Identify a data value by constructing and reading a visual encoding.
   prompt_variants:
     standard: What is the most fuel-efficient car in the dataset?
     grounded_procedure: >

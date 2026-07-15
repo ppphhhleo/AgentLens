@@ -1,0 +1,25 @@
+{
+  "id": "calc_highest_average_salary_grounded",
+  "app": "libreoffice_calc",
+  "task": "Open the employee spreadsheet and determine which department has the highest average salary. Use the Department and Salary columns to calculate or compare the average salary for each department. Check all four departments before deciding, then return only the department name.",
+  "agentlens_env_source_task_id": "calc_employee_data_cleanup",
+  "agentlens_env_source_type": "standard",
+  "agentlens_evaluator": {
+    "kind": "final_answer",
+    "expected_answer": "Engineering",
+    "answer_validator": "exact"
+  },
+  "metadata": {
+    "authored_by": "agentlens",
+    "canonical_task_id": "calc_highest_average_salary",
+    "prompt_variant": "grounded_procedure",
+    "task_taxonomy": {
+      "primary_type": "SF",
+      "sf_mode": "analytic",
+      "deliverable_kind": "answer",
+      "visual_decoding_required": false,
+      "prompt_delta_strength": 2,
+      "rationale": "The grounded prompt gives a non-answer-leaking calculation procedure over the same spreadsheet."
+    }
+  }
+}

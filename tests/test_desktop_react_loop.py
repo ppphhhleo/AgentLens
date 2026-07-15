@@ -56,7 +56,9 @@ class _FakeSandbox:
 
 def test_ordered_batch_executes_all_actions_and_aggregates_results(monkeypatch, tmp_path) -> None:
     def fake_capture(_sandbox, screenshot_dir, step_index, _goal, **_kwargs):
-        path = Path(screenshot_dir) / f"step_{step_index:03d}.png"
+        suffix = _kwargs.get("name_suffix")
+        suffix = f"_{suffix}" if suffix else ""
+        path = Path(screenshot_dir) / f"step_{step_index:03d}{suffix}.png"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"png")
         return TrajectoryEvent(
@@ -96,8 +98,27 @@ def test_ordered_batch_executes_all_actions_and_aggregates_results(monkeypatch, 
     model_events = [
         event
         for event in events
-        if event.event_type == TrajectoryEventType.MODEL_MESSAGE
-        and "action" in event.data
+        if event.event_type == TrajectoryEventType.MODEL_MESSAGE and "action" in event.data
     ]
     assert model_events[0].data["provider_action_group_sizes"] == [2]
     assert model_events[0].data["actions_in_round"] == 2
+
+    screenshot_events = [
+        event for event in events if event.event_type == TrajectoryEventType.SCREENSHOT
+    ]
+    assert screenshot_events[-1].step_index == 2
+    assert screenshot_events[-1].data["terminal_state"] is True
+    assert screenshot_events[-1].artifact_paths[0].name == "step_002_final.png"
+
+
+def test_fresh_browser_profile_command_only_targets_browser_profile_paths() -> None:
+    from agentlens.adapters.desktop_react import _fresh_browser_profile_command
+
+    command = _fresh_browser_profile_command()
+
+    assert "rm -rf" in command
+    assert "/home/gem/.config/google-chrome" in command
+    assert "/home/gem/.cache/google-chrome" in command
+    assert "/home/gem/.config/chromium" in command
+    assert "/home/gem/.cache/chromium" in command
+    assert "install -d -o gem -g gem /home/gem/.config /home/gem/.cache" in command

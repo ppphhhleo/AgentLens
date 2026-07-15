@@ -1,0 +1,221 @@
+schema_version: '0.1'
+id: initial_patch_gpt55_gui_only_web_sensemaking_visual
+description: GUI-only subset of the initial GPT-5.5 web collection patch. Uses only
+  Codex-OAuth registered direct-manipulation tools; it never schedules native computer
+  use.
+models:
+- id: gpt55_oauth_gui_only
+  provider: openai
+  name: gpt-5.5
+  auth_mode: codex_oauth
+  temperature: 0.0
+  vision: true
+  max_output_tokens: 4096
+  extra:
+    interaction_backend: tool_call
+    parallel_tool_calls: true
+    max_actions_per_round: 5
+tool_harnesses:
+- id: desktop_gui_only
+  runner: desktop_react
+  tier: gui_only
+  tools:
+  - desktop.screenshot
+  - desktop.click
+  - desktop.double_click
+  - desktop.triple_click
+  - desktop.scroll
+  - desktop.move
+  - desktop.drag
+  - desktop.type
+  - desktop.keypress
+  - desktop.wait
+  - task.final_answer
+  prompt_version: tool_call_desktop_gui_v1
+  extra:
+    agent_type: gui_only
+    interaction_protocol: registered_tools
+    programmatic_access: none
+    sandbox_image: agentlens-gui-vs-cli-runtime:latest
+    sandbox_port: 8080
+    sandbox_shm_size: 2g
+    sandbox_cap_add:
+    - SYS_ADMIN
+    sandbox_security_opt:
+    - seccomp=unconfined
+    sandbox_watch_paths:
+    - /home/gem
+    - /tmp
+    - /home/gem/Downloads
+    desktop_start_cmd_template: nohup bash -lc "if command -v google-chrome >/dev/null
+      2>&1; then exec google-chrome --no-sandbox --disable-dev-shm-usage --start-maximized
+      {start_url}; elif command -v chromium-browser >/dev/null 2>&1; then exec chromium-browser
+      --no-sandbox --disable-dev-shm-usage --start-maximized {start_url}; elif command
+      -v chromium >/dev/null 2>&1; then exec chromium --no-sandbox --disable-dev-shm-usage
+      --start-maximized {start_url}; else exec xdg-open {start_url}; fi" >/tmp/agentlens_start_browser.log
+      2>&1 &
+    settle_ms: 5000
+    screenshot_source: virtual_desktop
+    coordinate_frame: desktop_screen
+    parallel_tool_calls: true
+    max_actions_per_round: 5
+    fresh_browser_profile_per_run: true
+    record_setup_actions: false
+    model_max_attempts: 6
+    model_retry_sleep_s: 2.0
+    model_retry_max_sleep_s: 60.0
+memory_harnesses:
+- id: no_memory
+  kind: none
+  scope: none
+task_files:
+- tasks/custom_web/wikipedia_birth_order/task.yaml
+- tasks/custom_web/wikipedia_birth_order_grounded/task.yaml
+- tasks/domsteer/datavoyager_most_fuel_efficient/task.yaml
+- tasks/domsteer/datavoyager_most_fuel_efficient_grounded/task.yaml
+- tasks/domsteer/datavoyager_origin_horsepower_range/task.yaml
+- tasks/domsteer/datavoyager_origin_horsepower_range_grounded/task.yaml
+- tasks/domsteer/datavoyager_europe_hp_gt_100_four_cyl/task.yaml
+- tasks/domsteer/datavoyager_europe_hp_gt_100_four_cyl_grounded/task.yaml
+tasks: []
+runs:
+- id: wikipedia_birth_order__standard__gpt55__gui_only
+  model: gpt55_oauth_gui_only
+  tool_harness: desktop_gui_only
+  memory_harness: no_memory
+  task: wikipedia_birth_order
+  seeds:
+  - 0
+  trials: 1
+  max_steps: 500
+  output_dir: runs/initial_patch_gpt55_gui_only_web_sensemaking_visual/raw
+  tags:
+  - initial_patch_gui_only
+  - sf
+  - standard
+  - gpt55
+  - gui_only
+- id: wikipedia_birth_order__grounded__gpt55__gui_only
+  model: gpt55_oauth_gui_only
+  tool_harness: desktop_gui_only
+  memory_harness: no_memory
+  task: wikipedia_birth_order_grounded
+  seeds:
+  - 0
+  trials: 1
+  max_steps: 500
+  output_dir: runs/initial_patch_gpt55_gui_only_web_sensemaking_visual/raw
+  tags:
+  - initial_patch_gui_only
+  - sf
+  - grounded
+  - gpt55
+  - gui_only
+- id: datavoyager_most_fuel_efficient__standard__gpt55__gui_only
+  model: gpt55_oauth_gui_only
+  tool_harness: desktop_gui_only
+  memory_harness: no_memory
+  task: datavoyager_most_fuel_efficient
+  seeds:
+  - 0
+  trials: 1
+  max_steps: 500
+  output_dir: runs/initial_patch_gpt55_gui_only_web_sensemaking_visual/raw
+  tags:
+  - initial_patch_gui_only
+  - sv
+  - datavoyager
+  - t1
+  - standard
+  - gpt55
+  - gui_only
+- id: datavoyager_most_fuel_efficient__grounded__gpt55__gui_only
+  model: gpt55_oauth_gui_only
+  tool_harness: desktop_gui_only
+  memory_harness: no_memory
+  task: datavoyager_most_fuel_efficient_grounded
+  seeds:
+  - 0
+  trials: 1
+  max_steps: 500
+  output_dir: runs/initial_patch_gpt55_gui_only_web_sensemaking_visual/raw
+  tags:
+  - initial_patch_gui_only
+  - sv
+  - datavoyager
+  - t1
+  - grounded
+  - gpt55
+  - gui_only
+- id: datavoyager_origin_horsepower_range__standard__gpt55__gui_only
+  model: gpt55_oauth_gui_only
+  tool_harness: desktop_gui_only
+  memory_harness: no_memory
+  task: datavoyager_origin_horsepower_range
+  seeds:
+  - 0
+  trials: 1
+  max_steps: 500
+  output_dir: runs/initial_patch_gpt55_gui_only_web_sensemaking_visual/raw
+  tags:
+  - initial_patch_gui_only
+  - sv
+  - datavoyager
+  - t2
+  - standard
+  - gpt55
+  - gui_only
+- id: datavoyager_origin_horsepower_range__grounded__gpt55__gui_only
+  model: gpt55_oauth_gui_only
+  tool_harness: desktop_gui_only
+  memory_harness: no_memory
+  task: datavoyager_origin_horsepower_range_grounded
+  seeds:
+  - 0
+  trials: 1
+  max_steps: 500
+  output_dir: runs/initial_patch_gpt55_gui_only_web_sensemaking_visual/raw
+  tags:
+  - initial_patch_gui_only
+  - sv
+  - datavoyager
+  - t2
+  - grounded
+  - gpt55
+  - gui_only
+- id: datavoyager_europe_hp_gt_100_four_cyl__standard__gpt55__gui_only
+  model: gpt55_oauth_gui_only
+  tool_harness: desktop_gui_only
+  memory_harness: no_memory
+  task: datavoyager_europe_hp_gt_100_four_cyl
+  seeds:
+  - 0
+  trials: 1
+  max_steps: 500
+  output_dir: runs/initial_patch_gpt55_gui_only_web_sensemaking_visual/raw
+  tags:
+  - initial_patch_gui_only
+  - sv
+  - datavoyager
+  - t3
+  - standard
+  - gpt55
+  - gui_only
+- id: datavoyager_europe_hp_gt_100_four_cyl__grounded__gpt55__gui_only
+  model: gpt55_oauth_gui_only
+  tool_harness: desktop_gui_only
+  memory_harness: no_memory
+  task: datavoyager_europe_hp_gt_100_four_cyl_grounded
+  seeds:
+  - 0
+  trials: 1
+  max_steps: 500
+  output_dir: runs/initial_patch_gpt55_gui_only_web_sensemaking_visual/raw
+  tags:
+  - initial_patch_gui_only
+  - sv
+  - datavoyager
+  - t3
+  - grounded
+  - gpt55
+  - gui_only

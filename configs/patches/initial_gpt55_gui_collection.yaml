@@ -1,0 +1,72 @@
+id: initial_gpt55_gui_collection
+description: >
+  Collection manifest for a controlled GPT-5.5 trajectory patch. Each listed
+  component compares standard and grounded prompts, GPT GUI-only registered
+  tools, and GPT native computer use. Do not launch a component until its
+  readiness gate is satisfied.
+
+design:
+  agents:
+    - gpt55_oauth_gui_only
+    - gpt55_native_computer_use
+  prompt_variants: [standard, grounded]
+  trials_per_condition: 1
+  recommended_trials_after_pilot: 3
+  screen_size: [1920, 1080]
+  intervention_enabled: false
+
+gui_only_subset:
+  description: >
+    GPT-5.5 Codex-OAuth GUI-only collection without native computer-use calls.
+    Use this for the first paid pass when the purpose is to validate the
+    registered direct-manipulation harness by itself.
+  expected_trajectories_per_trial: 18
+  commands:
+    - >-
+      uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py
+      configs/gui_vs_cli/initial_patch_gpt55_workflow_pairs.yaml
+      --agent gpt55_oauth_gui_only
+    - >-
+      uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py
+      configs/gui_vs_cli/initial_patch_gpt55_sensemaking_pairs.yaml
+      --agent gpt55_oauth_gui_only
+    - >-
+      uv run --no-sync python -m agentlens.cli run
+      configs/batches/initial_patch_gpt55_gui_only_web_sensemaking_visual.yaml
+
+components:
+  - id: desktop_workflows
+    runner: scripts/gui_vs_cli_full_workflow_smoke.py
+    config: configs/gui_vs_cli/initial_patch_gpt55_workflow_pairs.yaml
+    canonical_tasks: [gimp_add_alpha_transparent, calc_text_parse_contacts, godot4_full_enemy_controller]
+    readiness_gate: no_model_app_check
+    expected_trajectories_per_trial: 12
+
+  - id: desktop_sensemaking
+    runner: scripts/gui_vs_cli_full_workflow_smoke.py
+    config: configs/gui_vs_cli/initial_patch_gpt55_sensemaking_pairs.yaml
+    canonical_tasks: [calc_highest_average_salary, zotero_doi_year_lookup]
+    readiness_gate: no_model_app_check
+    expected_trajectories_per_trial: 8
+
+  - id: web_visual_and_text_sensemaking
+    runner: python -m agentlens.cli run
+    config: configs/batches/initial_patch_gpt55_web_sensemaking_visual.yaml
+    canonical_tasks:
+      - wikipedia_birth_order
+      - datavoyager_most_fuel_efficient
+      - datavoyager_origin_horsepower_range
+      - datavoyager_europe_hp_gt_100_four_cyl
+    readiness_gate: clean_browser_launch_and_final_answer_smoke
+    expected_trajectories_per_trial: 16
+
+gated_expansion:
+  - canonical_task: drawio_aws_cloud_arch
+    gate: repair draw.io app startup and pass one no-model check
+    role: second specified visual-production task
+  - canonical_task: tfplayground_regression_two_datasets
+    gate: pass a no-model fresh-profile reset and initial-screenshot check
+    role: second open-ended visual-production task
+  - canonical_task: tfplayground_classification_four_datasets
+    gate: pass a no-model fresh-profile reset and initial-screenshot check
+    role: third open-ended visual-production task

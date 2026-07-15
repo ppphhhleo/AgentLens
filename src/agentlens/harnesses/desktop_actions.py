@@ -56,7 +56,9 @@ def execute_desktop_action(sandbox, action: ComputerAction) -> tuple[str, str]:
         return "", ""
     if action.type == "desktop_wait":
         ms = action.ms or 1000
-        result = sandbox.shell(f"sleep {max(ms, 0) / 1000:.3f}", timeout_sec=max(2, int(ms / 1000) + 2))
+        result = sandbox.shell(
+            f"sleep {max(ms, 0) / 1000:.3f}", timeout_sec=max(2, int(ms / 1000) + 2)
+        )
         return result.output, result.error
     if action.type == "desktop_launch_app":
         result = _launch_desktop_app(sandbox, action.app or "")
@@ -72,8 +74,7 @@ def execute_desktop_action(sandbox, action: ComputerAction) -> tuple[str, str]:
             output = result.output
             if result.ok:
                 output = (
-                    output.rstrip()
-                    + f"\n[agentlens] Detached foreground GUI command: {cmd!r}\n"
+                    output.rstrip() + f"\n[agentlens] Detached foreground GUI command: {cmd!r}\n"
                 ).lstrip()
             return output, result.error
         result = sandbox.shell(cmd, timeout_sec=60)
@@ -128,8 +129,7 @@ def execute_desktop_action(sandbox, action: ComputerAction) -> tuple[str, str]:
         result = sandbox.shell(cmd, timeout_sec=20)
         return result.output, _desktop_tool_error(result, "xdotool")
     if action.type == "desktop_keypress":
-        keys = " ".join(shlex.quote(_xdotool_key(key)) for key in action.keys)
-        result = sandbox.shell(f"xdotool key --clearmodifiers {keys}", timeout_sec=10)
+        result = sandbox.shell(_keypress_command(action.keys), timeout_sec=10)
         return result.output, _desktop_tool_error(result, "xdotool")
     return "", f"unsupported desktop action: {action.type}"
 
@@ -169,10 +169,10 @@ def _screenshot_command(remote_path: str) -> str:
     return (
         "set -e; "
         f"mkdir -p {shlex.quote(str(Path(remote_path).parent))}; "
-        "if command -v gnome-screenshot >/dev/null 2>&1; then "
-        f"gnome-screenshot -f {quoted}; "
-        "elif command -v scrot >/dev/null 2>&1; then "
+        "if command -v scrot >/dev/null 2>&1; then "
         f"scrot {quoted}; "
+        "elif command -v gnome-screenshot >/dev/null 2>&1; then "
+        f"gnome-screenshot -f {quoted}; "
         "elif command -v import >/dev/null 2>&1; then "
         f"import -window root {quoted}; "
         "elif command -v xwd >/dev/null 2>&1 && command -v convert >/dev/null 2>&1; then "
@@ -193,9 +193,9 @@ def _pyautogui_command(code: str) -> str:
         'python_bin="${AGENTLENS_PYAUTOGUI_PYTHON:-/opt/agentlens-pyautogui/bin/python}"; '
         '[ -x "$python_bin" ] || python_bin="$(command -v python3)"; '
         'if [ "$(id -u)" -eq 0 ]; then '
-        f"runuser -u gem -- env HOME=/home/gem DISPLAY=${{DISPLAY:-:99.0}} \"$python_bin\" -c {quoted}; "
+        f'runuser -u gem -- env HOME=/home/gem DISPLAY=${{DISPLAY:-:99.0}} "$python_bin" -c {quoted}; '
         "else "
-        f"env HOME=${{HOME:-/home/gem}} DISPLAY=${{DISPLAY:-:99.0}} \"$python_bin\" -c {quoted}; "
+        f'env HOME=${{HOME:-/home/gem}} DISPLAY=${{DISPLAY:-:99.0}} "$python_bin" -c {quoted}; '
         "fi"
     )
 
@@ -284,11 +284,7 @@ def _detached_gui_command(cmd: str) -> str | None:
         return None
     if parts[0] in GUI_LAUNCH_COMMANDS:
         return _detached_command(stripped)
-    if (
-        parts[:2] == ["java", "-jar"]
-        and len(parts) >= 3
-        and parts[2].endswith("/weka.jar")
-    ):
+    if parts[:2] == ["java", "-jar"] and len(parts) >= 3 and parts[2].endswith("/weka.jar"):
         return _detached_command(stripped)
     return None
 
@@ -322,5 +318,30 @@ def _xdotool_key(key: str) -> str:
         "shift": "shift",
         "space": "space",
         "tab": "Tab",
+        "backspace": "BackSpace",
+        "delete": "Delete",
+        "arrowup": "Up",
+        "up": "Up",
+        "arrowdown": "Down",
+        "down": "Down",
+        "arrowleft": "Left",
+        "left": "Left",
+        "arrowright": "Right",
+        "right": "Right",
+        "pageup": "Page_Up",
+        "pagedown": "Page_Down",
+        "home": "Home",
+        "end": "End",
     }
     return mapping.get(key.casefold(), key)
+
+
+def _keypress_command(keys: list[str]) -> str:
+    """Build one xdotool chord from a provider keypress action.
+
+    Provider computer-use APIs represent simultaneous keys as one array, for
+    example ``["CTRL", "L"]``. Passing those values as separate xdotool
+    arguments sends two independent key presses and silently breaks shortcuts.
+    """
+    chord = "+".join(_xdotool_key(key) for key in keys)
+    return f"xdotool key --clearmodifiers {shlex.quote(chord)}"

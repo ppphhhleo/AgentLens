@@ -46,6 +46,8 @@ Be strict but fair:
 - A confident-sounding answer that contradicts the screenshots is NOT success.
 - If the agent stopped on the right page with the right state visible, count
   it as success even if the textual answer is short.
+- A task-specific rubric, when supplied, defines the evidence to assess and
+  takes precedence over generic assumptions about the task.
 
 Respond with a single JSON object, NO markdown fences:
 {
@@ -73,6 +75,7 @@ def judge_trajectory(
     screenshot_paths: list[Path],
     judge_model: str | None = None,
     max_screenshots: int = DEFAULT_MAX_SCREENSHOTS,
+    rubric: str | None = None,
 ) -> WebJudgeResult:
     """Score a finished trajectory using an LLM-as-judge.
 
@@ -108,6 +111,8 @@ def judge_trajectory(
         f"FINAL ANSWER: {final_answer if final_answer is not None else '(no answer emitted)'}\n\n"
         f"SCREENSHOTS: {len(sampled)} key frames from the agent's run, in order."
     )
+    if rubric:
+        user_text += f"\n\nTASK-SPECIFIC RUBRIC:\n{rubric.strip()}"
     content: list[dict] = [{"type": "text", "text": user_text}]
     for path in sampled:
         content.append(

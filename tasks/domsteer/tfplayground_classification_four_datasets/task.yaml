@@ -1,0 +1,43 @@
+id: tfplayground_classification_four_datasets
+benchmark: domsteer
+task_id: tfplayground.classification_four_datasets
+goal: Design a neural network that performs well across four classification datasets in TensorFlow Playground.
+start_url: https://playground.tensorflow.org/
+capability_required:
+  - browser_ui
+  - visual_reasoning
+  - interactive_ml
+validator: llm_screenshot_judge
+expected_answer: null
+answer_validator: webjudge
+extra:
+  canonical_task: tfplayground_classification_four_datasets
+  domsteer_task_id: domsteer_t8_tfplayground_classification_four_datasets
+  prompt_variant: standard
+  task_family: interactive_ml
+  source_paper: arXiv:2604.14668
+  task_taxonomy:
+    primary_type: OP
+    outcome_form: open_ended
+    evidence_mode: visual_spatial
+    procedure_variant: standard
+    prompt_delta_strength: 3
+  status: collection_ready_llm_judge
+  reset:
+    method: fresh_browser_profile_navigate
+    start_url: https://playground.tensorflow.org/
+    record_as_agent_event: false
+    capture_initial_screenshot: true
+    notes: Navigate to the bare URL in a fresh profile before every trial.
+  evidence_capture:
+    final_state_only: true
+    required: Final screenshot after the fourth classification dataset has trained.
+  judge_max_screenshots: 1
+  judge_rubric: >
+    Judge only the visible final TensorFlow Playground result, not the network
+    architecture, selected features, or the agent's claimed procedure. Mark
+    success only when the final result panel visibly shows a trained
+    classification run with test loss below 0.01, a stable low-loss state, and
+    a clearly separated decision boundary. If the loss is unreadable, the run
+    is still training, or the result is visibly poor, mark failure. Do not
+    infer evidence from hidden state or from the final answer.

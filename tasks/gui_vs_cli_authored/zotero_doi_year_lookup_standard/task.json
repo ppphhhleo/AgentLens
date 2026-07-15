@@ -1,0 +1,25 @@
+{
+  "id": "zotero_doi_year_lookup_standard",
+  "app": "zotero",
+  "task": "In the Zotero library, find the item with DOI 10.18653/v1/N19-1423. Return only its publication year.",
+  "agentlens_env_source_task_id": "zotero_edit_item_doi",
+  "agentlens_env_source_type": "standard",
+  "agentlens_evaluator": {
+    "kind": "final_answer",
+    "expected_answer": "2018",
+    "answer_validator": "exact"
+  },
+  "metadata": {
+    "authored_by": "agentlens",
+    "canonical_task_id": "zotero_doi_year_lookup",
+    "prompt_variant": "standard",
+    "task_taxonomy": {
+      "primary_type": "SF",
+      "sf_mode": "foraging",
+      "deliverable_kind": "answer",
+      "visual_decoding_required": false,
+      "prompt_delta_strength": 2,
+      "rationale": "The DOI and publication year are accessible as textual library metadata."
+    }
+  }
+}

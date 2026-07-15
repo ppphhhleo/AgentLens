@@ -1,0 +1,68 @@
+id: balanced_gpt55_standard_grounded_task_set
+description: >
+  Twelve canonical tasks, balanced at three tasks for each cognitive task type:
+  specified production, text/data sensemaking, visual/spatial sensemaking, and
+  open-ended production. Every task has standard and grounded prompts.
+  The target comparison is GPT GUI-only registered tools versus GPT native
+  computer use, one trial per condition before replication.
+
+design:
+  agents: [gpt55_oauth_gui_only, gpt55_native_computer_use]
+  prompt_variants: [standard, grounded]
+  trials_per_condition: 1
+  recommended_replication: 3
+  trajectories_per_task_per_trial: 4
+  expected_trajectories_per_trial: 48
+  screen_size: [1920, 1080]
+  intervention_enabled: false
+  initial_setup_recorded_as_agent_action: false
+
+task_types:
+  - type: SP
+    label: Specified production
+    tasks: [gimp_add_alpha_transparent, calc_text_parse_contacts, libreoffice_writer_grant_proposal_v2]
+    axis_mix: specified/visual_spatial once; specified/text_data twice
+    note: All three have deterministic artifact/state verifiers.
+
+  - type: SF
+    label: Text/data sensemaking
+    tasks: [calc_highest_average_salary, zotero_doi_year_lookup, wikipedia_birth_order]
+    axis_mix: specified/text_data
+    note: All three return a verifiable answer without perceptual decoding.
+
+  - type: SV
+    label: Visual/spatial sensemaking
+    tasks: [datavoyager_most_fuel_efficient, datavoyager_origin_horsepower_range, datavoyager_europe_hp_gt_100_four_cyl]
+    axis_mix: specified/visual_spatial
+    note: Three DataVoyager tasks with exact-answer verification.
+
+  - type: OP
+    label: Open-ended production
+    tasks: [godot4_full_enemy_controller, tfplayground_regression_two_datasets, tfplayground_classification_four_datasets]
+    axis_mix: open_ended/text_data once; open_ended/visual_spatial twice
+    note: >
+      Godot is a code-artifact proxy. TensorFlow uses a fresh-profile reset and
+      an LLM judgment of the final visible result, not architecture compliance.
+
+components:
+  - config: configs/gui_vs_cli/initial_patch_gpt55_workflow_pairs.yaml
+    canonical_tasks: [gimp_add_alpha_transparent, calc_text_parse_contacts, godot4_full_enemy_controller]
+    readiness: runnable_after_no_model_app_check
+  - config: configs/gui_vs_cli/initial_patch_gpt55_writer_pair.yaml
+    canonical_tasks: [libreoffice_writer_grant_proposal_v2]
+    readiness: requires_one_writer_no_model_app_check
+  - config: configs/gui_vs_cli/initial_patch_gpt55_sensemaking_pairs.yaml
+    canonical_tasks: [calc_highest_average_salary, zotero_doi_year_lookup]
+    readiness: runnable_after_no_model_app_check
+  - config: configs/batches/initial_patch_gpt55_web_sensemaking_visual.yaml
+    canonical_tasks: [wikipedia_birth_order, datavoyager_most_fuel_efficient, datavoyager_origin_horsepower_range, datavoyager_europe_hp_gt_100_four_cyl]
+    readiness: runnable_after_browser_smoke
+  - config: configs/batches/initial_patch_gpt55_tfplayground_design_pairs.yaml
+    canonical_tasks: [tfplayground_regression_two_datasets, tfplayground_classification_four_datasets]
+    readiness: judge_wiring_and_no_model_reset_smoke_required
+
+interpretation_guardrails:
+  - Use `outcome_form` and `evidence_mode` as independent axes; do not collapse them into four labels when reporting.
+  - Do not treat repeated placeholder tasks as independent observations.
+  - Use only pairs with prompt_delta_strength >= 2 for a standard-versus-grounded claim.
+  - TensorFlow success is an LLM judgment of the final visible result, not verification of a prescribed network architecture.

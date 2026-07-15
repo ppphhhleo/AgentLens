@@ -1,0 +1,106 @@
+id: initial_patch_gpt55_workflow_pairs
+description: >
+  First GPT-5.5 desktop-workflow collection component. It compares the
+  AgentLens registered-tool GUI-only agent with the native-API paper-style
+  computer-use agent on matched standard/grounded GUI-vs-CLI tasks.
+
+env_backend: docker
+docker_image: agentlens-gui-vs-cli-runtime:latest
+docker_platform: linux/amd64
+docker_shm_size: 2g
+docker_ready_timeout: 180
+screen_size: [1920, 1080]
+max_steps: 500
+output_dir: runs/initial_patch_gpt55_workflow_pairs
+
+agents:
+  - id: gpt55_oauth_gui_only
+    provider: openai
+    model: gpt-5.5
+    auth_mode: codex_oauth
+    interaction_backend: tool_call
+    prompt_policy: gui_screen_only
+    family: agentlens_strict_gui_toolcall
+    max_output_tokens: 4096
+    tools: &gui_only_tools
+      - desktop.screenshot
+      - desktop.click
+      - desktop.double_click
+      - desktop.triple_click
+      - desktop.scroll
+      - desktop.move
+      - desktop.drag
+      - desktop.type
+      - desktop.keypress
+      - desktop.wait
+      - task.final_answer
+    extra:
+      input_modes: [screenshot]
+      max_actions_per_round: 5
+      parallel_tool_calls: true
+      screen_size: [1920, 1080]
+
+  - id: gpt55_native_computer_use
+    provider: openai
+    model: gpt-5.5
+    auth_mode: api_key
+    interaction_backend: gui_vs_cli_chatgpt
+    prompt_policy: gui_screen_only
+    family: paper_style_gui_vs_cli
+    max_output_tokens: 4096
+    extra:
+      api_backend: openai
+      screen_size: [1920, 1080]
+      max_steps: 500
+      platform: ubuntu
+      computer_environment: linux
+
+tasks:
+  - id: gimp_add_alpha_transparent
+    source_type: standard
+    app: gimp
+    category: specified_visual_production
+    task_taxonomy: &gimp
+      primary_type: SP
+      outcome_form: specified
+      evidence_mode: visual_spatial
+      prompt_delta_strength: 2
+
+  - id: gimp_add_alpha_transparent
+    source_type: grounded_prompt
+    app: gimp
+    category: specified_visual_production
+    task_taxonomy: *gimp
+
+  - id: calc_text_parse_contacts
+    source_type: standard
+    app: libreoffice_calc
+    category: specified_text_data_production
+    task_taxonomy: &calc_parse
+      primary_type: SP
+      outcome_form: specified
+      evidence_mode: text_data
+      prompt_delta_strength: 2
+
+  - id: calc_text_parse_contacts
+    source_type: grounded_prompt
+    app: libreoffice_calc
+    category: specified_text_data_production
+    task_taxonomy: *calc_parse
+
+  - id: godot4_full_enemy_controller
+    source_type: standard
+    app: godot4
+    category: open_ended_text_data_production
+    task_taxonomy: &godot
+      primary_type: OP
+      outcome_form: open_ended
+      evidence_mode: text_data
+      prompt_delta_strength: 3
+      caveat: The task's interface is prescribed; use it as a code-artifact proxy.
+
+  - id: godot4_full_enemy_controller
+    source_type: grounded_prompt
+    app: godot4
+    category: open_ended_text_data_production
+    task_taxonomy: *godot

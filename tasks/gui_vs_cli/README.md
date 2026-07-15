@@ -8,9 +8,14 @@ Tracked catalogs:
 ```text
 tasks.jsonl            # 440 standard tasks; kept for backward compatibility
 tasks_standard.jsonl   # same 440 standard tasks
-tasks_grounding.jsonl  # 176 grounded-prompt tasks
+tasks_grounding.jsonl  # imported plus AgentLens-curated grounded-prompt tasks
 task_pairs.jsonl       # 176 standard/grounded matched task pairs
 ```
+
+`tasks_grounding.jsonl` includes the imported grounded records plus a small
+number of AgentLens-curated grounded prompts for standard-only apps. Curated
+records have `metadata.curated_by: agentlens` and `github_task_path` beginning
+with `agentlens_curated/`.
 
 The standard and grounded-prompt catalogs intentionally stay separate because
 all grounded task ids appear in the standard catalog. Use `source_type` plus
@@ -90,3 +95,15 @@ The runner accepts task entries with `source_type: standard` or
 `task_grounding` as the task text while the environment and verifier still use
 the same task record. Each result directory includes `case_metadata.json` with
 `source_type`, `paired_task_id`, and `github_task_path`.
+
+Occupational/text-work smoke config:
+
+```bash
+uv run --no-sync python scripts/gui_vs_cli_full_workflow_smoke.py \
+  configs/gui_vs_cli/zoom_zotero_obsidian_standard_grounded_smoke.yaml \
+  --agent agentlens_gui_toolcall_opus48
+```
+
+This config runs one paired standard/grounded task each for Zoom, Zotero, and
+Obsidian. Zoom and Obsidian grounded prompts are AgentLens-curated because the
+imported gui-vs-cli grounded catalog did not include those apps.

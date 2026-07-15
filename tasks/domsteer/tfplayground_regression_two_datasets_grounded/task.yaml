@@ -1,0 +1,51 @@
+id: tfplayground_regression_two_datasets_grounded
+benchmark: domsteer
+task_id: tfplayground.regression_two_datasets
+goal: >
+  Open TensorFlow Playground in Regression mode. Select all available input
+  features and configure two hidden layers with six neurons in each layer.
+  Train the network, wait until the test loss is low and stable, and inspect
+  the rendered output. Then select the other regression dataset, keep the same
+  network architecture, train again, and inspect the output. Return the final
+  architecture and concise visual evidence that the network worked well on
+  both regression datasets.
+start_url: https://playground.tensorflow.org/
+capability_required:
+  - browser_ui
+  - visual_reasoning
+  - interactive_ml
+validator: llm_screenshot_judge
+expected_answer: null
+answer_validator: webjudge
+extra:
+  canonical_task: tfplayground_regression_two_datasets
+  standard_task_id: tfplayground_regression_two_datasets
+  grounded_task_id: tfplayground_regression_two_datasets_grounded
+  domsteer_task_id: domsteer_t7_tfplayground_regression_two_datasets
+  prompt_variant: grounded_procedure
+  task_family: interactive_ml
+  source_paper: arXiv:2604.14668
+  task_taxonomy:
+    primary_type: OP
+    outcome_form: open_ended
+    evidence_mode: visual_spatial
+    procedure_variant: grounded
+    prompt_delta_strength: 3
+  status: collection_ready_llm_judge
+  reset:
+    method: fresh_browser_profile_navigate
+    start_url: https://playground.tensorflow.org/
+    record_as_agent_event: false
+    capture_initial_screenshot: true
+    notes: Navigate to the bare URL in a fresh profile before every trial.
+  evidence_capture:
+    final_state_only: true
+    required: Final screenshot after the second regression dataset has trained.
+  judge_max_screenshots: 1
+  judge_rubric: >
+    Judge only the visible final TensorFlow Playground result, not the network
+    architecture, selected features, or the agent's claimed procedure. Mark
+    success only when the final result panel visibly shows a trained regression
+    run with test loss below 0.01 and a stable, low-loss output. If the loss is
+    unreadable, the run is still training, or the result is visibly poor, mark
+    failure. Do not infer evidence from hidden state or from the final answer.

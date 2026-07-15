@@ -36,6 +36,10 @@ def validate_answer(
             final_url=final_url,
             screenshot_paths=list(screenshot_paths or []),
             judge_model=task.extra.get("judge_model") if task.extra else None,
+            rubric=task.extra.get("judge_rubric") if task.extra else None,
+            max_screenshots=int(task.extra.get("judge_max_screenshots", 6))
+            if task.extra
+            else 6,
         )
         msg = (
             f"WebJudge({result.judge_model}) success={result.success} "

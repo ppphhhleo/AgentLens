@@ -49,9 +49,11 @@ def run_desktop_react_loop(
     events.append(initial)
     last_screenshot = initial.artifact_paths[0] if initial.artifact_paths else None
     pending_tool_output = None
+    terminal_step_index = 0
     _log(log_action, f"[{run_id} step=0] desktop screenshot -> {last_screenshot or 'failed'}")
 
     for step_index in range(1, max_steps + 1):
+        terminal_step_index = step_index
         observation = ScreenshotObservation(
             step_index=step_index,
             max_steps=max_steps,
@@ -82,7 +84,9 @@ def run_desktop_react_loop(
                         },
                     )
                 )
-                _log(log_action, f"[{run_id} step={step_index}] model_error attempt={attempt}: {err}")
+                _log(
+                    log_action, f"[{run_id} step={step_index}] model_error attempt={attempt}: {err}"
+                )
                 if exhausted:
                     break
                 time.sleep(model_retry_sleep_s * attempt)
@@ -115,7 +119,9 @@ def run_desktop_react_loop(
                 step_index=step_index,
                 data={
                     "thought": model_step.thought,
-                    "action": model_step.action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
+                    "action": model_step.action.model_dump(
+                        mode="json", exclude_none=True, exclude_defaults=True
+                    ),
                     "actions": [
                         action.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
                         for action in round_actions
@@ -139,7 +145,10 @@ def run_desktop_react_loop(
         )
 
         for subaction_index, action in enumerate(round_actions, start=1):
-            _log(log_action, f"[{run_id} step={step_index}.{subaction_index}] {format_desktop_action(action)}")
+            _log(
+                log_action,
+                f"[{run_id} step={step_index}.{subaction_index}] {format_desktop_action(action)}",
+            )
             common = {
                 "round_index": step_index,
                 "subaction_index": subaction_index,
@@ -179,7 +188,9 @@ def run_desktop_react_loop(
                         step_index=step_index,
                         data={
                             **common,
-                            "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
+                            "action": action.model_dump(
+                                mode="json", exclude_none=True, exclude_defaults=True
+                            ),
                             "tool_name": tool_name_for(action),
                             "message": gating_msg,
                         },
@@ -203,10 +214,10 @@ def run_desktop_react_loop(
                     data={
                         **common,
                         "tool_name": tool_name_for(action),
-                        "expanded_from_tool": (
-                            "computer.batch" if ordered_action_batch else None
+                        "expanded_from_tool": ("computer.batch" if ordered_action_batch else None),
+                        "action": action.model_dump(
+                            mode="json", exclude_none=True, exclude_defaults=True
                         ),
-                        "action": action.model_dump(mode="json", exclude_none=True, exclude_defaults=True),
                         "ok": not bool(error),
                         "output": output,
                         "error": error,
@@ -225,10 +236,31 @@ def run_desktop_react_loop(
             events.append(screenshot)
             if screenshot.artifact_paths:
                 last_screenshot = screenshot.artifact_paths[0]
-            _log(log_action, f"[{run_id} step={step_index}.{subaction_index}] desktop screenshot -> {last_screenshot or 'failed'}")
+            _log(
+                log_action,
+                f"[{run_id} step={step_index}.{subaction_index}] desktop screenshot -> {last_screenshot or 'failed'}",
+            )
 
         if answer is not None:
             break
+
+    terminal = capture_desktop_screenshot_event(
+        sandbox,
+        screenshot_dir,
+        terminal_step_index,
+        goal,
+        name_suffix="final",
+        viewport=viewport,
+    )
+    terminal.data["terminal_state"] = True
+    events.append(terminal)
+    if terminal.artifact_paths:
+        last_screenshot = terminal.artifact_paths[0]
+    _log(
+        log_action,
+        f"[{run_id} step={terminal_step_index}] final desktop screenshot -> "
+        f"{last_screenshot or 'failed'}",
+    )
 
     return answer, events
 

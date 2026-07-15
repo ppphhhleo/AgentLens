@@ -4,7 +4,9 @@ from agentlens.actions import ComputerAction
 from agentlens.harnesses.desktop_actions import (
     _desktop_tool_error,
     _detached_gui_command,
+    _keypress_command,
     _pyautogui_command,
+    _screenshot_command,
     format_desktop_action,
     execute_desktop_action,
 )
@@ -34,11 +36,15 @@ def test_desktop_native_gui_actions_format() -> None:
     scroll = ComputerAction(type="desktop_scroll", x=100, y=200, scroll_y=300)
 
     assert format_desktop_action(drag) == "desktop_drag path=[(10.0, 20.0), (50.0, 60.0)]"
-    assert format_desktop_action(scroll) == "desktop_scroll x=100.0 y=200.0 scroll_x=0 scroll_y=300.0"
+    assert (
+        format_desktop_action(scroll) == "desktop_scroll x=100.0 y=200.0 scroll_x=0 scroll_y=300.0"
+    )
 
 
 def test_desktop_pyautogui_action_formats() -> None:
-    action = ComputerAction(type="desktop_pyautogui", code="import pyautogui\npyautogui.click(10, 20)")
+    action = ComputerAction(
+        type="desktop_pyautogui", code="import pyautogui\npyautogui.click(10, 20)"
+    )
 
     assert format_desktop_action(action) == (
         "desktop_pyautogui code='import pyautogui pyautogui.click(10, 20)'"
@@ -50,7 +56,7 @@ def test_pyautogui_command_prefers_image_managed_interpreter() -> None:
 
     assert "AGENTLENS_PYAUTOGUI_PYTHON" in command
     assert "/opt/agentlens-pyautogui/bin/python" in command
-    assert 'runuser -u gem' in command
+    assert "runuser -u gem" in command
 
 
 def test_desktop_tool_error_detects_traceback_even_when_transport_reports_ok() -> None:
@@ -63,6 +69,44 @@ def test_desktop_tool_error_detects_traceback_even_when_transport_reports_ok() -
     assert _desktop_tool_error(result, "pyautogui") == (
         "pyautogui is not installed in the desktop sandbox image"
     )
+
+
+def test_keypress_command_sends_modifier_keys_as_one_chord() -> None:
+    assert _keypress_command(["CTRL", "L"]) == "xdotool key --clearmodifiers ctrl+L"
+    assert _keypress_command(["CTRL", "SHIFT", "T"]) == (
+        "xdotool key --clearmodifiers ctrl+shift+T"
+    )
+
+
+def test_keypress_command_maps_single_special_key() -> None:
+    assert _keypress_command(["ENTER"]) == "xdotool key --clearmodifiers Return"
+    assert _keypress_command(["ARROWDOWN"]) == "xdotool key --clearmodifiers Down"
+
+
+def test_desktop_executor_uses_key_chord_command() -> None:
+    class Sandbox:
+        def __init__(self):
+            self.command = ""
+
+        def shell(self, command, timeout_sec=30):
+            self.command = command
+            return SimpleNamespace(ok=True, output="", error="")
+
+    sandbox = Sandbox()
+    output, error = execute_desktop_action(
+        sandbox,
+        ComputerAction(type="desktop_keypress", keys=["CTRL", "L"]),
+    )
+
+    assert output == ""
+    assert error == ""
+    assert sandbox.command == "xdotool key --clearmodifiers ctrl+L"
+
+
+def test_screenshot_command_prefers_scrot_for_x11_desktop_capture() -> None:
+    command = _screenshot_command("/tmp/frame.png")
+
+    assert command.index("command -v scrot") < command.index("command -v gnome-screenshot")
 
 
 def test_desktop_executor_supports_full_sandbox_programmatic_tools() -> None:

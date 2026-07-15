@@ -11,6 +11,7 @@ can compare:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shlex
@@ -115,15 +116,35 @@ def _select(items: list[dict[str, Any]], ids: list[str] | None) -> list[dict[str
 
 
 def _load_task(task_ref: dict[str, Any]) -> dict[str, Any]:
+    overlay_path = task_ref.get("agentlens_task_file")
+    if overlay_path:
+        task_path = Path(str(overlay_path))
+        if not task_path.is_absolute():
+            task_path = REPO_ROOT / task_path
+        task = json.loads(task_path.read_text(encoding="utf-8"))
+        task.setdefault("id", task_ref["id"])
+        task["source_type"] = _task_source_type(task_ref)
+        task["paired_task_id"] = task_ref.get("paired_task_id") or task_ref["id"]
+        task["agentlens_task_path"] = str(task_path.relative_to(REPO_ROOT))
+        return task
+
     task_id = task_ref["id"]
     source_type = _task_source_type(task_ref)
+    return _load_catalog_task(task_id, source_type, task_ref.get("paired_task_id"))
+
+
+def _load_catalog_task(
+    task_id: str,
+    source_type: str,
+    paired_task_id: str | None = None,
+) -> dict[str, Any]:
     source_dir = "tasks_grounding" if source_type == "grounded_prompt" else "tasks"
     full_task = THIRD_PARTY_GUI_VS_CLI / "task_generator" / source_dir / task_id / "task.json"
     if full_task.exists():
         task = json.loads(full_task.read_text())
         task.setdefault("id", task_id)
         task["source_type"] = source_type
-        task["paired_task_id"] = task_ref.get("paired_task_id") or task_id
+        task["paired_task_id"] = paired_task_id or task_id
         task["github_task_path"] = f"task_generator/{source_dir}/{task_id}"
         return _task_with_effective_prompt(task, source_type)
 
@@ -138,7 +159,7 @@ def _load_task(task_ref: dict[str, Any]) -> dict[str, Any]:
         if record.get("id") == task_id:
             record["source_type"] = source_type
             record["paired_task_id"] = (
-                task_ref.get("paired_task_id") or record.get("paired_task_id") or task_id
+                paired_task_id or record.get("paired_task_id") or task_id
             )
             return _task_with_effective_prompt(record, source_type)
     raise FileNotFoundError(f"GUI-vs-CLI task not found: {task_id} ({source_type})")
@@ -188,13 +209,18 @@ def _run_one(
     max_steps: int,
 ) -> dict[str, Any]:
     from evaluation.runtime.sandbox_session import setup_sandbox_session
-    from evaluation.runtime.verification import verify_task
 
     agent_id = agent_ref["id"]
     task_id = task_ref["id"]
     source_type = task.get("source_type") or _task_source_type(task_ref)
     paired_task_id = task.get("paired_task_id") or task_id
     source_slug = "grounded" if source_type == "grounded_prompt" else "standard"
+    task_taxonomy = dict(
+        task_ref.get("task_taxonomy")
+        or task.get("task_taxonomy")
+        or task.get("extra", {}).get("task_taxonomy")
+        or {}
+    )
     case_dir = run_dir / "trajectories" / gui_vs_cli_case_slug(
         app=app,
         task_id=str(paired_task_id),
@@ -209,11 +235,15 @@ def _run_one(
         "paired_task_id": paired_task_id,
         "source_type": source_type,
         "github_task_path": task.get("github_task_path"),
+        "agentlens_task_path": task.get("agentlens_task_path"),
+        "environment_seed_task_id": task.get("agentlens_env_source_task_id"),
+        "environment_seed_source_type": task.get("agentlens_env_source_type"),
         "app": app,
         "category": task_ref.get("category"),
         "agent": agent_id,
         "model": agent_ref.get("model"),
         "family": agent_ref.get("family"),
+        "task_taxonomy": task_taxonomy,
     }
     (case_dir / "case_metadata.json").write_text(
         json.dumps(case_metadata, indent=2, ensure_ascii=False),
@@ -239,7 +269,7 @@ def _run_one(
     try:
         session = setup_sandbox_session(
             app,
-            task,
+            _task_for_environment(task),
             sandbox_timeout=int(config.get("sandbox_timeout", 600)),
             run_id=run_dir.name,
             run_mode="gui",
@@ -249,21 +279,42 @@ def _run_one(
             docker_shm_size=config.get("docker_shm_size"),
             docker_ready_timeout=int(config.get("docker_ready_timeout", 180)),
         )
+        stabilization = _stabilize_gui_vs_cli_app(session.sandbox, app, task)
+        (case_dir / "setup.json").write_text(
+            json.dumps(stabilization, indent=2, default=str),
+            encoding="utf-8",
+        )
+        if app == "chrome" and bool(config.get("maximize_chrome_window", True)):
+            _maximize_gui_vs_cli_window(session.sandbox)
         if ready_check_only:
+            screenshot = session.sandbox.screenshot()
+            screenshot_dir = case_dir / "screenshots"
+            screenshot_dir.mkdir(exist_ok=True)
+            screenshot_path = screenshot_dir / "initial.png"
+            screenshot_path.write_bytes(screenshot)
             result = {
-                "ok": True,
+                "ok": bool(stabilization.get("ok", False)),
                 "task_id": task_id,
                 "paired_task_id": paired_task_id,
                 "source_type": source_type,
                 "github_task_path": task.get("github_task_path"),
                 "app": app,
                 "agent": agent_id,
+                "task_taxonomy": task_taxonomy,
                 "ready_check_only": True,
+                "setup_stabilization": stabilization,
+                "initial_screenshot_file": str(screenshot_path.relative_to(case_dir)),
+                "initial_screenshot_sha256": hashlib.sha256(screenshot).hexdigest(),
+                "initial_screenshot_bytes": len(screenshot),
                 "stream_url": session.stream_url,
                 "elapsed_seconds": round(time.time() - started_at, 1),
             }
             (case_dir / "result.json").write_text(json.dumps(result, indent=2))
             return result
+        if not stabilization.get("ok", False):
+            raise RuntimeError(
+                f"{app} did not reach a clean initialized state: {stabilization}"
+            )
 
         trajectory = _run_agent_loop(
             agent_ref=agent_ref,
@@ -274,10 +325,10 @@ def _run_one(
         )
         agent_done = _trajectory_has_final_answer(trajectory)
         max_steps_reached = len(trajectory) >= max_steps and not agent_done
-        passed, total, details = verify_task(
+        passed, total, details = _evaluate_task(
             session.sandbox,
             app,
-            task.get("verification", []),
+            task,
             trajectory=trajectory,
             traj_dir=case_dir,
         )
@@ -289,6 +340,8 @@ def _run_one(
             "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
+            "task_taxonomy": task_taxonomy,
+            "setup_stabilization": stabilization,
             "agent_done": agent_done,
             "agent_steps": len(trajectory),
             "max_steps": max_steps,
@@ -311,6 +364,7 @@ def _run_one(
             "github_task_path": task.get("github_task_path"),
             "app": app,
             "agent": agent_id,
+            "task_taxonomy": task_taxonomy,
             "error": str(exc),
             "elapsed_seconds": round(time.time() - started_at, 1),
         }
@@ -347,7 +401,6 @@ def _run_cli_one(
 ) -> dict[str, Any]:
     from evaluation.runtime.cli_agent_runner import run_cli_agent_interactive
     from evaluation.runtime.sandbox_session import setup_sandbox_session
-    from evaluation.runtime.verification import verify_task
 
     provider = agent_ref.get("cli_provider") or agent_ref.get("provider")
     if provider == "anthropic":
@@ -367,7 +420,7 @@ def _run_cli_one(
     try:
         session = setup_sandbox_session(
             app,
-            task,
+            _task_for_environment(task),
             sandbox_timeout=int(config.get("sandbox_timeout", 600)),
             run_id=run_dir.name,
             run_mode="cli",
@@ -431,11 +484,11 @@ def _run_cli_one(
             case_dir,
         )
         _reload_libreoffice_file_for_cli_verification(session.sandbox, app, task)
-        passed, total, details = verify_task(
+        passed, total, details = _evaluate_task(
             session.sandbox,
             app,
-            task.get("verification", []),
-            trajectory=None,
+            task,
+            trajectory=trajectory,
             traj_dir=case_dir,
         )
         result = {
@@ -602,6 +655,65 @@ def _reload_libreoffice_file_for_cli_verification(sandbox: Any, app_name: str, t
     sandbox.commands.run(command, timeout=15)
 
 
+def _task_for_environment(task: dict[str, Any]) -> dict[str, Any]:
+    """Return the upstream task that provides an authored task's seed files."""
+
+    source_task_id = task.get("agentlens_env_source_task_id")
+    if not source_task_id:
+        return task
+    source_type = task.get("agentlens_env_source_type") or "standard"
+    return _load_catalog_task(str(source_task_id), str(source_type))
+
+
+def _evaluate_task(
+    sandbox: Any,
+    app_name: str,
+    task: dict[str, Any],
+    *,
+    trajectory: list[dict[str, Any]] | None,
+    traj_dir: Path,
+) -> tuple[int, int, list[dict[str, Any]]]:
+    """Evaluate upstream artifact tasks or AgentLens answer-oriented overlays."""
+
+    evaluator = task.get("agentlens_evaluator") or {}
+    if evaluator.get("kind") != "final_answer":
+        from evaluation.runtime.verification import verify_task
+
+        return verify_task(
+            sandbox,
+            app_name,
+            task.get("verification", []),
+            trajectory=trajectory,
+            traj_dir=traj_dir,
+        )
+
+    answer = _last_final_answer(trajectory or [])
+    expected = str(evaluator.get("expected_answer") or "")
+    validator = str(evaluator.get("answer_validator") or "exact")
+    normalized_answer = (answer or "").strip().casefold()
+    normalized_expected = expected.strip().casefold()
+    if validator == "contains":
+        passed = bool(normalized_expected and normalized_expected in normalized_answer)
+    else:
+        passed = bool(normalized_expected and normalized_answer == normalized_expected)
+    details = [{
+        "kind": "final_answer",
+        "expected": expected,
+        "actual": answer,
+        "answer_validator": validator,
+        "passed": passed,
+    }]
+    return int(passed), 1, details
+
+
+def _last_final_answer(trajectory: list[dict[str, Any]]) -> str | None:
+    for step in reversed(trajectory):
+        answer = step.get("final_answer")
+        if answer is not None:
+            return str(answer)
+    return None
+
+
 def _reload_path_from_task(task: dict[str, Any]) -> str | None:
     reload_files = task.get("env", {}).get("reload_files", [])
     if reload_files:
@@ -682,6 +794,13 @@ def _run_agent_loop(
         if done:
             break
         time.sleep(0.5)
+    terminal_screenshot = sandbox.screenshot()
+    terminal_path = screenshots_dir / f"step_{len(trajectory):03d}_final.png"
+    terminal_path.write_bytes(terminal_screenshot)
+    if trajectory:
+        trajectory[-1]["terminal_screenshot_file"] = str(
+            terminal_path.relative_to(case_dir)
+        )
     final_status = "completed" if _trajectory_has_final_answer(trajectory) else "max_steps_reached"
     _write_partial_trajectory(
         partial_path,
@@ -754,6 +873,7 @@ def _build_agentlens_model(agent_ref: dict[str, Any]):
         id=agent_ref["id"],
         provider=agent_ref.get("provider", "openai"),
         name=agent_ref.get("model", "gpt-5.4"),
+        auth_mode=agent_ref.get("auth_mode"),
         temperature=0.0,
         vision=True,
         max_output_tokens=int(agent_ref.get("max_output_tokens", 1024)),
@@ -838,12 +958,90 @@ def _normalize_pyautogui_keys(keys: list[Any]) -> list[str]:
 def _run_pyautogui(sandbox: Any, code: str) -> tuple[bool, str]:
     preamble = "import pyautogui, pyperclip, time; pyautogui.FAILSAFE = False"
     script = preamble + "\n" + code
-    command = f"DISPLAY=:0 python3 -c {shlex.quote(script)}"
+    command = (
+        'python_bin="${AGENTLENS_PYAUTOGUI_PYTHON:-/opt/agentlens-pyautogui/bin/python}"; '
+        '[ -x "$python_bin" ] || python_bin="$(command -v python3)"; '
+        f'DISPLAY=:0 "$python_bin" -c {shlex.quote(script)}'
+    )
     try:
         result = sandbox.commands.run(command, timeout=60)
-        return True, ((result.stdout or "") + (result.stderr or "")).strip()
+        output = ((result.stdout or "") + (result.stderr or "")).strip()
+        exit_code = getattr(result, "exit_code", None)
+        failure_markers = (
+            "Traceback (most recent call last)",
+            "ModuleNotFoundError",
+            "ImportError",
+        )
+        if exit_code not in {None, 0} or any(marker in output for marker in failure_markers):
+            return False, output or f"pyautogui exited with code {exit_code}"
+        return True, output
     except Exception as exc:  # noqa: BLE001
         return False, str(exc)
+
+
+def _maximize_gui_vs_cli_window(sandbox: Any) -> tuple[bool, str]:
+    command = (
+        "export DISPLAY=:0; "
+        "wid=$(xdotool getactivewindow 2>/dev/null) && "
+        "xdotool windowactivate --sync \"$wid\" && "
+        "(wmctrl -i -r \"$wid\" -b add,maximized_vert,maximized_horz "
+        "|| xdotool key --clearmodifiers alt+F10)"
+    )
+    try:
+        result = sandbox.commands.run(command, timeout=15)
+        output = ((result.stdout or "") + (result.stderr or "")).strip()
+        return getattr(result, "exit_code", 0) == 0, output
+    except Exception as exc:  # noqa: BLE001
+        return False, str(exc)
+
+
+def _stabilize_gui_vs_cli_app(
+    sandbox: Any,
+    app: str,
+    task: dict[str, Any],
+) -> dict[str, Any]:
+    task_path = _reload_path_from_task(task) or ""
+    quoted_task_path = shlex.quote(task_path)
+    commands: dict[str, str] = {
+        "drawio": (
+            "export DISPLAY=:0; sleep 2; "
+            "wid=$(xdotool search --onlyvisible --name 'Confirm Update' 2>/dev/null "
+            "| tail -n 1); "
+            "if [ -n \"$wid\" ]; then "
+            "eval \"$(xdotool getwindowgeometry --shell \"$wid\")\"; "
+            "xdotool mousemove --sync $((X + WIDTH * 5 / 6)) $((Y + HEIGHT * 6 / 7)) "
+            "click 1; fi; "
+            "sleep 2; "
+            "if ! xdotool search --onlyvisible --name '\\.drawio' >/dev/null 2>&1; then "
+            f"nohup /usr/local/bin/drawio {quoted_task_path} "
+            ">/tmp/agentlens_drawio_reopen.log 2>&1 & fi; "
+            "for i in $(seq 1 30); do "
+            "xdotool search --onlyvisible --name '\\.drawio' >/dev/null 2>&1 && exit 0; "
+            "sleep 1; done; exit 1"
+        ),
+        "godot4": (
+            "export DISPLAY=:0; "
+            "for i in $(seq 1 30); do "
+            "xdotool search --onlyvisible --name 'Godot Engine' >/dev/null 2>&1 "
+            "&& exit 0; sleep 1; done; exit 1"
+        ),
+    }
+    command = commands.get(app)
+    if command is None:
+        time.sleep(1)
+        return {"app": app, "attempted": False, "ok": True}
+    try:
+        result = sandbox.commands.run(command, timeout=40)
+        output = ((result.stdout or "") + (result.stderr or "")).strip()
+        return {
+            "app": app,
+            "attempted": True,
+            "ok": getattr(result, "exit_code", 0) == 0,
+            "exit_code": getattr(result, "exit_code", None),
+            "output": output[-1000:],
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"app": app, "attempted": True, "ok": False, "error": str(exc)}
 
 
 if __name__ == "__main__":
