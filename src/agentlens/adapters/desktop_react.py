@@ -155,64 +155,63 @@ class DesktopReactAdapter:
             launch_cmd = _desktop_start_command(plan)
             if launch_cmd:
                 launch = sandbox.shell(str(launch_cmd), timeout_sec=10)
-                self._log(log_action, f"[{plan.run_id}] desktop_start_cmd ok={launch.ok} err={launch.error[:120]!r}")
-                settle_ms = int(harness_extra.get("settle_ms", 0) or 0)
-                if settle_ms > 0:
-                    time.sleep(settle_ms / 1000)
-                if plan.task.start_url and bool(harness_extra.get("maximize_window", True)):
-                    maximized = sandbox.shell(_maximize_active_window_command(), timeout_sec=10)
+                self._log(
+                    log_action,
+                    f"[{plan.run_id}] desktop_start_cmd ok={launch.ok} err={launch.error[:120]!r}",
+                )
+            settle_ms = int(harness_extra.get("settle_ms", 0) or 0)
+            if launch_cmd and settle_ms > 0:
+                time.sleep(settle_ms / 1000)
+            if plan.task.start_url and bool(harness_extra.get("maximize_window", True)):
+                maximized = sandbox.shell(_maximize_active_window_command(), timeout_sec=10)
+                self._log(
+                    log_action,
+                    f"[{plan.run_id}] desktop_maximize_window "
+                    f"ok={maximized.ok} err={maximized.error[:120]!r}",
+                )
+            if plan.task.start_url and bool(harness_extra.get("force_start_url", True)):
+                launch_ready, launch_url = _wait_for_browser_ready(
+                    sandbox,
+                    plan.task.start_url,
+                    timeout_s=float(harness_extra.get("launch_url_grace_s", 4)),
+                )
+                if launch_ready:
                     self._log(
                         log_action,
-                        f"[{plan.run_id}] desktop_maximize_window "
-                        f"ok={maximized.ok} err={maximized.error[:120]!r}",
+                        f"[{plan.run_id}] desktop_force_start_url skipped "
+                        f"url={launch_url!r}",
                     )
-                if plan.task.start_url and bool(harness_extra.get("force_start_url", True)):
-                    launch_ready, launch_url = _wait_for_browser_ready(
-                        sandbox,
-                        plan.task.start_url,
-                        timeout_s=float(harness_extra.get("launch_url_grace_s", 4)),
-                    )
-                    if launch_ready:
-                        self._log(
-                            log_action,
-                            f"[{plan.run_id}] desktop_force_start_url skipped "
-                            f"url={launch_url!r}",
-                        )
-                    else:
-                        nav = sandbox.shell(
-                            _force_start_url_command(plan.task.start_url),
-                            timeout_sec=10,
-                        )
-                        self._log(
-                            log_action,
-                            f"[{plan.run_id}] desktop_force_start_url "
-                            f"ok={nav.ok} err={nav.error[:120]!r}",
-                        )
-                        if settle_ms > 0:
-                            time.sleep(settle_ms / 1000)
-                if plan.task.start_url and bool(
-                    harness_extra.get("require_browser_ready", True)
-                ):
-                    ready, observed_url = _wait_for_browser_ready(
-                        sandbox,
-                        plan.task.start_url,
-                        timeout_s=float(harness_extra.get("browser_ready_timeout_s", 30)),
+                else:
+                    nav = sandbox.shell(
+                        _force_start_url_command(plan.task.start_url),
+                        timeout_sec=10,
                     )
                     self._log(
                         log_action,
-                        f"[{plan.run_id}] desktop_browser_ready "
-                        f"ok={ready} url={observed_url!r}",
+                        f"[{plan.run_id}] desktop_force_start_url "
+                        f"ok={nav.ok} err={nav.error[:120]!r}",
                     )
-                    if not ready:
-                        raise RuntimeError(
-                            "browser did not reach the task website before the acting loop; "
-                            f"expected={plan.task.start_url!r}, observed={observed_url!r}"
-                        )
-                    ready_settle_ms = int(
-                        harness_extra.get("browser_ready_settle_ms", 1500) or 0
+                    if settle_ms > 0:
+                        time.sleep(settle_ms / 1000)
+            if plan.task.start_url and bool(harness_extra.get("require_browser_ready", True)):
+                ready, observed_url = _wait_for_browser_ready(
+                    sandbox,
+                    plan.task.start_url,
+                    timeout_s=float(harness_extra.get("browser_ready_timeout_s", 30)),
+                )
+                self._log(
+                    log_action,
+                    f"[{plan.run_id}] desktop_browser_ready "
+                    f"ok={ready} url={observed_url!r}",
+                )
+                if not ready:
+                    raise RuntimeError(
+                        "browser did not reach the task website before the acting loop; "
+                        f"expected={plan.task.start_url!r}, observed={observed_url!r}"
                     )
-                    if ready_settle_ms > 0:
-                        time.sleep(ready_settle_ms / 1000)
+                ready_settle_ms = int(harness_extra.get("browser_ready_settle_ms", 1500) or 0)
+                if ready_settle_ms > 0:
+                    time.sleep(ready_settle_ms / 1000)
             toolset = ToolSet.from_harness(plan.tool_harness)
             model_config = plan.model.model_copy(
                 update={
