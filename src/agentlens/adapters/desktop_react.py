@@ -499,8 +499,9 @@ def _force_start_url_command(start_url: str) -> str:
 def _maximize_active_window_command() -> str:
     return _desktop_user_command(
         f"{_activate_browser_window_script()} && "
-        "(wmctrl -i -r \"$wid\" -b add,maximized_vert,maximized_horz "
-        "|| xdotool key --clearmodifiers alt+F10)"
+        "if command -v wmctrl >/dev/null 2>&1; then "
+        "wmctrl -i -r \"$wid\" -b add,maximized_vert,maximized_horz; "
+        "else xdotool key --clearmodifiers alt+F10; fi"
     )
 
 
