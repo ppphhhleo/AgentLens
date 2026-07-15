@@ -53,6 +53,13 @@ record, and label results accordingly.
 
 ## Run Components
 
+Runtime image selection is intentional: the browser/DataVoyager/TensorFlow
+components use `agentlens/desktop-poc:latest`, which exposes the AIO sandbox
+API required by `desktop_react`. GUI-vs-CLI application workflows use
+`agentlens-gui-vs-cli-runtime:latest` through
+`scripts/gui_vs_cli_full_workflow_smoke.py`; that image is not an AIO sandbox
+image and should not be passed to `desktop_react`.
+
 ```text
 configs/gui_vs_cli/initial_patch_gpt55_workflow_pairs.yaml
 configs/gui_vs_cli/initial_patch_gpt55_writer_pair.yaml

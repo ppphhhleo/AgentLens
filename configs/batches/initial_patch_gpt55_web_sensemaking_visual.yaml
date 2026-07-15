@@ -55,7 +55,7 @@ tool_harnesses:
       agent_type: gui_only
       interaction_protocol: registered_tools
       programmatic_access: none
-      sandbox_image: agentlens-gui-vs-cli-runtime:latest
+      sandbox_image: agentlens/desktop-poc:latest
       sandbox_port: 8080
       sandbox_shm_size: 2g
       sandbox_cap_add: [SYS_ADMIN]
@@ -87,7 +87,7 @@ tool_harnesses:
       agent_type: computer_use
       interaction_protocol: native_computer
       programmatic_access: gui_mediated
-      sandbox_image: agentlens-gui-vs-cli-runtime:latest
+      sandbox_image: agentlens/desktop-poc:latest
       sandbox_port: 8080
       sandbox_shm_size: 2g
       sandbox_cap_add: [SYS_ADMIN]
